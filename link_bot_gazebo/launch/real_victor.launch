@@ -5,8 +5,6 @@
     <arg name="pause"       default="true"/>
     <arg name="debug"       default="false"/>
 
-    <node name="objects_server" pkg="link_bot_pycommon" type="objects_server.py"/>
-
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
               args="0 0 0 0 0 0 robot_root world">

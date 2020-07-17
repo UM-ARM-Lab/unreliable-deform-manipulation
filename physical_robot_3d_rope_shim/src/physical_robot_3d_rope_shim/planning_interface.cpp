@@ -91,7 +91,7 @@ static std::pair<Eigen::VectorXd, Eigen::VectorXd> calcVecError(PoseSequence con
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-                               std::string const& group)
+                                   std::string const& group)
   : nh_(nh)
   , ph_(ph)
   , model_loader_(std::make_unique<robot_model_loader::RobotModelLoader>())
@@ -152,7 +152,7 @@ PoseSequence PlanningInterace::getToolTransforms(robot_state::RobotState const& 
 }
 
 trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr planning_scene,
-                                                      robot_state::RobotState const& goal_state)
+                                                        robot_state::RobotState const& goal_state)
 {
   ///////////// Start ////////////////////////////////////////////////////////
 
@@ -264,13 +264,13 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
 }
 
 trajectory_msgs::JointTrajectory PlanningInterace::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
-                                                                  PointSequence const& target_tool_positions)
+                                                                    PointSequence const& target_tool_positions)
 {
   return moveInWorldFrame(planning_scene, Transform(worldTrobot, target_tool_positions));
 }
 
 trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::PlanningScenePtr planning_scene,
-                                                                  PointSequence const& target_tool_positions)
+                                                                    PointSequence const& target_tool_positions)
 {
   MPS_ASSERT(planning_scene);
   auto const& start_state = planning_scene->getCurrentState();
@@ -395,7 +395,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::Planning
 }
 
 trajectory_msgs::JointTrajectory PlanningInterace::jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
-                                                                std::vector<PointSequence> const& tool_paths)
+                                                                  std::vector<PointSequence> const& tool_paths)
 {
   // Do some preliminary sanity checks
   MPS_ASSERT(planning_scene);
@@ -649,14 +649,18 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
 
       // Converts the position error vector into a unit vector if the step is too large
       const auto positionMagnitude = (currPositionError > stepSize) ? stepSize / currPositionError : 1.0;
-      const Eigen::VectorXd positionCorrectionStep = positionMagnitude * EigenHelpers::UnderdeterminedSolver(partialPositionJacobian, posErrorVec, dampingThreshold, damping);
+      const Eigen::VectorXd positionCorrectionStep =
+          positionMagnitude *
+          EigenHelpers::UnderdeterminedSolver(partialPositionJacobian, posErrorVec, dampingThreshold, damping);
       const Eigen::VectorXd drotTransEffect = rotationJacobian * positionCorrectionStep;
 
       const Eigen::VectorXd drotEffective = rotErrorVec - drotTransEffect;
       const double effectiveRotationError = drotEffective.norm();
       // Converts the rotation error vector into a unit vector if the step is too large
       const auto rotationMagnitude = (effectiveRotationError > stepSize) ? stepSize / effectiveRotationError : 1.0;
-      const Eigen::VectorXd rotationCorrectionStep = rotationMagnitude * EigenHelpers::UnderdeterminedSolver(partialRotationJacobian, drotEffective, dampingThreshold, damping);
+      const Eigen::VectorXd rotationCorrectionStep =
+          rotationMagnitude *
+          EigenHelpers::UnderdeterminedSolver(partialRotationJacobian, drotEffective, dampingThreshold, damping);
 
       // Build the nullspace constraint matrix:
       // Jpos*q = dpos
@@ -677,8 +681,10 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
       MPS_ASSERT(nextMatrixRowIdx == nullspaceConstraintMatrix.rows());
 
       // Project the rotation step into the nullspace of position servoing
-      const Eigen::MatrixXd nullspaceConstraintMatrixPinv = EigenHelpers::Pinv(nullspaceConstraintMatrix, EigenHelpers::SuggestedRcond());
-      const Eigen::MatrixXd nullspaceProjector = Eigen::MatrixXd::Identity(ndof, ndof) - (nullspaceConstraintMatrixPinv * nullspaceConstraintMatrix);
+      const Eigen::MatrixXd nullspaceConstraintMatrixPinv =
+          EigenHelpers::Pinv(nullspaceConstraintMatrix, EigenHelpers::SuggestedRcond());
+      const Eigen::MatrixXd nullspaceProjector =
+          Eigen::MatrixXd::Identity(ndof, ndof) - (nullspaceConstraintMatrixPinv * nullspaceConstraintMatrix);
       const Eigen::VectorXd nullspaceRotationStep = nullspaceProjector * rotationCorrectionStep;
       const Eigen::VectorXd step = positionCorrectionStep + nullspaceRotationStep;
       if (bPRINT)
@@ -727,6 +733,11 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
     // Set the robot to the current estimate and update collision info
     state.setJointGroupPositions(jmg_, currConfig);
     state.update();
+    collision_detection::CollisionRequest collisionRequest;
+    collisionRequest.contacts = true;
+    collisionRequest.max_contacts = 1;
+    collisionRequest.max_contacts_per_pair = 1;
+    collision_detection::CollisionResult collisionResult;
     planning_scene->checkCollision(collisionRequest, collisionResult, state);
     if (collisionResult.collision)
     {
@@ -742,7 +753,7 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
 }
 
 Eigen::MatrixXd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
-                                                      PoseSequence const& robotTservo)
+                                                        PoseSequence const& robotTservo)
 {
   assert(robotTservo.size() == num_ees_);
   const int rows = 6 * (int)num_ees_;
@@ -761,7 +772,7 @@ Eigen::MatrixXd PlanningInterace::getJacobianServoFrame(robot_state::RobotState 
 // See MLS Page 115-121
 // https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf
 Matrix6Xd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
-                                                robot_model::LinkModel const* link, Pose const& robotTservo)
+                                                  robot_model::LinkModel const* link, Pose const& robotTservo)
 {
   const Pose reference_transform = robotTservo.inverse(Eigen::Isometry);
   const robot_model::JointModel* root_joint_model = jmg_->getJointModels()[0];

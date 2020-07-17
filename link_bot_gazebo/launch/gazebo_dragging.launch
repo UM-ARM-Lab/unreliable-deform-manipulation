@@ -1,5 +1,5 @@
 <launch>
-    <arg name="world_name" default="rope_dragging_obs"/>
+    <arg name="world_name" default="dragging_obs"/>
     <arg name="verbose" default="false"/>
     <arg name="gui" default="true"/>
     <arg name="pause" default="true"/>
