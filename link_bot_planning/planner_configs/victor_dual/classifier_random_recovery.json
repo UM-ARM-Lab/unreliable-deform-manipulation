@@ -52,7 +52,7 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
+  "classifier_model_dir": "cl_trials/dual-balance-no-uncertainty/July_11_15-25-23_eccab5e838/best_checkpoint",
   "accept_threshold": 0.5,
   "n_random_restarts": 0,
   "goal_threshold": 0.07,
