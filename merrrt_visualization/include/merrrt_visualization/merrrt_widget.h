@@ -24,6 +24,7 @@ public:
   void LabelCallback(const peter_msgs::LabelStatus::ConstPtr &msg);
   void StdevCallback(const std_msgs::Float32::ConstPtr &msg);
   void OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg);
+  void OnRecoveryProbability(const std_msgs::Float32::ConstPtr &msg);
   void OnTrajIdx(const std_msgs::Float32::ConstPtr &msg);
 
   void load(const rviz::Config &config) override;
@@ -35,6 +36,7 @@ private:
   ros::Subscriber label_sub_;
   ros::Subscriber stdev_sub_;
   ros::Subscriber traj_idx_sub_;
+  ros::Subscriber recov_prob_sub_;
   ros::Subscriber accept_probability_sub_;
 };
 

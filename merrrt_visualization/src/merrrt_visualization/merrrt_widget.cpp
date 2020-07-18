@@ -12,6 +12,8 @@ MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
   accept_probability_sub_ =
       ros_node_.subscribe<std_msgs::Float32>("accept_probability_viz", 10, &MerrrtWidget::OnAcceptProbability, this);
   traj_idx_sub_ = ros_node_.subscribe<std_msgs::Float32>("traj_idx_viz", 10, &MerrrtWidget::OnTrajIdx, this);
+  recov_prob_sub_ = ros_node_.subscribe<std_msgs::Float32>("recovery_probability_viz", 10,
+                                                           &MerrrtWidget::OnRecoveryProbability, this);
 }
 
 void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)
@@ -38,6 +40,27 @@ void MerrrtWidget::LabelCallback(const peter_msgs::LabelStatus::ConstPtr &msg)
   {
     ui.bool_indicator->setStyleSheet("background-color: rgb(150, 150, 150);");
   }
+}
+
+void MerrrtWidget::OnRecoveryProbability(const std_msgs::Float32::ConstPtr &msg)
+{
+  auto const blue = 50;
+  auto red = 0;
+  auto green = 0;
+  if (msg->data >= 0 and msg->data <= 1)
+  {
+    // *0.8 to cool the colors
+    auto const cool_factor = 0.7;
+    red = static_cast<int>(255 * (1 - msg->data) * cool_factor);
+    green = static_cast<int>(255 * msg->data * cool_factor);
+  }
+  else
+  {
+    red = 0;
+    green = 0;
+  }
+  ui.recovery_probability->setStyleSheet(QString("color: rgb(%1, %2, %3);").arg(red).arg(green).arg(blue));
+  ui.recovery_probability->setText(QString::number(msg->data));
 }
 
 void MerrrtWidget::OnAcceptProbability(const std_msgs::Float32::ConstPtr &msg)
