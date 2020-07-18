@@ -23,7 +23,7 @@ public:
   ros::NodeHandle ph_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  std::shared_ptr<PlanningInterace> planner_;
+  std::shared_ptr<PlanningInterface> planner_;
   ros::ServiceServer execute_traj_srv_;
   ros::ServiceServer goto_home_srv_;
   ros::Publisher talker_;

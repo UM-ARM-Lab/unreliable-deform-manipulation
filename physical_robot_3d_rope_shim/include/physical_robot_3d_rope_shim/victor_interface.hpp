@@ -3,7 +3,7 @@
 
 #include "physical_robot_3d_rope_shim/planning_interface.hpp"
 
-class VictorInterface : public PlanningInterace
+class VictorInterface : public PlanningInterface
 {
 public:
   VictorInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,

@@ -1,11 +1,11 @@
-#include "physical_robot_3d_rope_shim/val_interface.hpp"
 #include "physical_robot_3d_rope_shim/scene.hpp"
+#include "physical_robot_3d_rope_shim/val_interface.hpp"
 
 #include <arc_utilities/ros_helpers.hpp>
 
 ValInterface::ValInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
                            std::string const& group)
-  : PlanningInterace(nh, ph, tf_buffer, group)
+  : PlanningInterface(nh, ph, tf_buffer, group)
 {
 }
 
@@ -33,8 +33,8 @@ Eigen::VectorXd ValInterface::lookupQHome()
     auto right_home = ROSHelpers::GetVector<double>(nh_, "right_arm_home", std::vector<double>(7, 0));
     Eigen::VectorXd home(16);
     home << Eigen::Map<Eigen::VectorXd>(torso_home.data(), torso_home.size()),
-            Eigen::Map<Eigen::VectorXd>(left_home.data(), left_home.size()),
-            Eigen::Map<Eigen::VectorXd>(right_home.data(), right_home.size());
+        Eigen::Map<Eigen::VectorXd>(left_home.data(), left_home.size()),
+        Eigen::Map<Eigen::VectorXd>(right_home.data(), right_home.size());
     return home;
   }
   else

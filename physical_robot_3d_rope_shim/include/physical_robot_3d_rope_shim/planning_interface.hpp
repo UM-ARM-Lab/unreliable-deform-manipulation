@@ -16,7 +16,7 @@
 
 using Matrix6Xd = Eigen::Matrix<double, 6, Eigen::Dynamic>;
 
-class PlanningInterace
+class PlanningInterface
 {
 public:
   enum
@@ -51,11 +51,15 @@ public:
   PoseSequence home_state_tool_poses_;
   EigenHelpers::VectorQuaterniond robot_nominal_tool_orientations_;
 
+  // Jiggle jiggle
+  int const sampling_attempts_ = 100;
+  double const jiggle_fraction_;
+
   // For use when moving the EE positions using moveIn[Robot/World]Frame
   double const translation_step_size_;
 
-  PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-                   std::string const& group);
+  PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+                    std::string const& group);
 
   virtual Eigen::VectorXd lookupQHome() = 0;
 
@@ -85,14 +89,16 @@ public:
   Matrix6Xd getJacobianServoFrame(robot_state::RobotState const& state, robot_model::LinkModel const* link,
                                   Pose const& robotTservo);
 
+  void JiggleOutOfCollision(planning_scene::PlanningScenePtr planning_scene);
+
 protected:
   ////////////////////////////////////////////////////////////////////
   // Destructor that prevents "delete pointer to base object"
   ////////////////////////////////////////////////////////////////////
 
-  ~PlanningInterace()
+  ~PlanningInterface()
   {
   }
 };
 
-#endif // LBV_PLANNING_INTERFACE_HPP
+#endif  // LBV_PLANNING_INTERFACE_HPP

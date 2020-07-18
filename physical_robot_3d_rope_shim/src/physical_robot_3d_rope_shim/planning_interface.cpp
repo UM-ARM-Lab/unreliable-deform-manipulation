@@ -90,8 +90,8 @@ static std::pair<Eigen::VectorXd, Eigen::VectorXd> calcVecError(PoseSequence con
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-                                   std::string const& group)
+PlanningInterface::PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+                                     std::string const& group)
   : nh_(nh)
   , ph_(ph)
   , model_loader_(std::make_unique<robot_model_loader::RobotModelLoader>())
@@ -107,9 +107,9 @@ PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::
   , robot_frame_(model_->getRootLinkName())
   , worldTrobot(lookupTransform(*tf_buffer_, world_frame_, robot_frame_, ros::Time(0), ros::Duration(1)))
   , robotTworld(worldTrobot.inverse(Eigen::Isometry))
-
   , home_state_(model_)
 
+  , jiggle_fraction_(ROSHelpers::GetParam<double>(ph_, "move_group/jiggle_fraction", 0.05))
   , translation_step_size_(ROSHelpers::GetParam<double>(ph_, "translation_step_size", 0.002))
 {
   auto const& ees = jmg_->getAttachedEndEffectorNames();
@@ -124,7 +124,7 @@ PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::
   }
 }
 
-void PlanningInterace::configureHomeState()
+void PlanningInterface::configureHomeState()
 {
   q_home_ = lookupQHome();
   home_state_.setToDefaultValues();
@@ -138,7 +138,7 @@ void PlanningInterace::configureHomeState()
   }
 }
 
-PoseSequence PlanningInterace::getToolTransforms(robot_state::RobotState const& state) const
+PoseSequence PlanningInterface::getToolTransforms(robot_state::RobotState const& state) const
 {
   auto const& ees = jmg_->getAttachedEndEffectorNames();
   PoseSequence poses(num_ees_);
@@ -150,8 +150,8 @@ PoseSequence PlanningInterace::getToolTransforms(robot_state::RobotState const& 
   return poses;
 }
 
-trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr planning_scene,
-                                                        robot_state::RobotState const& goal_state)
+trajectory_msgs::JointTrajectory PlanningInterface::plan(ps::PlanningScenePtr planning_scene,
+                                                         robot_state::RobotState const& goal_state)
 {
   ///////////// Start ////////////////////////////////////////////////////////
 
@@ -237,8 +237,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
       planning_scene->checkCollision(request, result, goal_state);
       if (result.collision)
       {
-        auto const first_contact = result.contacts.cbegin()->first;
-        ROS_ERROR_STREAM("Collision at goal state between " << first_contact.first << " and " << first_contact.second);
+        ROS_ERROR_STREAM("Collision at goal state " << result);
       }
     }
     ROS_ERROR("Could not compute plan successfully");
@@ -262,36 +261,20 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
   return msg.trajectory.joint_trajectory;
 }
 
-trajectory_msgs::JointTrajectory PlanningInterace::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
-                                                                    PointSequence const& target_tool_positions)
+trajectory_msgs::JointTrajectory PlanningInterface::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
+                                                                     PointSequence const& target_tool_positions)
 {
   return moveInWorldFrame(planning_scene, Transform(worldTrobot, target_tool_positions));
 }
 
-trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::PlanningScenePtr planning_scene,
-                                                                    PointSequence const& target_tool_positions)
+trajectory_msgs::JointTrajectory PlanningInterface::moveInWorldFrame(ps::PlanningScenePtr planning_scene,
+                                                                     PointSequence const& target_tool_positions)
 {
   MPS_ASSERT(planning_scene);
+  JiggleOutOfCollision(planning_scene);
+
   auto const& start_state = planning_scene->getCurrentState();
   auto const start_tool_transforms = getToolTransforms(start_state);
-
-  // Verify that the start state is collision free
-  {
-    collision_detection::CollisionRequest request;
-    collision_detection::CollisionResult result;
-    planning_scene->checkCollision(request, result, start_state);
-    if (result.collision)
-    {
-      request.contacts = true;
-      request.verbose = true;
-      result.clear();
-      planning_scene->checkCollision(request, result, start_state);
-
-      std::cerr << "Collision at start_state:\n" << result << std::endl;
-      std::cerr << "Joint limits at start_state\n";
-      start_state.printStatePositionsWithJointLimits(jmg_, std::cerr);
-    }
-  }
 
   // Create paths for each tool with an equal number of waypoints
   double max_dist = 0;
@@ -393,8 +376,8 @@ trajectory_msgs::JointTrajectory PlanningInterace::moveInWorldFrame(ps::Planning
   return cmd;
 }
 
-trajectory_msgs::JointTrajectory PlanningInterace::jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
-                                                                  std::vector<PointSequence> const& tool_paths)
+trajectory_msgs::JointTrajectory PlanningInterface::jacobianPath3d(planning_scene::PlanningScenePtr planning_scene,
+                                                                   std::vector<PointSequence> const& tool_paths)
 {
   // Do some preliminary sanity checks
   MPS_ASSERT(planning_scene);
@@ -453,7 +436,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::jacobianPath3d(planning_scene
 }
 
 // Note that robotTtargets is the target points for the tools, measured in robot frame
-bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scene, PoseSequence const& robotTtargets)
+bool PlanningInterface::jacobianIK(planning_scene::PlanningScenePtr planning_scene, PoseSequence const& robotTtargets)
 {
   MPS_ASSERT(planning_scene);
   MPS_ASSERT(robotTtargets.size() == num_ees_);
@@ -735,9 +718,7 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
     planning_scene->checkCollision(collisionRequest, collisionResult, state);
     if (collisionResult.collision)
     {
-      auto const first_contact = collisionResult.contacts.cbegin()->first;
-      ROS_WARN_STREAM("Projection stalled at itr " << itr << " due to collision between " << first_contact.first
-                                                   << " and " << first_contact.second);
+      ROS_WARN_STREAM("Projection stalled at itr " << itr << " due to collision" << collisionResult);
       return false;
     }
     collisionResult.clear();
@@ -747,8 +728,8 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
   return false;
 }
 
-Eigen::MatrixXd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
-                                                        PoseSequence const& robotTservo)
+Eigen::MatrixXd PlanningInterface::getJacobianServoFrame(robot_state::RobotState const& state,
+                                                         PoseSequence const& robotTservo)
 {
   assert(robotTservo.size() == num_ees_);
   const int rows = 6 * (int)num_ees_;
@@ -766,8 +747,8 @@ Eigen::MatrixXd PlanningInterace::getJacobianServoFrame(robot_state::RobotState 
 
 // See MLS Page 115-121
 // https://www.cds.caltech.edu/~murray/books/MLS/pdf/mls94-complete.pdf
-Matrix6Xd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const& state,
-                                                  robot_model::LinkModel const* link, Pose const& robotTservo)
+Matrix6Xd PlanningInterface::getJacobianServoFrame(robot_state::RobotState const& state,
+                                                   robot_model::LinkModel const* link, Pose const& robotTservo)
 {
   const Pose reference_transform = robotTservo.inverse(Eigen::Isometry);
   const robot_model::JointModel* root_joint_model = jmg_->getJointModels()[0];
@@ -826,4 +807,53 @@ Matrix6Xd PlanningInterace::getJacobianServoFrame(robot_state::RobotState const&
     link = pjm->getParentLinkModel();
   }
   return jacobian;
+}
+
+void PlanningInterface::JiggleOutOfCollision(ps::PlanningScenePtr planning_scene)
+{
+  // Verify that the start state is collision free, if not attempt to jiggle out of collision
+  collision_detection::CollisionRequest request;
+  collision_detection::CollisionResult result;
+  request.contacts = true;
+  request.max_contacts = 1;
+  request.max_contacts_per_pair = 1;
+  robot_state::RobotState current_state = planning_scene->getCurrentState();
+  planning_scene->checkCollision(request, result, current_state);
+  if (!result.collision)
+  {
+    return;
+  }
+
+  auto const first_contact = result.contacts.cbegin()->first;
+  std::cerr << "Collision at current state between " << first_contact.first << " and " << first_contact.second
+            << ". wiggle wiggle wiggle!";
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // https://github.com/ros-planning/moveit/blob/master/moveit_ros/planning/planning_request_adapter_plugins/src/fix_start_state_collision.cpp
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  robot_state::RobotStatePtr prefix_state(new robot_state::RobotState(current_state));
+  random_numbers::RandomNumberGenerator& rng = prefix_state->getRandomNumberGenerator();
+
+  auto const jmodels = jmg_->getJointModels();
+  for (int c = 0; c < sampling_attempts_; ++c)
+  {
+    for (std::size_t i = 0; i < jmodels.size(); ++i)
+    {
+      std::vector<double> sampled_variable_values(jmodels[i]->getVariableCount());
+      const double* original_values = prefix_state->getJointPositions(jmodels[i]);
+      jmodels[i]->getVariableRandomPositionsNearBy(rng, &sampled_variable_values[0], original_values,
+                                                   jmodels[i]->getMaximumExtent() * jiggle_fraction_);
+      current_state.setJointPositions(jmodels[i], sampled_variable_values);
+      collision_detection::CollisionResult cres;
+      collision_detection::CollisionRequest creq;
+      planning_scene->checkCollision(creq, cres, current_state);
+      if (!cres.collision)
+      {
+        ROS_INFO("Found a valid state near the start state at distance %lf after %d attempts",
+                 prefix_state->distance(current_state), c);
+        // Make the robot move ???
+        return;
+      }
+    }
+  }
 }
