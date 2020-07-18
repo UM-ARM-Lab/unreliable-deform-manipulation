@@ -63,8 +63,14 @@
             <uri>model://keyboard</uri>
         </include>
         <include>
-            <pose>0.25 0.75 0.14 0 0 0</pose>
+            <pose>0.25 0.8 0.0 0 0 0</pose>
             <uri>model://bottle</uri>
+        </include>
+
+        <include>
+            <name>tissues2</name>
+            <pose>0.3 0.65 0.06 0 0 0</pose>
+            <uri>model://tissues</uri>
         </include>
     </world>
 </sdf>
