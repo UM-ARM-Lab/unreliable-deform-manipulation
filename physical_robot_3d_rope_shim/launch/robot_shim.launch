@@ -6,6 +6,12 @@
     <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
 
     <group if="$(arg use_victor)">
+        <rosparam subst_value="true" param="left_arm_home">
+            [-1.39626, 0.5759586531581284, 1.9, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509]
+        </rosparam>
+        <rosparam subst_value="true" param="right_arm_home">
+            [-1.74533, -0.5759586531581287, -1.9, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466]
+        </rosparam>
         <!-- Load Victor's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
@@ -19,7 +25,7 @@
     </group>
 
     <node launch-prefix="gdb -ex run --args" name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
-        <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene"/>
+        <param name="get_planning_scene_topic"  value="/get_planning_scene"/>
     </node>
 
 </launch>
