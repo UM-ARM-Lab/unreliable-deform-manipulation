@@ -36,7 +36,7 @@ if __name__ == "__main__":
     reset_rope()
     settle()
 
-    k = input("re-grasp rope? [Y/n]")
+    k = raw_input("re-grasp rope? [Y/n]")
     if k != 'n':
         # re-grasp rope
         grasp = SetBoolRequest()

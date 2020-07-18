@@ -1,6 +1,9 @@
 #pragma once
 
 #include <peter_msgs/LabelStatus.h>
+#include <peter_msgs/SetBool.h>
+#include <peter_msgs/SetRopeState.h>
+#include <peter_msgs/WorldControl.h>
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #include <rviz/rviz_export.h>
@@ -30,6 +33,9 @@ public:
   void load(const rviz::Config &config) override;
   void save(rviz::Config config) const override;
 
+public slots:
+  void MoveRopeButtonClicked();
+
 private:
   Ui_MerrrtWidget ui;
   ros::NodeHandle ros_node_;
@@ -38,6 +44,9 @@ private:
   ros::Subscriber traj_idx_sub_;
   ros::Subscriber recov_prob_sub_;
   ros::Subscriber accept_probability_sub_;
+  ros::ServiceClient world_control_srv_;
+  ros::ServiceClient grasping_rope_srv_;
+  ros::ServiceClient set_rope_state_srv_;
 };
 
 }  // namespace merrrt_visualization

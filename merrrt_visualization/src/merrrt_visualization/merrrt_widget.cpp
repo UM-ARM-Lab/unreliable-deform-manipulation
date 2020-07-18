@@ -4,7 +4,11 @@
 
 namespace merrrt_visualization
 {
-MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
+MerrrtWidget::MerrrtWidget(QWidget *parent)
+  : rviz::Panel(parent)
+  , set_rope_state_srv_(ros_node_.serviceClient<peter_msgs::SetRopeState>("set_rope_state"))
+  , grasping_rope_srv_(ros_node_.serviceClient<peter_msgs::SetBool>("set_grasping_rope"))
+  , world_control_srv_(ros_node_.serviceClient<peter_msgs::WorldControl>("world_control"))
 {
   ui.setupUi(this);
   label_sub_ = ros_node_.subscribe<peter_msgs::LabelStatus>("label_viz", 10, &MerrrtWidget::LabelCallback, this);
@@ -14,6 +18,12 @@ MerrrtWidget::MerrrtWidget(QWidget *parent) : rviz::Panel(parent)
   traj_idx_sub_ = ros_node_.subscribe<std_msgs::Float32>("traj_idx_viz", 10, &MerrrtWidget::OnTrajIdx, this);
   recov_prob_sub_ = ros_node_.subscribe<std_msgs::Float32>("recovery_probability_viz", 10,
                                                            &MerrrtWidget::OnRecoveryProbability, this);
+
+  connect(ui.move_rope_button, &QPushButton::clicked, this, &MerrrtWidget::MoveRopeButtonClicked);
+}
+
+void MerrrtWidget::MoveRopeButtonClicked()
+{
 }
 
 void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)
