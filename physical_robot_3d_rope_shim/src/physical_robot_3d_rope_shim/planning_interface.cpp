@@ -102,7 +102,6 @@ PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::
 
   , tf_broadcaster_()
   , vis_pub_(nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true))
-
   , tf_buffer_(tf_buffer)
   , world_frame_("robot_root")
   , robot_frame_(model_->getRootLinkName())
@@ -239,7 +238,7 @@ trajectory_msgs::JointTrajectory PlanningInterace::plan(ps::PlanningScenePtr pla
       if (result.collision)
       {
         auto const first_contact = result.contacts.cbegin()->first;
-        ROS_ERROR_STREAM("Collision at goal state between " << first_contact.first << " and "<< first_contact.second);
+        ROS_ERROR_STREAM("Collision at goal state between " << first_contact.first << " and " << first_contact.second);
       }
     }
     ROS_ERROR("Could not compute plan successfully");
@@ -733,16 +732,12 @@ bool PlanningInterace::jacobianIK(planning_scene::PlanningScenePtr planning_scen
     // Set the robot to the current estimate and update collision info
     state.setJointGroupPositions(jmg_, currConfig);
     state.update();
-    collision_detection::CollisionRequest collisionRequest;
-    collisionRequest.contacts = true;
-    collisionRequest.max_contacts = 1;
-    collisionRequest.max_contacts_per_pair = 1;
-    collision_detection::CollisionResult collisionResult;
     planning_scene->checkCollision(collisionRequest, collisionResult, state);
     if (collisionResult.collision)
     {
       auto const first_contact = collisionResult.contacts.cbegin()->first;
-      ROS_WARN_STREAM("Projection stalled at itr " << itr << " due to collision between " << first_contact.first << " and "<< first_contact.second);
+      ROS_WARN_STREAM("Projection stalled at itr " << itr << " due to collision between " << first_contact.first
+                                                   << " and " << first_contact.second);
       return false;
     }
     collisionResult.clear();

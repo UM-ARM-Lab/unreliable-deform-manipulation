@@ -43,21 +43,6 @@ DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void DualGripperShim::test()
-{
-  auto const tool_transforms = planner_->getToolTransforms(planner_->home_state_);
-  PointSequence target_positions(tool_transforms.size());
-  for (auto idx = 0ul; idx < target_positions.size(); ++idx)
-  {
-    target_positions[idx] = tool_transforms[idx].translation() + 0.2 * Eigen::Vector3d::Random();
-  }
-
-  auto ps = scene_->clonePlanningScene();
-  ps->setCurrentState(planner_->home_state_);
-  auto const traj = planner_->moveInWorldFrame(ps, target_positions);
-  followJointTrajectory(traj);
-}
-
 void DualGripperShim::gotoHome()
 {
   ROS_INFO("Going home");

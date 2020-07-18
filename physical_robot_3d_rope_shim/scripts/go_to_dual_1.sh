@@ -1,2 +1,0 @@
-rosservice call /execute_dual_gripper_action "{gripper1_points: [{x: -0.6, y: 0.5, z: 0.35}], gripper2_points: [{x: -0.6, y: 0.9, z: 0.35}]}"
-rosservice call /execute_dual_gripper_action "{gripper1_points: [{x: -0.4, y: 0.5, z: 0.3}], gripper2_points: [{x: -0.4, y: 1.0, z: 0.35}]}"

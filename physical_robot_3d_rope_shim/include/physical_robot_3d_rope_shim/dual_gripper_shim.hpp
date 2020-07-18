@@ -37,7 +37,6 @@ public:
   std::shared_ptr<Scene> scene_;
 
   DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph);
-  void test();
   void gotoHome();
   void settle();
 
