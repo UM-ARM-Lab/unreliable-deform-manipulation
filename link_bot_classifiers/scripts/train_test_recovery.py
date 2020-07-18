@@ -61,6 +61,7 @@ def train_main(args, seed: int):
     # Initialize weights from classifier model by "restoring" from checkpoint
     ############
     if not args.checkpoint:
+        # load in the weights for the conv & dense layers of the classifier's encoder, skip the last few layers
         classifier_model = tf.train.Checkpoint(conv_layers=model.conv_layers, dense_layers=model.dense_layers)
         classifier_root = tf.train.Checkpoint(model=classifier_model)
         classifier_checkpoint_manager = tf.train.CheckpointManager(

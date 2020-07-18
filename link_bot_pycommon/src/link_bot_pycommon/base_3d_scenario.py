@@ -38,6 +38,8 @@ class Base3DScenario(ExperimentScenario):
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
+        self.recovery_probability_viz_pub = rospy.Publisher(
+            "recovery_probability_viz", Float32, queue_size=10, latch=True)
         try:
             import tf2_ros
             self.broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -137,6 +139,11 @@ class Base3DScenario(ExperimentScenario):
         else:
             msg.status = LabelStatus.Reject
         self.label_viz_pub.publish(msg)
+
+    def plot_recovery_probability(self, recovery_probability_t):
+        msg = Float32()
+        msg.data = recovery_probability_t
+        self.recovery_probability_viz_pub.publish(msg)
 
     def plot_accept_probability(self, accept_probability_t):
         msg = Float32()

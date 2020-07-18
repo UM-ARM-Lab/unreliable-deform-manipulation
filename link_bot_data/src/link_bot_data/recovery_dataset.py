@@ -48,10 +48,10 @@ class RecoveryDataset(BaseDataset):
         return features_description
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        def _add_unstuck_probabilities(example):
+        def _add_recovery_probabilities(example):
             n_accepts = tf.math.count_nonzero(example['accept_probabilities'] > 0.5, axis=1)
-            example['unstuck_probabilities'] = tf.cast(n_accepts / self.n_action_samples, tf.float32)
+            example['recovery_probability'] = tf.cast(n_accepts / self.n_action_samples, tf.float32)
             return example
 
-        dataset = dataset.map(_add_unstuck_probabilities)
+        dataset = dataset.map(_add_recovery_probabilities)
         return dataset
