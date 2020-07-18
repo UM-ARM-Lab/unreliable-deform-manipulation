@@ -196,7 +196,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         grasp = SetBoolRequest()
         grasp.data = True
         self.grasping_rope_srv(grasp)
-        self.settle()
 
         # replace the objects in a new random configuration
         random_object_poses = {
@@ -208,6 +207,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'hook2': self.random_object_pose(env_rng, objects_params),
         }
         self.set_object_poses(random_object_poses)
+
+        # wait a second so that the rope can drap on the objects AND the planning scene monitor can update...
+        self.settle()
 
         if 'gripper1_action_sample_extent' in data_collection_params:
             gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
@@ -233,8 +235,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
-        settling_time = rospy.get_param("world_interaction/traj_goal_time_tolerance")
-        req.settling_time_seconds = settling_time
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         _ = self.action_srv(req)
@@ -265,6 +265,22 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rope_points = tf.reshape(rope_vector, [rope_vector.shape[0], -1, 3])
         center = tf.reduce_mean(rope_points, axis=1)
         return center
+
+    @ staticmethod
+    def apply_local_action_at_state(state, local_action):
+        return {
+            'gripper1_position': state['gripper1'] + local_action['gripper1_delta'],
+            'gripper2_position': state['gripper2'] + local_action['gripper2_delta']
+        }
+
+    @staticmethod
+    def add_noise(action: Dict, noise_rng: np.random.RandomState):
+        gripper1_noise = noise_rng.normal(scale=0.01, size=[3])
+        gripper2_noise = noise_rng.normal(scale=0.01, size=[3])
+        return {
+            'gripper1_position': action['gripper1_position'] + gripper1_noise,
+            'gripper2_position': action['gripper2_position'] + gripper2_noise
+        }
 
     @ staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
@@ -336,7 +352,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': 3,
         }
 
-    @staticmethod
+    @ staticmethod
     def state_to_points_for_cc(state: Dict):
         return state['link_bot'].reshape(-1, 3)
 
@@ -374,7 +390,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def simple_name(self):
         return "dual_floating_gripper_rope"
 
-    @staticmethod
+    @ staticmethod
     def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
         for i in range(3):
             state_out[0][i] = np.float64(state_np['gripper1'][i])
@@ -385,7 +401,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         state_out[3][0] = np.float64(state_np['stdev'][0])
         state_out[4][0] = np.float64(state_np['num_diverged'][0])
 
-    @staticmethod
+    @ staticmethod
     def ompl_state_to_numpy(ompl_state: ob.CompoundState):
         gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
         gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
@@ -403,7 +419,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'num_diverged': np.array([ompl_state[4][0]]),
         }
 
-    @staticmethod
+    @ staticmethod
     def ompl_control_to_numpy(ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
         state_np = DualFloatingGripperRopeScenario.ompl_state_to_numpy(ompl_state)
         current_gripper1_position = state_np['gripper1']
@@ -424,7 +440,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': target_gripper2_position,
         }
 
-    @staticmethod
+    @ staticmethod
     def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_threshold'], res=environment['res'])
@@ -439,21 +455,27 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             if not collision:
                 return goal
 
-    @staticmethod
+    @ staticmethod
     def distance_to_goal(state: Dict, goal: Dict):
         rope_points = np.reshape(state['link_bot'], [-1, 3])
         rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    @staticmethod
+    @ staticmethod
     def distance_to_goal_differentiable(state, goal):
         rope_points = tf.reshape(state['link_bot'], [-1, 3])
         rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
         distance = tf.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    @staticmethod
+    @ staticmethod
+    def full_distance_tf(s1: Dict, s2: Dict):
+        """ the same as the distance metric used in planning """
+        distance = tf.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=-1)
+        return distance
+
+    @ staticmethod
     def distance(s1: Dict, s2: Dict):
         """ this is not the distance metric used in planning, but the one used in evaluation (like distance to goal) """
         rope1_points = np.reshape(s1['link_bot'], [-1, 3])
@@ -463,11 +485,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance = float(np.linalg.norm(rope2_midpoint - rope1_midpoint))
         return distance
 
-    @staticmethod
+    @ staticmethod
     def distance_differentiable(s1: Dict, s2: Dict):
         raise NotImplementedError()
 
-    @staticmethod
+    @ staticmethod
     def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
         # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
         # done when making the classifier dataset
@@ -629,11 +651,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         goal_marker_msg.markers.append(midpoint_marker)
         self.state_viz_pub.publish(goal_marker_msg)
 
-    @staticmethod
+    @ staticmethod
     def dynamics_loss_function(dataset_element, predictions):
         return dynamics_loss_function(dataset_element, predictions)
 
-    @staticmethod
+    @ staticmethod
     def dynamics_metrics_function(dataset_element, predictions):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
@@ -834,8 +856,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         a1 = np.reshape(data['gripper1_position'], [3])
         a2 = np.reshape(data['gripper2_position'], [3])
 
-        idx1 = kwargs.get("idx1", 0)
-        idx2 = kwargs.get("idx2", 1)
+        idx = kwargs.pop("idx", None)
+        if idx is not None:
+            idx1 = idx
+            idx2 = idx + 100
+        else:
+            idx1 = kwargs.pop("idx1", 0)
+            idx2 = kwargs.pop("idx2", 1)
 
         msg = MarkerArray()
         msg.markers.append(rviz_arrow(s1, a1, r, g, b, a, idx=idx1, label=label, **kwargs))

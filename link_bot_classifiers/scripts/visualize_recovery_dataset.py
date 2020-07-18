@@ -15,20 +15,11 @@ from moonshine.gpu_config import limit_gpu_mem
 from visualization_msgs.msg import MarkerArray, Marker
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.pycommon import log_scale_0_to_1
 from link_bot_data.recovery_dataset import RecoveryDataset
 
 
 limit_gpu_mem(1)
-
-
-def log_scale_0_to_1(x, k=10):
-    """
-    Performs a log rescaling of the numbers from 0 to 1
-    0 still maps to 0 and 1 still maps to 1, but the numbers get squished
-    so that small values are larger. k controls the amount of squishedness,
-    larger is more squished
-    """
-    return np.log(k*x + 1) / np.log(k + 1)
 
 
 def main():
@@ -111,15 +102,9 @@ def visualize_example(dataset, example):
         t = anim.t()
         recovery_probability_t = example['recovery_probability'][t]
         scenario.plot_recovery_probability(recovery_probability_t)
-        state = {k: example[k][0] for k in dataset.state_keys}
-        action = {k: example[k][0] for k in dataset.action_keys}
-
-        local_action = scenario.put_action_local_frame(state, action)
         s_t = {k: example[k][t] for k in dataset.state_keys}
         if t < dataset.horizon - 1:
             a_t = {k: example[k][t] for k in dataset.action_keys}
-
-            delta1 = a_t['gripper1_position'] - s_t['gripper1']
 
             scenario.plot_action_rviz(s_t, a_t, label='observed')
         color_factor = log_scale_0_to_1(recovery_probability_t, k=10)

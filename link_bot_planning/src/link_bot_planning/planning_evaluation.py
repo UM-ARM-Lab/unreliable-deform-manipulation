@@ -6,6 +6,8 @@ from typing import Optional, Dict, List
 
 import rospy
 import numpy as np
+from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 import ompl.util as ou
 import tensorflow as tf
 from colorama import Fore
@@ -18,19 +20,9 @@ from link_bot_gazebo_python import gazebo_services
 from link_bot_planning.ompl_viz import planner_data_to_json
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult
 from link_bot_planning.get_planner import get_planner
+from link_bot_pycommon.serialization import dummy_proof_write
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_planning import plan_and_execute
-
-
-def dummy_proof_write(data, filename):
-    while True:
-        try:
-            with gzip.open(filename, 'wb') as data_file:
-                data_str = json.dumps(data)
-                data_file.write(data_str.encode("utf-8"))
-            return
-        except KeyboardInterrupt:
-            pass
 
 
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
@@ -39,8 +31,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  planner: MyPlanner,
                  service_provider: BaseServices,
                  planner_config_name: str,
-                 n_plans_per_env: int,
-                 n_plans: int,
+                 n_trials: int,
                  verbose: int,
                  planner_params: Dict,
                  comparison_item_idx: int,
@@ -48,16 +39,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  goal,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
-                 pause_between_plans: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
                  ):
         super().__init__(planner,
-                         n_plans=n_plans,
-                         n_plans_per_env=n_plans_per_env,
+                         n_trials=n_trials,
                          verbose=verbose,
                          planner_params=planner_params,
                          service_provider=service_provider,
-                         pause_between_plans=pause_between_plans,
                          no_execution=no_execution,
                          seed=seed)
         self.record = record
@@ -74,8 +62,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.goal = goal
 
         metadata = {
-            "n_plans": self.n_plans,
-            "n_plans_per_env": self.n_plans_per_env,
+            "n_trials": self.n_trials,
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
@@ -100,59 +87,16 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         else:
             return super().get_goal(environment)
 
-    def on_execution_complete(self,
-                              planning_query_info: Dict,
-                              planning_result: PlanningResult,
-                              execution_result: Dict,
-                              recovery_actions_result: Dict):
-        goal = planning_query_info['goal']
-        environment = planning_query_info['environment']
-        planner_data = planning_result.data
-        planned_path = planning_result.path
-        planned_actions = planning_result.actions
-        planning_time = planning_result.time
-        actual_path = execution_result['path']
-
-        num_nodes = planner_data.numVertices()
-
-        final_planned_state = planned_path[-1]
-        plan_to_goal_error = self.planner.scenario.distance_to_goal(final_planned_state, goal)
-
-        final_state = actual_path[-1]
-        execution_to_goal_error = self.planner.scenario.distance_to_goal(final_state, goal)
-
-        plan_to_execution_error = self.planner.scenario.distance(final_state, final_planned_state)
-
-        print("{}: {}".format(self.subfolder, self.successfully_completed_plan_idx))
-
-        planned_path_listified = listify(planned_path)
-        planned_actions_listified = listify(planned_actions)
-        actual_path_listified = listify(actual_path)
-        tree_json = planner_data_to_json(planner_data, self.planner.scenario)
-
-        data_for_plan = {
-            "n_plans": self.n_plans,
-            "n_targets": self.n_plans_per_env,
+    def on_trial_complete(self, trial_data: Dict):
+        extra_trial_data = {
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
-            'planner_status': planning_result.status.value,
-            'environment': listify(environment),
-            'planned_path': planned_path_listified,
-            'actions': planned_actions_listified,
-            'actual_path': actual_path_listified,
-            'planning_time': planning_time,
-            'plan_to_goal_error': plan_to_goal_error,
-            'execution_to_goal_error': float(execution_to_goal_error),
-            'plan_to_execution_error': float(plan_to_execution_error),
-            'tree_json': tree_json,
-            'goal': listify(goal),
-            'num_nodes': num_nodes,
-            'recovery_actions_result': listify(recovery_actions_result),
             'current_time': int(time()),
         }
-        data_filename = self.root / f'{self.successfully_completed_plan_idx}_metrics.json.gz'
-        dummy_proof_write(data_for_plan, data_filename)
+        trial_data.update(extra_trial_data)
+        data_filename = self.root / f'{self.trial_idx}_metrics.json.gz'
+        dummy_proof_write(trial_data, data_filename)
 
         self.successfully_completed_plan_idx += 1
 
@@ -192,14 +136,13 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
                                real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size)
 
-    print(Fore.GREEN + "Running {} Trials".format(args.n_plans) + Fore.RESET)
+    print(Fore.GREEN + "Running {} Trials".format(args.n_trials) + Fore.RESET)
 
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
         planner_config_name=planner_config_name,
-        n_plans_per_env=args.n_plans_per_env,
-        n_plans=args.n_plans,
+        n_trials=args.n_trials,
         verbose=args.verbose,
         planner_params=planner_params,
         seed=args.seed,
@@ -207,7 +150,6 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
         comparison_item_idx=comparison_idx,
         goal=planner_params['fixed_goal'],
         record=args.record,
-        pause_between_plans=args.pause_between_plans,
         no_execution=args.no_execution
     )
     runner.run()

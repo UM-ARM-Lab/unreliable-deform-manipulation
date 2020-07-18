@@ -1,18 +1,22 @@
 import sys
-from dataclasses import dataclass
 from enum import Enum
 import time
 from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
 from matplotlib import cm
 
+from dataclasses_json import dataclass_json
 from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
+from dataclasses_json import dataclass_json
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
+from link_bot_planning.ompl_viz import planner_data_to_json
+from moonshine.moonshine_utils import listify
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -33,12 +37,21 @@ class MyPlannerStatus(Enum):
             return False
 
 
+@dataclass_json
+@dataclass
+class PlanningQuery:
+    goal: Dict
+    environment: Dict
+    start: Dict
+
+
+@dataclass_json
 @dataclass
 class PlanningResult:
     path: Optional[List[Dict]]
     actions: Optional[List[Dict]]
     status: MyPlannerStatus
-    data: ob.PlannerData
+    tree: Dict
     time: float
 
 
@@ -53,7 +66,7 @@ class MyPlanner:
                  verbose: int,
                  ):
         self.verbose = verbose
-        self.planner = None
+        self.rrt = None
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.params = params
@@ -95,6 +108,7 @@ class MyPlanner:
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
+        print(".", end='')
         final_state = self.scenario.ompl_state_to_numpy(motions[-1].getState())
 
         motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
@@ -199,27 +213,18 @@ class MyPlanner:
     propagate.g = 0
     propagate.b = 0
 
-    def plan(self,
-             start_state: Dict,
-             environment: Dict,
-             goal: Dict,
-             ) -> PlanningResult:
-        """
-        :param start_states: each element is a vector
-        :type environment: each element is a vector of state which we don't predict
-        :param goal:
-        :return: controls, states
-        """
+    def plan(self, planning_query: PlanningQuery):
         self.cleanup_before_plan()
 
-        self.environment = environment
+        self.environment = planning_query.environment
         self.goal_region = self.scenario.make_goal_region(self.si,
                                                           rng=self.state_sampler_rng,
                                                           params=self.params,
-                                                          goal=goal,
+                                                          goal=planning_query.goal,
                                                           plot=self.verbose >= 2)
 
         # create start and goal states
+        start_state = planning_query.start
         start_state['stdev'] = np.array([0.0])
         start_state['num_diverged'] = np.array([0.0])
         self.start_state = start_state
@@ -228,9 +233,9 @@ class MyPlanner:
 
         # visualization
         self.scenario.reset_planning_viz()
-        self.scenario.plot_environment_rviz(environment)
+        self.scenario.plot_environment_rviz(planning_query.environment)
         self.scenario.plot_start_state(start_state)
-        self.scenario.plot_goal(goal, self.params['goal_threshold'])
+        self.scenario.plot_goal(planning_query.goal, self.params['goal_threshold'])
 
         self.ss.clear()
         self.ss.setStartState(ompl_start_scoped)
@@ -253,6 +258,9 @@ class MyPlanner:
         if planner_status == MyPlannerStatus.Solved:
             ompl_path = self.ss.getSolutionPath()
             actions, planned_path = self.convert_path(ompl_path)
+            planner_data = ob.PlannerData(self.si)
+            self.rrt.getPlannerData(planner_data)
+            tree = planner_data_to_json(planner_data, self.scenario)
         elif planner_status == MyPlannerStatus.Timeout:
             # Use the approximate solution, since it's usually pretty darn close, and sometimes
             # our goals are impossible to reach so this is important to have
@@ -260,18 +268,22 @@ class MyPlanner:
                 ompl_path = self.ss.getSolutionPath()
                 actions, planned_path = self.convert_path(ompl_path)
             except RuntimeError:
-                rospy.logerr("No solution path on timeout?! considering this as Not Progressing.")
+                rospy.logerr("Timeout before any edges were added. Considering this as Not Progressing.")
                 planner_status = MyPlannerStatus.NotProgressing
                 actions = []
+                tree = {}
                 planned_path = [start_state]
+            else:  # if no exception was raised
+                planner_data = ob.PlannerData(self.si)
+                self.rrt.getPlannerData(planner_data)
+                tree = planner_data_to_json(planner_data, self.scenario)
         else:
+            tree = {}
             actions = []
             planned_path = [start_state]
 
-        planner_data = ob.PlannerData(self.si)
-        self.planner.getPlannerData(planner_data)
-
-        return PlanningResult(status=planner_status, path=planned_path, actions=actions, time=planning_time, data=planner_data)
+        print()
+        return PlanningResult(status=planner_status, path=planned_path, actions=actions, time=planning_time, tree=tree)
 
     def convert_path(self, ompl_path: oc.PathControl) -> Tuple[List[Dict], List[Dict]]:
         planned_path = []

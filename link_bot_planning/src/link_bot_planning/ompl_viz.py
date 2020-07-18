@@ -14,6 +14,11 @@ def planner_data_to_json(planner_data, scenario):
         'vertices': [],
         'edges': [],
     }
+
+    if planner_data.numVertices() <= 1:
+        print("no tree?!")
+        return {}
+
     for vertex_index in range(planner_data.numVertices()):
         v = planner_data.getVertex(vertex_index)
         s = v.getState()

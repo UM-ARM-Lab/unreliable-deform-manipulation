@@ -4,10 +4,12 @@ import pathlib
 from typing import Dict, List
 
 import numpy as np
+from matplotlib import cm
 import rospy
 import tensorflow as tf
 from colorama import Fore
 from moonshine.moonshine_utils import numpify, index_dict_of_batched_vectors_tf
+from link_bot_pycommon.pycommon import log_scale_0_to_1
 from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_predicted
 from jsk_recognition_msgs.msg import BoundingBox
@@ -53,7 +55,7 @@ class NNRecoveryModel(MyKerasModel):
                                  activation='relu',
                                  kernel_regularizer=keras.regularizers.l2(self.hparams['kernel_reg']),
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']),
-                                 trainable=True)
+                                 trainable=False)
             pool = layers.MaxPool3D(self.hparams['pooling'])
             self.conv_layers.append(conv)
             self.pool_layers.append(pool)
@@ -74,7 +76,7 @@ class NNRecoveryModel(MyKerasModel):
         self.output_layer2 = layers.Dense(1, activation=None, trainable=True)
         self.sigmoid = layers.Activation("sigmoid")
 
-    def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
+    def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int = 1):
         # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment
         pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)
         pixel_col_indices = tf.range(0, self.local_env_w_cols, dtype=tf.float32)
@@ -105,102 +107,96 @@ class NNRecoveryModel(MyKerasModel):
         # self.scenario.plot_environment_rviz(full_env_dict)
         # # END DEBUG
 
-        conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
-        for t in tf.range(time):
-            state_t = {k: input_dict[k][:, t] for k in self.state_keys}
+        state = {k: input_dict[k][:, 0] for k in self.state_keys}
 
-            local_env_center_t = self.scenario.local_environment_center_differentiable(state_t)
-            # by converting too and from the frame of the full environment, we ensure the grids are aligned
-            indices = batch_point_to_idx_tf_3d_in_batched_envs(local_env_center_t, input_dict)
-            local_env_center_t = batch_idx_to_point_3d_in_env_tf(*indices, input_dict)
+        local_env_center = self.scenario.local_environment_center_differentiable(state)
+        # by converting too and from the frame of the full environment, we ensure the grids are aligned
+        indices = batch_point_to_idx_tf_3d_in_batched_envs(local_env_center, input_dict)
+        local_env_center = batch_idx_to_point_3d_in_env_tf(*indices, input_dict)
 
-            local_env_t, local_env_origin_t = get_local_env(center_point=local_env_center_t,
-                                                            full_env=input_dict['env'],
-                                                            full_env_origin=input_dict['origin'],
-                                                            res=input_dict['res'],
-                                                            local_h_rows=self.local_env_h_rows,
-                                                            local_w_cols=self.local_env_w_cols,
-                                                            local_c_channels=self.local_env_c_channels,
-                                                            batch_x_indices=batch_x_indices,
-                                                            batch_y_indices=batch_y_indices,
-                                                            batch_z_indices=batch_z_indices,
-                                                            batch_size=batch_size)
+        local_env_t, local_env_origin_t = get_local_env(center_point=local_env_center,
+                                                        full_env=input_dict['env'],
+                                                        full_env_origin=input_dict['origin'],
+                                                        res=input_dict['res'],
+                                                        local_h_rows=self.local_env_h_rows,
+                                                        local_w_cols=self.local_env_w_cols,
+                                                        local_c_channels=self.local_env_c_channels,
+                                                        batch_x_indices=batch_x_indices,
+                                                        batch_y_indices=batch_y_indices,
+                                                        batch_z_indices=batch_z_indices,
+                                                        batch_size=batch_size)
 
-            local_voxel_grid_t_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
-            local_voxel_grid_t_array = local_voxel_grid_t_array.write(0, local_env_t)
-            for i, state_component_t in enumerate(state_t.values()):
-                state_component_voxel_grid = raster_3d(state=state_component_t,
-                                                       pixel_indices=pixel_indices,
-                                                       res=input_dict['res'],
-                                                       origin=local_env_origin_t,
-                                                       h=self.local_env_h_rows,
-                                                       w=self.local_env_w_cols,
-                                                       c=self.local_env_c_channels,
-                                                       k=self.rope_image_k,
-                                                       batch_size=batch_size)
+        local_voxel_grid_t_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+        local_voxel_grid_t_array = local_voxel_grid_t_array.write(0, local_env_t)
+        for i, state_component_t in enumerate(state.values()):
+            state_component_voxel_grid = raster_3d(state=state_component_t,
+                                                   pixel_indices=pixel_indices,
+                                                   res=input_dict['res'],
+                                                   origin=local_env_origin_t,
+                                                   h=self.local_env_h_rows,
+                                                   w=self.local_env_w_cols,
+                                                   c=self.local_env_c_channels,
+                                                   k=self.rope_image_k,
+                                                   batch_size=batch_size)
 
-                local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
-            local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
-            # add channel dimension information because tf.function erases it somehow...
-            local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
+            local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
+        local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
+        # add channel dimension information because tf.function erases it somehow...
+        local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
-            # # DEBUG
-            # raster_dict = {
-            #     'env': tf.clip_by_value(tf.reduce_max(local_voxel_grid_t[b][:, :, :, 1:], axis=-1), 0, 1),
-            #     'origin': local_env_origin_t[b].numpy(),
-            #     'res': input_dict['res'][b].numpy(),
-            # }
-            # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
-            # local_env_dict = {
-            #     'env': local_env_t[b],
-            #     'origin': local_env_origin_t[b].numpy(),
-            #     'res': input_dict['res'][b].numpy(),
-            # }
-            # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
-            # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
-            # self.debug_pub.publish(msg)
-            # self.raster_debug_pub.publish(raster_msg)
-            # # pred state
+        # # DEBUG
+        # raster_dict = {
+        #     'env': tf.clip_by_value(tf.reduce_max(local_voxel_grid_t[b][:, :, :, 1:], axis=-1), 0, 1),
+        #     'origin': local_env_origin_t[b].numpy(),
+        #     'res': input_dict['res'][b].numpy(),
+        # }
+        # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
+        # local_env_dict = {
+        #     'env': local_env_t[b],
+        #     'origin': local_env_origin_t[b].numpy(),
+        #     'res': input_dict['res'][b].numpy(),
+        # }
+        # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
+        # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
+        # self.debug_pub.publish(msg)
+        # self.raster_debug_pub.publish(raster_msg)
+        # # pred state
 
-            # debugging_s_t = {k: input_dict[k][b, t] for k in self.state_keys}
-            # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
-            # # true state (not known to classifier!)
-            # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
-            # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
-            # # action
-            # if t < time - 1:
-            #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
-            #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
-            # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
-            # depth, width, height = extent_to_env_size(local_extent)
-            # bbox_msg = BoundingBox()
-            # bbox_msg.header.frame_id = 'local_occupancy'
-            # bbox_msg.pose.position.x = width / 2
-            # bbox_msg.pose.position.y = depth / 2
-            # bbox_msg.pose.position.z = height / 2
-            # bbox_msg.dimensions.x = width
-            # bbox_msg.dimensions.y = depth
-            # bbox_msg.dimensions.z = height
-            # self.local_env_bbox_pub.publish(bbox_msg)
+        # debugging_s_t = {k: input_dict[k][b, t] for k in self.state_keys}
+        # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
+        # # true state (not known to classifier!)
+        # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
+        # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
+        # # action
+        # if t < time - 1:
+        #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
+        #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
+        # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
+        # depth, width, height = extent_to_env_size(local_extent)
+        # bbox_msg = BoundingBox()
+        # bbox_msg.header.frame_id = 'local_occupancy'
+        # bbox_msg.pose.position.x = width / 2
+        # bbox_msg.pose.position.y = depth / 2
+        # bbox_msg.pose.position.z = height / 2
+        # bbox_msg.dimensions.x = width
+        # bbox_msg.dimensions.y = depth
+        # bbox_msg.dimensions.z = height
+        # self.local_env_bbox_pub.publish(bbox_msg)
 
-            # anim.step()
-            # # END DEBUG
+        # anim.step()
+        # # END DEBUG
 
-            conv_z = local_voxel_grid_t
-            for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
-                conv_h = conv_layer(conv_z)
-                conv_z = pool_layer(conv_h)
-            out_conv_z = conv_z
-            out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
-            out_conv_z = tf.reshape(out_conv_z, [batch_size, out_conv_z_dim])
-
-            conv_outputs_array = conv_outputs_array.write(t, out_conv_z)
-
-        conv_outputs = conv_outputs_array.stack()
-        return tf.transpose(conv_outputs, [1, 0, 2])
+        conv_z = local_voxel_grid_t
+        for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
+            conv_h = conv_layer(conv_z)
+            conv_z = pool_layer(conv_h)
+        out_conv_z = conv_z
+        out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
+        out_conv_z = tf.reshape(out_conv_z, [batch_size, out_conv_z_dim])
+        return out_conv_z
 
     def compute_loss(self, dataset_element, outputs):
-        y_true = tf.expand_dims(dataset_element['unstuck_probability'], axis=1)
+        y_true = dataset_element['recovery_probability'][:, 1:2]  # 1:2 instead of just 1 to preserve the shape
         y_pred = outputs['logits']
         loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
         return {
@@ -208,7 +204,7 @@ class NNRecoveryModel(MyKerasModel):
         }
 
     def calculate_metrics(self, dataset_element, outputs):
-        y_true = dataset_element['unstuck_probability']
+        y_true = dataset_element['recovery_probability'][:, 1]
         y_pred = tf.squeeze(outputs['probabilities'], axis=1)
         error = tf.reduce_mean(tf.math.abs(y_true - y_pred))
         return {
@@ -218,19 +214,15 @@ class NNRecoveryModel(MyKerasModel):
     # @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
-        time = input_dict['time']
 
-        conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
+        conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size)
 
-        states = {k: input_dict[k][:, :time] for k in self.state_keys}
-        states_local = self.scenario.put_state_local_frame(states)
-        actions = {k: input_dict[k][:, :time] for k in self.action_keys}
-        all_but_last_states = {k: v[:, :time-1] for k, v in states.items()}
-        actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
-        padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
-        concat_args = [conv_output] + list(states_local.values()) + padded_actions
-
-        concat_output = tf.concat(concat_args, axis=2)
+        state = {k: input_dict[k][:, 0] for k in self.state_keys}
+        state_local = self.scenario.put_state_local_frame(state)
+        action = {k: input_dict[k][:, 0] for k in self.action_keys}
+        action = self.scenario.put_action_local_frame(state, action)
+        concat_args = [conv_output] + list(state_local.values()) + list(action.values())
+        concat_output = tf.concat(concat_args, axis=1)
 
         if self.hparams['batch_norm']:
             concat_output = self.batch_norm(concat_output, training=training)
@@ -240,9 +232,9 @@ class NNRecoveryModel(MyKerasModel):
             z = dense_layer(z)
         out_h = z
 
-        out_h = out_h[:, 0]
+        out_h = tf.reshape(out_h, [batch_size, -1])
 
-        # for every timestep's output, map down to a single scalar, the logit for accept probability
+        # for every timestep's output, map down to a single scalar, the logit for recovery probability
         out_h = self.output_layer1(out_h)
         logits = self.output_layer2(out_h)
         probabilities = self.sigmoid(logits)
@@ -267,7 +259,7 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         self.model_hparams = json.load(model_hparams_file.open('r'))
         self.model = NNRecoveryModel(hparams=self.model_hparams, batch_size=1, scenario=self.scenario)
         self.ckpt = tf.train.Checkpoint(model=self.model)
-        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir / 'best_checkpoint', max_to_keep=1)
+        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir / 'latest_checkpoint', max_to_keep=1)
 
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
@@ -283,7 +275,9 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         # sample a bunch of actions (batched?) and pick the best one
         max_unstuck_probability = -1
         best_action = None
-        for _ in range(self.n_action_samples):
+        anim = RvizAnimationController(np.arange(self.n_action_samples))
+        # for _ in range(self.n_action_samples):
+        while not anim.done:
             self.scenario.last_action = None
             action = self.scenario.sample_action(environment=environment,
                                                  state=state,
@@ -300,11 +294,19 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
             recovery_model_input = make_dict_tf_float32(add_batch(recovery_model_input))
             recovery_model_input.update({
                 'batch_size': 1,
-                'time': 1,
+                'time': 2,
             })
             recovery_model_output = self.model(recovery_model_input, training=False)
-            unstuck_probability = recovery_model_output['probabilities']
-            if unstuck_probability > max_unstuck_probability:
-                max_unstuck_probability = unstuck_probability
+            recovery_probability = recovery_model_output['probabilities']
+
+            self.scenario.plot_environment_rviz(environment)
+            self.scenario.plot_recovery_probability(recovery_probability)
+            color_factor = log_scale_0_to_1(tf.squeeze(recovery_probability), k=100)
+            self.scenario.plot_action_rviz(state, action, label='proposed', color=cm.Greens(color_factor), idx=1)
+
+            if recovery_probability > max_unstuck_probability:
+                max_unstuck_probability = recovery_probability
                 best_action = action
+                self.scenario.plot_action_rviz(state, action, label='best_proposed', color='g', idx=2)
+            anim.step()
         return best_action

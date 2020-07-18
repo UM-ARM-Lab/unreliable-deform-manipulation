@@ -1,11 +1,12 @@
 {
+  "total_timeout": 300,
   "left_gripper_reset_position": [
-    1.1,
+    1.2,
     0.15,
     1.0
   ],
   "right_gripper_reset_position": [
-    1.1,
+    1.2,
     -0.15,
     1.0
   ],
@@ -38,8 +39,8 @@
     0.6251
   ],
   "recovery": {
-    "use_recovery": false,
-    "n_attempts": 0
+    "use_recovery": true,
+    "recovery_model_dir": "recovery_data/dual"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
@@ -59,7 +60,8 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Classifier"
+      "Classifier",
+      "kNN-Recov"
     ],
     "classifier": "Learned",
     "dynamics": [

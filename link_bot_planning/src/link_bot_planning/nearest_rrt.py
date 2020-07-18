@@ -26,7 +26,7 @@ class NearestRRT(MyPlanner):
                          seed,
                          verbose)
 
-        self.planner = oc.RRT(self.si)
-        self.planner.setIntermediateStates(True)  # this is necessary, because we use this to generate datasets
-        self.ss.setPlanner(self.planner)
+        self.rrt = oc.RRT(self.si)
+        self.rrt.setIntermediateStates(True)  # this is necessary, because we use this to generate datasets
+        self.ss.setPlanner(self.rrt)
         self.si.setMinMaxControlDuration(1, 50)

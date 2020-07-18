@@ -25,11 +25,9 @@ def main():
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
-    parser.add_argument("--n-plans", type=int, default=100, help='number of plans per method')
+    parser.add_argument("--n-trials", type=int, default=100, help='number of trials per method')
     parser.add_argument("--timeout", type=int, help='timeout to override what is in the planner config file')
     parser.add_argument("--no-execution", action="store_true", help='no execution')
-    parser.add_argument("--n-plans-per-env", type=int, default=1, help='number of targets/plans per env')
-    parser.add_argument("--pause-between-plans", action='store_true', help='pause between plans')
     parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument('--record', action='store_true', help='record')
@@ -51,11 +49,12 @@ def main():
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
     for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
-        try:
-            evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
-        except Exception as e:
-            traceback.print_exc()
-            rospy.logerr(e)
+        evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
+        # try:
+        #     evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
+        # except Exception as e:
+        #     traceback.print_exc()
+        #     print(e)
 
 
 if __name__ == '__main__':
