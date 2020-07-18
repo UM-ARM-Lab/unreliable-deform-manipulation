@@ -209,7 +209,8 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     joint_state_server_ = ros_node_.advertiseService(joint_state_so);
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
     auto execute = [this](const TrajServer::GoalConstPtr &goal) { this->FollowJointTrajectory(goal); };
-    follow_traj_server_ = std::make_unique<TrajServer>(ros_node_, "follow_joint_trajectory", execute, false);
+    follow_traj_server_ =
+        std::make_unique<TrajServer>(ros_node_, "both_arms_controller/follow_joint_trajectory", execute, false);
     follow_traj_server_->start();
 
     ros_queue_thread_ = std::thread([this] { QueueThread(); });

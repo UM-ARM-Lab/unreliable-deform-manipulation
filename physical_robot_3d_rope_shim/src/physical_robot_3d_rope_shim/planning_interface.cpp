@@ -110,7 +110,7 @@ PlanningInterace::PlanningInterace(ros::NodeHandle nh, ros::NodeHandle ph, std::
 
   , home_state_(model_)
 
-  , translation_step_size_(ROSHelpers::GetParamRequired<double>(ph_, "translation_step_size", __func__))
+  , translation_step_size_(ROSHelpers::GetParam<double>(ph_, "translation_step_size", 0.002))
 {
   auto const& ees = jmg_->getAttachedEndEffectorNames();
 

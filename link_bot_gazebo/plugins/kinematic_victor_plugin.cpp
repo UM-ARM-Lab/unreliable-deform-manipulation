@@ -248,7 +248,8 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
         ros::VoidPtr(), &queue_);
     right_arm_motion_command_sub_ = ros_node_.subscribe(right_arm_motion_command_sub_options);
     auto execute = [this](const TrajServer::GoalConstPtr &goal) { this->FollowJointTrajectory(goal); };
-    follow_traj_server_ = std::make_unique<TrajServer>(ros_node_, "follow_joint_trajectory", execute, false);
+    follow_traj_server_ =
+        std::make_unique<TrajServer>(ros_node_, "both_arms_controller/follow_joint_trajectory", execute, false);
     follow_traj_server_->start();
 
     ros_queue_thread_ = std::thread([this] { QueueThread(); });
@@ -430,7 +431,9 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
   auto result = control_msgs::FollowJointTrajectoryResult();
   result.error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
   auto const seconds_per_step = model_->GetWorld()->Physics()->GetMaxStepSize();
-  auto const settling_time_seconds = goal->goal_time_tolerance.toSec();
+  auto const requested_settling_time = goal->goal_time_tolerance.toSec();
+  auto const default_settling_time = 0.5;
+  auto const settling_time_seconds = requested_settling_time == 0 ? default_settling_time : requested_settling_time;
   auto const steps = static_cast<unsigned int>(settling_time_seconds / seconds_per_step);
   ROS_INFO_STREAM("Received trajectory with "
                   << "seconds_per_step: " << seconds_per_step << "  settling_time_seconds: " << settling_time_seconds

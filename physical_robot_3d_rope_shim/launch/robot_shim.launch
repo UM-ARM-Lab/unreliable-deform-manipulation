@@ -1,7 +1,9 @@
 <launch>
     <arg name="use_victor" default="false"/>
     <arg name="use_val" default="false"/>
-    <arg name="debug_moveit" default="false" />
+
+    <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
+    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
 
     <group if="$(arg use_victor)">
         <!-- Load Victor's URDF, SRDF and other .yaml configuration files on the param server -->
@@ -16,20 +18,8 @@
         </include>
     </group>
 
-    <!-- <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
-    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
-    <node name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
+    <node launch-prefix="gdb -ex run --args" name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
         <param name="get_planning_scene_topic"  value="gazebo/get_planning_scene"/>
-        <param name="translation_step_size"     value="0.002"   type="double"/>
-        <param name="traj_goal_time_tolerance"  value="0.1"     type="double"/>
-    </node> -->
-
-  <!-- Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default) -->
-  <include file="$(find hdt_michigan_moveit)/launch/move_group.launch">
-    <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution" value="true"/>
-    <arg name="info" value="true"/>
-    <arg name="debug" value="$(arg debug_moveit)"/>
-  </include>
+    </node>
 
 </launch>

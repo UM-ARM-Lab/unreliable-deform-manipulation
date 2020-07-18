@@ -150,14 +150,17 @@ private:
 private:
   ros::CallbackQueue queue_;
   /// \brief Thead object for the running callback Thread.
+
 private:
   boost::thread callback_queue_thread_;
   /// \brief Container for the planning scene.
 
-private:
-  moveit_msgs::PlanningScene BuildMessage();
+  // Protects against multiple ROS callbacks or publishers accessing/changing data out of order
+  std::mutex ros_mutex_;
 
-private:
+  moveit_msgs::PlanningScene BuildMessage();
+  void PeriodicUpdate();
+
   ros::Duration publish_period_;
   std::thread periodic_event_thread_;
   double scale_primitives_factor_{ 1.0 };
