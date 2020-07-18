@@ -14,7 +14,7 @@ Scene::Scene(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<PlanningInt
   , ph_(ph)
   , planner_(planner)
   , joint_states_listener_(std::make_shared<Listener<sensor_msgs::JointState>>(nh_, "joint_states", true))
-  , planning_scene_publisher_(nh.advertise<moveit_msgs::PlanningScene>("planning_scene", 1, true))
+  , planning_scene_publisher_(nh.advertise<moveit_msgs::PlanningScene>("shim_planning_scene", 1, true))
 {
   // Retrieve the planning scene obstacles if possible, otherwise default to a saved set
   {

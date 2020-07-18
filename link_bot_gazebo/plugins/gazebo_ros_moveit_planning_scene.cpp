@@ -133,17 +133,6 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
   // Custom Callback Queue for services
   this->callback_queue_thread_ = boost::thread(boost::bind(&GazeboRosMoveItPlanningScene::QueueThread, this));
 
-  // Create a service server for returning the full planning scene
-  {
-    ros::AdvertiseServiceOptions aso;
-    boost::function<bool(moveit_msgs::GetPlanningScene::Request &, moveit_msgs::GetPlanningScene::Response &)> srv_cb =
-        boost::bind(&GazeboRosMoveItPlanningScene::GetPlanningSceneCB, this, _1, _2);
-    aso.init("/get_planning_scene", srv_cb);
-    aso.callback_queue = &this->queue_;
-
-    get_planning_scene_service_ = this->rosnode_->advertiseService(aso);
-  }
-
   // Publish the planning scene
   planning_scene_pub_ = rosnode_->advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
   periodic_event_thread_ = std::thread([this] {
@@ -151,7 +140,6 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     {
       using namespace std::chrono_literals;
       std::this_thread::sleep_for(0.01s);
-      std::lock_guard lock(ros_mutex_);
       PeriodicUpdate();
     }
   });
@@ -159,17 +147,9 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
 
 void GazeboRosMoveItPlanningScene::PeriodicUpdate()
 {
+  std::lock_guard const lock(ros_mutex_);
   auto const scene = BuildMessage();
   planning_scene_pub_.publish(scene);
-}
-
-bool GazeboRosMoveItPlanningScene::GetPlanningSceneCB(moveit_msgs::GetPlanningScene::Request &req,
-                                                      moveit_msgs::GetPlanningScene::Response &resp)
-{
-  std::lock_guard lock(ros_mutex_);
-  (void)req;
-  resp.scene = BuildMessage();
-  return true;
 }
 
 moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()

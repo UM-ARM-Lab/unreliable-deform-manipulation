@@ -101,10 +101,6 @@ public:
 protected:
   void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
 
-  /// \brief Retrieve the current planning scene
-private:
-  bool GetPlanningSceneCB(moveit_msgs::GetPlanningScene::Request& req, moveit_msgs::GetPlanningScene::Response& resp);
-
   /// \brief The custom callback queue thread function.
 private:
   void QueueThread();
@@ -123,8 +119,6 @@ private:
 
 private:
   ros::Publisher planning_scene_pub_;
-  ros::ServiceServer publish_planning_scene_service_;
-  ros::ServiceServer get_planning_scene_service_;
 
   /// \brief ROS topic name inputs
 private:
