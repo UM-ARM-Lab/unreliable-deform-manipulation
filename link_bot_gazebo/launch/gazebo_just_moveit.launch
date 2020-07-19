@@ -1,22 +1,10 @@
 <launch>
-    <arg name="world"  />
-    <arg name="verbose"     default="false"/>
-    <arg name="gui"         default="true"/>
-    <arg name="pause"       default="true"/>
-    <arg name="debug_gazebo"       default="false"/>
     <arg name="debug_moveit"       default="false"/>
     <arg name="use_victor"      default="false"/>
     <arg name="use_val"         default="false"/>
 
     <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
     <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
-
-    <group ns="static_transform_publishers">
-        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
-              args="0 0 0 0 0 0 robot_root world">
-            <param name="use_sim_time" value="false"/>
-        </node>
-    </group>
 
     <!-- Load URDF, SRDF and other .yaml configuration files on the param server -->
     <!-- Run the main MoveIt executable -->
