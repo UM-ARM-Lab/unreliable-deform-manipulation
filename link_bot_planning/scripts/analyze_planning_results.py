@@ -134,6 +134,8 @@ def metrics_main(args):
         nums_nodes = []
         nums_steps = []
         nums_mer_violations = []
+        n_recovery_attempts = 0
+        n_planning_attempts = 0
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata = json.load(metadata_file)
@@ -164,10 +166,18 @@ def metrics_main(args):
                     final_actual_state = step['execution_result']['path'][-1]
                     break
 
+            for step in steps:
+                if step['type'] == 'executed_recovery':
+                    n_recovery_attempts += 1
+                elif step['type'] == 'executed_plan':
+                    n_planning_attempts += 1
+
             final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
             final_execution_to_goal_errors.append(final_execution_to_goal_error)
 
         ###############################################################################################
+
+        print(legend_nickname, n_recovery_attempts, n_planning_attempts)
 
         percentage_solved = solveds / N * 100
         percentages_solved.append(percentage_solved)

@@ -14,6 +14,7 @@ import numpy as np
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_np_arrays
 
 
@@ -21,7 +22,7 @@ def main():
     np.set_printoptions(linewidth=250, precision=3, suppress=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
-    parser.add_argument("plan_idx", type=int_range_arg, help='which plan to show')
+    parser.add_argument("trial_idx", type=int_range_arg, help='which plan to show')
     parser.add_argument("fallback_labeling_params", type=pathlib.Path,
                         help='labeling params to use in case none can be found automatically')
     parser.add_argument("--save", action='store_true')
@@ -40,29 +41,49 @@ def main():
     with args.fallback_labeling_params.open("r") as fallback_labeling_params_file:
         fallback_labeing_params = json.load(fallback_labeling_params_file)
 
-    for plan_idx in args.plan_idx:
-        with gzip.open(args.results_dir / f'{plan_idx}_metrics.json.gz', 'rb') as metrics_file:
+    for trial_idx in args.trial_idx:
+        with gzip.open(args.results_dir / f'{trial_idx}_metrics.json.gz', 'rb') as metrics_file:
             metrics_str = metrics_file.read()
-        metrics = json.loads(metrics_str.decode("utf-8"))
+        datum = json.loads(metrics_str.decode("utf-8"))
 
-        planner_status = metrics['planner_status']
-        if args.filter_by_status:
-            if planner_status in args.filter_by_status:
-                print(plan_idx)
-                plot_plan(args, scenario, metrics, plan_idx, metadata, fallback_labeing_params)
-        else:
-            plot_plan(args, scenario, metrics, plan_idx, metadata, fallback_labeing_params)
+        plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
+        # print(f"{trial_idx} ", end='', flush=True)
+        # for step_idx, step in enumerate(steps):
+        #     if step['type'] == 'executed_plan':
+        #         print(f".", end='')
+        #         planner_status = step['planning_result']['status']
+        #         if args.filter_by_status:
+        #             if planner_status in args.filter_by_status:
+        #                 plot_plan(args, scenario, step, metadata, fallback_labeing_params)
+        #         else:
+        #             plot_plan(args, scenario, step, metadata, fallback_labeing_params)
+        #     elif step['type'] == 'executed_recovery':
+        #         print(f"*", end='')
+        #         plot_recovery(args, scenario, step, metadata)
+        # print()
+
+        input(f"Trial {trial_idx} complete with status {datum['trial_status']}. press enter to see the next trial.")
 
 
-def plot_plan(args, scenario, metrics_for_plan, plan_idx, metadata, fallback_labeing_params: Dict):
+def plot_recovery(args, scenario, step, metadata):
+    actual_path = step['execution_result']['path']
+    action = step['recovery_action']
+    environment = numpify(step['planning_query']['environment'])
+    scenario.plot_environment_rviz(environment)
+    scenario.plot_state_rviz(actual_path[0], idx=1, label='recovery')
+    scenario.plot_action_rviz(actual_path[0], action, label='recovery')
+    scenario.plot_state_rviz(actual_path[1], idx=2, label='recovery')
+
+
+def plot_plan(args, scenario, step, metadata, fallback_labeing_params: Dict):
     planner_params = metadata['planner_params']
     labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeing_params)
-    goal = metrics_for_plan['goal']
-    environment = numpify(metrics_for_plan['environment'])
-    planned_path = metrics_for_plan['planned_path']
-    actual_path = metrics_for_plan['actual_path']
+    goal = step['planning_query']['goal']
+    environment = numpify(step['planning_query']['environment'])
+    planned_path = step['planning_result']['path']
+    actual_path = step['execution_result']['path']
 
-    planned_actions = metrics_for_plan['actions']
+    planned_actions = step['planning_result']['actions']
 
     scenario.reset_planning_viz()
     if args.show_tree:
@@ -71,7 +92,7 @@ def plot_plan(args, scenario, metrics_for_plan, plan_idx, metadata, fallback_lab
             for vertex in tree_json['vertices']:
                 scenario.plot_tree_state(vertex, color='#77777722')
                 sleep(0.001)
-        tree_thread = threading.Thread(target=_draw_tree_function, args=(scenario, metrics_for_plan['tree_json'],))
+        tree_thread = threading.Thread(target=_draw_tree_function, args=(scenario, step['tree_json'],))
         tree_thread.start()
 
     scenario.animate_evaluation_results(environment=environment,
@@ -83,6 +104,66 @@ def plot_plan(args, scenario, metrics_for_plan, plan_idx, metadata, fallback_lab
                                         labeling_params=labeling_params,
                                         accept_probabilities=None,
                                         horizon=metadata['horizon'])
+
+
+def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
+    planner_params = metadata['planner_params']
+    goal_threshold = planner_params['goal_threshold']
+
+    labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeing_params)
+
+    steps = datum['steps']
+    goal = datum['goal']
+    first_step = steps[0]
+    environment = numpify(first_step['planning_query']['environment'])
+    all_actual_states = []
+    all_predicted_states = []
+    all_actions = []
+    for step_idx, step in enumerate(steps):
+        if step['type'] == 'executed_plan':
+            actions = step['planning_result']['actions']
+            actual_states = step['execution_result']['path']
+            predicted_states = step['planning_result']['path']
+        elif step['type'] == 'executed_recovery':
+            actions = [step['recovery_action']]
+            actual_states = step['execution_result']['path']
+            predicted_states = [None, None]
+
+        all_actions.extend(actions)
+        all_actual_states.extend(actual_states[:-1])
+        all_predicted_states.extend(predicted_states[:-1])
+
+    # but do add the actual final states
+    all_actual_states.append(actual_states[-1])
+    all_predicted_states.append(predicted_states[-1])
+
+    scenario.plot_environment_rviz(environment)
+
+    anim = RvizAnimationController(n_time_steps=len(all_actual_states))
+
+    scenario.reset_planning_viz()
+    while not anim.done:
+        t = anim.t()
+        s_t = all_actual_states[t]
+        s_t_pred = all_predicted_states[t]
+        scenario.plot_state_rviz(s_t, label='actual', color='#ff0000aa')
+        c = '#0000ffaa'
+        if len(all_actions) > 0:
+            if t < anim.max_t:
+                scenario.plot_action_rviz(s_t, all_actions[t])
+            else:
+                scenario.plot_action_rviz(all_actual_states[t - 1], all_actions[t - 1])
+
+        if s_t_pred is not None:
+            scenario.plot_state_rviz(s_t_pred, label='predicted', color=c)
+            is_close = scenario.compute_label(s_t, s_t_pred, labeling_params)
+            scenario.plot_is_close(is_close)
+        else:
+            scenario.plot_is_close(None)
+
+        actually_at_goal = scenario.distance_to_goal(s_t, goal) < goal_threshold
+        scenario.plot_goal(goal, goal_threshold, actually_at_goal)
+        anim.step()
 
 
 if __name__ == '__main__':

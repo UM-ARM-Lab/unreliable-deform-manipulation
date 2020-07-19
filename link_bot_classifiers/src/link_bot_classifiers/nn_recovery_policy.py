@@ -285,6 +285,8 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         self.n_action_samples = self.hparams['n_action_samples']
         self.data_collection_params = self.hparams['recovery_dataset_hparams']['data_collection_params']
 
+        self.noise_rng = np.random.RandomState(0)
+
     def __call__(self, environment: Dict, state: Dict):
         # sample a bunch of actions (batched?) and pick the best one
         max_unstuck_probability = -1
@@ -325,4 +327,5 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
                 # print(max_unstuck_probability)
                 # self.scenario.plot_action_rviz(state, action, label='best_proposed', color='g', idx=2)
             # anim.step()
-        return best_action
+        best_action_noisy = self.scenario.add_noise(best_action, self.noise_rng)
+        return best_action_noisy

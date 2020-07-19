@@ -13,6 +13,8 @@ from dataclasses_json import dataclass_json
 
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center
+from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from moonshine.moonshine_utils import listify
@@ -79,6 +81,20 @@ class PlanAndExecute:
 
         self.trial_idx = 0
         self.n_failures = 0
+
+        # Debguging
+        self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
+        depth, width, height = extent_to_env_size(planner_params['goal_extent'])
+        cx, cy, cz = extent_to_center(planner_params['goal_extent'])
+        bbox_msg = BoundingBox()
+        bbox_msg.header.frame_id = 'world'
+        bbox_msg.pose.position.x = cx
+        bbox_msg.pose.position.y = cy
+        bbox_msg.pose.position.z = cz
+        bbox_msg.dimensions.x = width
+        bbox_msg.dimensions.y = depth
+        bbox_msg.dimensions.z = height
+        self.goal_bbox_pub.publish(bbox_msg)
 
     def run(self):
         self.trial_idx = 0

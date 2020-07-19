@@ -47,6 +47,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
@@ -203,6 +204,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'box2': self.random_object_pose(env_rng, objects_params),
             'box3': self.random_object_pose(env_rng, objects_params),
             'box4': self.random_object_pose(env_rng, objects_params),
+            'box5': self.random_object_pose(env_rng, objects_params),
             'hook1': self.random_object_pose(env_rng, objects_params),
             'hook2': self.random_object_pose(env_rng, objects_params),
         }

@@ -10,12 +10,14 @@ from std_srvs.srv import Empty as EmptySrv
 from std_srvs.srv import EmptyRequest
 
 
-
 class RvizAnimationController:
 
-    def __init__(self, time_steps, start_playing=True):
+    def __init__(self, time_steps=None, n_time_steps: int = None, start_playing=True):
         self.epsilon = 1e-3
-        self.time_steps = np.array(time_steps, dtype=np.int64)
+        if time_steps is not None:
+            self.time_steps = np.array(time_steps, dtype=np.int64)
+        if n_time_steps is not None:
+            self.time_steps = np.arange(n_time_steps, dtype=np.int64)
         self.fwd_sub = rospy.Subscriber("rviz_anim/forward", EmptyMsg, self.on_fwd)
         self.bwd_sub = rospy.Subscriber("rviz_anim/backward", EmptyMsg, self.on_bwd)
         self.play_pause_sub = rospy.Subscriber("rviz_anim/play_pause", EmptyMsg, self.on_play_pause)
