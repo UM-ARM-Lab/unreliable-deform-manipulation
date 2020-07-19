@@ -2,6 +2,7 @@
 from progressbar import progressbar
 import tensorflow as tf
 import json
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -10,6 +11,7 @@ import pathlib
 import rospy
 
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from moonshine.moonshine_utils import listify
 from moonshine.gpu_config import limit_gpu_mem
 from visualization_msgs.msg import MarkerArray, Marker
@@ -27,21 +29,34 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200, precision=5)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('--type', choices=['best_and_worst', 'in_order', 'stats'], default='best_and_worst')
+    parser.add_argument('--type', choices=['best_to_worst', 'in_order', 'stats'], default='best_to_worst')
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
 
     args = parser.parse_args()
 
     rospy.init_node('vis_recovery_dataset')
 
-    dataset = RecoveryDataset(args.dataset_dirs)
+    with args.dataset_dirs[0].open("rb") as infile:
+        dataset = pickle.load(infile)
 
-    if args.type == 'best_and_worst':
-        visualize_best_and_worst(args, dataset)
-    elif args.type == 'in_order':
-        visualize_in_order(args, dataset)
-    elif args.type == 'stats':
-        stats(args, dataset)
+    scenario = DualFloatingGripperRopeScenario()
+
+    anim = RvizAnimationController(np.arange(1000))
+    for example in dataset:
+        visualize_example(scenario,
+                          example,
+                          scenario.states_description().keys(),
+                          scenario.actions_description().keys())
+        anim.step()
+
+    # dataset = RecoveryDataset(args.dataset_dirs)
+
+    # if args.type == 'best_to_worst':
+    #     visualize_best_to_worst(args, dataset)
+    # elif args.type == 'in_order':
+    #     visualize_in_order(args, dataset)
+    # elif args.type == 'stats':
+    #     stats(args, dataset)
 
 
 def stats(args, dataset):
@@ -64,7 +79,7 @@ def stats(args, dataset):
     print(f"loss to beat {tf.reduce_mean(losses)}")
 
 
-def visualize_best_and_worst(args, dataset: RecoveryDataset):
+def visualize_best_to_worst(args, dataset: RecoveryDataset):
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     # sort the dataset
@@ -86,30 +101,26 @@ def visualize_best_and_worst(args, dataset: RecoveryDataset):
 
 
 def visualize_in_order(args, dataset: RecoveryDataset):
+    scenario = get_scenario(dataset.hparams['scenario'])
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     for example in tf_dataset:
         visualize_example(dataset, example)
 
 
-def visualize_example(dataset, example):
-    scenario = get_scenario(dataset.hparams['scenario'])
-
-    anim = RvizAnimationController(np.arange(dataset.horizon))
+def visualize_example(scenario, example, state_keys, action_keys):
     scenario.plot_environment_rviz(example)
-    while not anim.done:
 
-        t = anim.t()
-        recovery_probability_t = example['recovery_probability'][t]
-        scenario.plot_recovery_probability(recovery_probability_t)
-        s_t = {k: example[k][t] for k in dataset.state_keys}
-        if t < dataset.horizon - 1:
-            a_t = {k: example[k][t] for k in dataset.action_keys}
+    recovery_probability = example['recovery_probability'][1]
+    color_factor = log_scale_0_to_1(recovery_probability, k=10)
+    scenario.plot_recovery_probability(recovery_probability)
+    s_0 = {k: example[k][0] for k in state_keys}
+    s_1 = {k: example[k][1] for k in state_keys}
+    a = {k: example[k][0] for k in action_keys}
 
-            scenario.plot_action_rviz(s_t, a_t, label='observed')
-        color_factor = log_scale_0_to_1(recovery_probability_t, k=10)
-        scenario.plot_state_rviz(s_t, label='observed', color=cm.Reds(color_factor))
-        anim.step()
+    scenario.plot_action_rviz(s_0, a, label='observed')
+    scenario.plot_state_rviz(s_0, label='observed', idx=1, color='w')
+    scenario.plot_state_rviz(s_1, label='observed', idx=2, color=cm.Reds(color_factor))
 
 
 if __name__ == '__main__':

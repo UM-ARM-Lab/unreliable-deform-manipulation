@@ -1,4 +1,5 @@
 {
+  "total_timeout": 300,
   "left_gripper_reset_position": [
     1.1,
     0.15,

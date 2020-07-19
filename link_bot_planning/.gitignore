@@ -1,4 +1,5 @@
 __pycache__
+*.json.gz
 data
 gp_mpc_*.gif
 gp_mpc_*.mp4

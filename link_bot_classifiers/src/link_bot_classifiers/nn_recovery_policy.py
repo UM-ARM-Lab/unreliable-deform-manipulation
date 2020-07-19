@@ -232,8 +232,6 @@ class NNRecoveryModel(MyKerasModel):
             z = dense_layer(z)
         out_h = z
 
-        out_h = tf.reshape(out_h, [batch_size, -1])
-
         # for every timestep's output, map down to a single scalar, the logit for recovery probability
         out_h = self.output_layer1(out_h)
         logits = self.output_layer2(out_h)
@@ -275,9 +273,9 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         # sample a bunch of actions (batched?) and pick the best one
         max_unstuck_probability = -1
         best_action = None
-        anim = RvizAnimationController(np.arange(self.n_action_samples))
-        # for _ in range(self.n_action_samples):
-        while not anim.done:
+        # anim = RvizAnimationController(np.arange(self.n_action_samples))
+        # while not anim.done:
+        for _ in range(self.n_action_samples):
             self.scenario.last_action = None
             action = self.scenario.sample_action(environment=environment,
                                                  state=state,
@@ -299,14 +297,16 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
             recovery_model_output = self.model(recovery_model_input, training=False)
             recovery_probability = recovery_model_output['probabilities']
 
-            self.scenario.plot_environment_rviz(environment)
+            # self.scenario.plot_environment_rviz(environment)
+            # self.scenario.plot_state_rviz(state, label='stuck state')
             self.scenario.plot_recovery_probability(recovery_probability)
             color_factor = log_scale_0_to_1(tf.squeeze(recovery_probability), k=100)
             self.scenario.plot_action_rviz(state, action, label='proposed', color=cm.Greens(color_factor), idx=1)
 
             if recovery_probability > max_unstuck_probability:
                 max_unstuck_probability = recovery_probability
+                print(max_unstuck_probability)
                 best_action = action
                 self.scenario.plot_action_rviz(state, action, label='best_proposed', color='g', idx=2)
-            anim.step()
+            # anim.step()
         return best_action

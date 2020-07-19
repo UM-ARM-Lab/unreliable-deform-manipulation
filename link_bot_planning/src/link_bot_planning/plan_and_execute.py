@@ -230,7 +230,7 @@ class PlanAndExecute:
                 if reached_goal:
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Goal reached!" + Fore.RESET)
                 elif dt > total_timeout:
-                    print(Fore.BLUE + f"Trial Ended: Timeout {dt:.3f}" + Fore.RESET)
+                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {dt:.3f}" + Fore.RESET)
                 trial_data_dict = {
                     'trial_idx': self.trial_idx,
                     'steps': steps_data,
