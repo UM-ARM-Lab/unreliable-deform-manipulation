@@ -1,5 +1,4 @@
 {
-  "n_random_restarts": 0,
   "termination_criteria": {
     "attempted_extensions_threshold": 128,
     "timeout": 240

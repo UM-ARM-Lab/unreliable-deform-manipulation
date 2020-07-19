@@ -48,7 +48,6 @@
   "classifier_model_dir": "cl_trials/dragging_balance_no_uncertainty/July_11_17-07-46_eccab5e838/best_checkpoint",
   "accept_threshold": 0.5,
   "goal_threshold": 0.1,
-  "n_random_restarts": 0,
   "fixed_goal": {
     "tail": [
       -0.25,

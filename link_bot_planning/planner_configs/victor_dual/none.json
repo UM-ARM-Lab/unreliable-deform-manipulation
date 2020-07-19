@@ -38,6 +38,9 @@
     0.625,
     0.6251
   ],
+  "recovery": {
+    "use_recovery": false
+  },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
     "dy_trials/no_victor_longer_1/best_checkpoint",
@@ -50,7 +53,6 @@
   ],
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
-  "n_random_restarts": 0,
   "goal_threshold": 0.07,
   "fixed_goal": null,
   "real_time_rate": 0.0,

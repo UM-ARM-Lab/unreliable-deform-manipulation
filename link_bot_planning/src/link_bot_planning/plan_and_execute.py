@@ -85,10 +85,7 @@ class PlanAndExecute:
             attempt_idx += 1
 
     def run_and_check_valid(self):
-        if self.planner_params['recovery']['use_recovery']:
-            run_was_valid = self.plan_and_execute_with_recovery()
-        else:
-            run_was_valid = self.plan_and_execute_without_recovery()
+        run_was_valid = self.plan_and_execute()
         if run_was_valid:
             # only count if it was valid
             self.trial_idx += 1
@@ -111,23 +108,13 @@ class PlanAndExecute:
         planning_query = PlanningQuery(goal=goal, environment=environment, start_state=start_state)
         return planning_query
 
-    def plan_with_random_restarts_when_not_progressing(self, planning_query: PlanningQuery):
-        for _ in range(self.planner_params['n_random_restarts'] + 1):
-            # retry on "Failure" or "Not Progressing"
-            planning_result = self.planner.plan(planning_query=planning_query)
-            if planning_result.status == MyPlannerStatus.Solved:
-                break
-            if planning_result.status == MyPlannerStatus.Timeout:
-                break
-        return planning_result
-
     def plan(self, planning_query: Dict):
         ############
         # Planning #
         ############
         if self.verbose >= 1:
             (Fore.MAGENTA + "Planning to {}".format(planning_query.goal) + Fore.RESET)
-        planning_result = self.plan_with_random_restarts_when_not_progressing(planning_query)
+        planning_result = self.planner.plan(planning_query=planning_query)
         rospy.loginfo(f"Planning time: {planning_result.time:5.3f}s, Status: {planning_result.status}")
 
         self.on_plan_complete(planning_query, planning_result)
@@ -167,7 +154,7 @@ class PlanAndExecute:
                                               service_provider=self.service_provider,
                                               robot_name=self.planner.fwd_model.scenario.robot_name())
 
-    def plan_and_execute_with_recovery(self):
+    def plan_and_execute(self):
         start_time = time.perf_counter()
         total_timeout = self.planner_params['total_timeout']
 
@@ -241,21 +228,6 @@ class PlanAndExecute:
 
     def on_trial_complete(self, trial_data):
         pass
-
-        # FIXME: don't need this special case probably
-    def plan_and_execute_without_recovery(self):
-        planning_query = self.setup_planning_query()
-
-        planning_result = self.plan(planning_query)
-
-        if planning_result.status == MyPlannerStatus.Failure:
-            # this run won't count if we return false, the environment will be randomized, then we'll try again
-            return False
-
-        execution_result = self.execute(planning_query, planning_result)
-        self.on_execution_complete(planning_query, planning_result, execution_result)
-
-        return True
 
     def get_goal(self, environment: Dict):
         goal = self.planner.scenario.sample_goal(environment=environment,

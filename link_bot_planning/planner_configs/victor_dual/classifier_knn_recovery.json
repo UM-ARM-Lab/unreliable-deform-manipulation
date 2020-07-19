@@ -54,7 +54,6 @@
   ],
   "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
   "accept_threshold": 0.5,
-  "n_random_restarts": 0,
   "goal_threshold": 0.07,
   "fixed_goal": null,
   "real_time_rate": 0.0,
