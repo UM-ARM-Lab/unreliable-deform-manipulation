@@ -1,6 +1,7 @@
 import gzip
 import json
 import pathlib
+import uuid
 from time import sleep, time
 from typing import Optional, Dict, List
 
@@ -93,6 +94,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "scenario": self.planner.scenario.simple_name(),
             "seed": self.seed,
             'current_time': int(time()),
+            'uuid': uuid.uuid4(),
         }
         trial_data.update(extra_trial_data)
         data_filename = self.root / f'{self.trial_idx}_metrics.json.gz'

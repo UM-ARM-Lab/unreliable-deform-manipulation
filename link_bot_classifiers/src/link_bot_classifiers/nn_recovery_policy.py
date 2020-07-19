@@ -199,6 +199,10 @@ class NNRecoveryModel(MyKerasModel):
         y_true = dataset_element['recovery_probability'][:, 1:2]  # 1:2 instead of just 1 to preserve the shape
         y_pred = outputs['logits']
         loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
+        # larget recovery_probability examples are weighted higher because there are so few of them
+        # when y_true is 1 this term goes to infinity (high weighting), when y_true is 0 it equals 1 (normal weighting)
+        l = tf.math.divide_no_nan(-1.0, y_true-1)
+        loss = loss * l
         return {
             'loss': tf.reduce_mean(loss)
         }
@@ -207,6 +211,18 @@ class NNRecoveryModel(MyKerasModel):
         y_true = dataset_element['recovery_probability'][:, 1]
         y_pred = tf.squeeze(outputs['probabilities'], axis=1)
         error = tf.reduce_mean(tf.math.abs(y_true - y_pred))
+        # # BEGIN DEBUG
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # y_true_n = y_true / tf.reduce_sum(y_true)
+        # y_pred_n = y_pred / tf.reduce_sum(y_pred)
+        # indices = np.arange(16)
+        # plt.scatter(indices, y_true.numpy(), s=100)
+        # plt.scatter(indices, y_pred.numpy(), s=100)
+        # # plt.scatter(indices, y_true_n.numpy(), s=100)
+        # # plt.scatter(indices, y_pred_n.numpy(), s=100)
+        # plt.show()
+        # # END DEBUG
         return {
             'error': error
         }
@@ -299,14 +315,14 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
 
             # self.scenario.plot_environment_rviz(environment)
             # self.scenario.plot_state_rviz(state, label='stuck state')
-            self.scenario.plot_recovery_probability(recovery_probability)
-            color_factor = log_scale_0_to_1(tf.squeeze(recovery_probability), k=100)
-            self.scenario.plot_action_rviz(state, action, label='proposed', color=cm.Greens(color_factor), idx=1)
+            # self.scenario.plot_recovery_probability(recovery_probability)
+            # color_factor = log_scale_0_to_1(tf.squeeze(recovery_probability), k=100)
+            # self.scenario.plot_action_rviz(state, action, label='proposed', color=cm.Greens(color_factor), idx=1)
 
             if recovery_probability > max_unstuck_probability:
                 max_unstuck_probability = recovery_probability
-                print(max_unstuck_probability)
                 best_action = action
-                self.scenario.plot_action_rviz(state, action, label='best_proposed', color='g', idx=2)
+                # print(max_unstuck_probability)
+                # self.scenario.plot_action_rviz(state, action, label='best_proposed', color='g', idx=2)
             # anim.step()
         return best_action

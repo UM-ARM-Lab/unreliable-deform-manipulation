@@ -40,7 +40,7 @@
   ],
   "recovery": {
     "use_recovery": true,
-    "recovery_model_dir": "rcv_trials/debugging/July_18_00-57-20_030adaddce"
+    "recovery_model_dir": "rcv_trials/weighted_loss/July_19_02-44-36_7fbf55043c"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",

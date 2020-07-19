@@ -130,12 +130,11 @@ class PlanAndExecute:
         else:
             if self.verbose >= 2 and not self.no_execution:
                 print(Fore.CYAN + "Executing Plan" + Fore.RESET)
-            plot = self.verbose >= 1
             actual_path = execute_actions(self.service_provider,
                                           self.planner.scenario,
                                           planning_query.start,
                                           planning_result.actions,
-                                          plot=plot)
+                                          plot=True)
         # post-execution callback
         execution_result = ExecutionResult(path=actual_path)
         return execution_result

@@ -90,9 +90,9 @@ def train_main(args, seed: int):
                          training=True,
                          params=model_hparams,
                          trial_path=trial_path,
-                         val_every_n_batches=100,
-                         mid_epoch_val_batches=500,
-                         validate_first=True,
+                         val_every_n_batches=50,
+                         mid_epoch_val_batches=100,
+                         validate_first=False,
                          restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
 
