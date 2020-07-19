@@ -78,23 +78,23 @@ def metrics_main(args):
     print(f"Writing analysis to {first_results_dir}")
 
     execution_to_goal_errors_comparisons = {}
-    plan_to_execution_errors_comparisons = {}
+    # plan_to_execution_errors_comparisons = {}
     max_error = analysis_params["max_error"]
     errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"])
     print('-' * 90)
     if not args.no_plot:
-        planning_success_fig, planning_success_ax = plt.subplots(figsize=(16, 10))
-        planning_success_ax.set_xlabel("Success Threshold, Task Error")
-        planning_success_ax.set_ylabel("Success Rate")
-        planning_success_ax.set_ylim([-0.1, 100.5])
+        # planning_success_fig, planning_success_ax = plt.subplots(figsize=(16, 10))
+        # planning_success_ax.set_xlabel("Success Threshold, Task Error")
+        # planning_success_ax.set_ylabel("Success Rate")
+        # planning_success_ax.set_ylim([-0.1, 100.5])
 
-        execution_error_fig, execution_error_ax = plt.subplots(figsize=(16, 10))
-        execution_error_ax.set_xlabel("Task Error")
-        execution_error_ax.set_ylabel("Density")
+        # execution_error_fig, execution_error_ax = plt.subplots(figsize=(16, 10))
+        # execution_error_ax.set_xlabel("Task Error")
+        # execution_error_ax.set_ylabel("Density")
 
-        planning_error_fig, planning_error_ax = plt.subplots(figsize=(16, 10))
-        planning_error_ax.set_xlabel("Task Error")
-        planning_error_ax.set_ylabel("Density")
+        # planning_error_fig, planning_error_ax = plt.subplots(figsize=(16, 10))
+        # planning_error_ax.set_xlabel("Task Error")
+        # planning_error_ax.set_ylabel("Density")
 
         execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 10))
         execution_success_ax.set_xlabel("Success Threshold, Task Error")
@@ -146,50 +146,27 @@ def metrics_main(args):
         legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
         legend_names.append(legend_nickname)
 
+        ###############################################################################################
+
         # TODO: parallelize this
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
             datum = json.loads(data_str.decode("utf-8"))
+            steps = datum['steps']
+            # goal = datum['goal']
+            goal = steps[0]['planning_query']['goal']
 
-            planned_path = datum['planned_path']
-            actual_path = datum['actual_path']
-            final_planned_state = planned_path[-1]
-            final_actual_state = actual_path[-1]
-            final_plan_to_goal_error = scenario.distance_to_goal(final_planned_state, datum['goal'])
-            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, datum['goal'])
-            final_plan_to_execution_error = scenario.distance(final_planned_state, final_actual_state)
-            p = sequence_of_dicts_to_dict_of_np_arrays(planned_path)['link_bot']
-            a = sequence_of_dicts_to_dict_of_np_arrays(actual_path)['link_bot']
+            # last_step = steps[-1]
+            for step in steps[::-1]:
+                if step['type'] == 'executed_plan':
+                    final_actual_state = step['execution_result']['path'][-1]
+                    break
 
-            def _include_in_metrics():
-                final_plan_to_execution_errors.append(final_plan_to_execution_error)
-                final_plan_to_goal_errors.append(final_plan_to_goal_error)
-                final_execution_to_goal_errors.append(final_execution_to_goal_error)
+            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
+            final_execution_to_goal_errors.append(final_execution_to_goal_error)
 
-                num_nodes = datum['num_nodes']
-                nums_nodes.append(num_nodes)
-
-                num_steps = len(planned_path)
-                nums_steps.append(num_steps)
-
-                is_close = np.linalg.norm(p - a, axis=1) < labeling_params['threshold']
-                num_mer_violations = np.count_nonzero(1 - is_close) / num_steps * 100
-                nums_mer_violations.append(num_mer_violations)
-
-                planning_times.append(datum['planning_time'])
-
-            if datum['planner_status'] == "solved":
-                solveds += 1
-                _include_in_metrics()
-            elif datum['planner_status'] == "not progressing":
-                _include_in_metrics()
-                not_progressings += 1
-            elif datum['planner_status'] == "timeout":
-                _include_in_metrics()
-                timeouts += 1
-            else:
-                raise NotImplementedError()
+        ###############################################################################################
 
         percentage_solved = solveds / N * 100
         percentages_solved.append(percentage_solved)
@@ -208,43 +185,43 @@ def metrics_main(args):
             execution_success_ax.plot(errors_thresholds, execution_successes,
                                       label=legend_nickname, linewidth=5, color=color)
 
-            # Execution Error Plot
-            final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors, bw_method=0.1)
-            final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
-            execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=legend_nickname,
-                                    linewidth=5,
-                                    c=color)
+            # # Execution Error Plot
+            # final_execution_to_goal_pdf = stats.gaussian_kde(final_execution_to_goal_errors, bw_method=0.1)
+            # final_execution_to_goal_densities_at_thresholds = final_execution_to_goal_pdf(errors_thresholds)
+            # execution_error_ax.plot(errors_thresholds, final_execution_to_goal_densities_at_thresholds, label=legend_nickname,
+            #                         linewidth=5,
+            #                         c=color)
 
-            # Planning Success Plot
-            planning_successes = []
-            for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / n_for_metrics * 100
-                planning_successes.append(success_percentage)
-            planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
+            # # Planning Success Plot
+            # planning_successes = []
+            # for threshold in errors_thresholds:
+            #     success_percentage = np.count_nonzero(final_plan_to_execution_errors < threshold) / n_for_metrics * 100
+            #     planning_successes.append(success_percentage)
+            # planning_success_ax.plot(errors_thresholds, planning_successes, label=legend_nickname, linewidth=5, c=color)
 
-            # Planning Error Plot
-            final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors, bw_method=0.1)
-            final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
-            planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
-                                   linewidth=5,
-                                   c=color)
+            # # Planning Error Plot
+            # final_planning_to_goal_pdf = stats.gaussian_kde(final_plan_to_execution_errors, bw_method=0.1)
+            # final_planning_to_goal_densities_at_thresholds = final_planning_to_goal_pdf(errors_thresholds)
+            # planning_error_ax.plot(errors_thresholds, final_planning_to_goal_densities_at_thresholds, label=legend_nickname,
+            #                        linewidth=5,
+            #                        c=color)
 
         execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
-        plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
+        # plan_to_execution_errors_comparisons[str(subfolder.name)] = final_plan_to_execution_errors
         headers.append(str(subfolder.name))
 
-        aggregate_metrics['Planning Time'].append(make_row(planner_params, planning_times, table_format))
-        aggregate_metrics['Final Plan To Execution Error'].append(
-            make_row(planner_params, final_plan_to_execution_errors, table_format))
+        # aggregate_metrics['Planning Time'].append(make_row(planner_params, planning_times, table_format))
+        # aggregate_metrics['Final Plan To Execution Error'].append(
+        #     make_row(planner_params, final_plan_to_execution_errors, table_format))
         # aggregate_metrics['Final Plan To Goal Error'].append(
         #     make_row(planner_params, final_plan_to_goal_errors, table_format))
         aggregate_metrics['Final Execution To Goal Error'].append(
             make_row(planner_params, final_execution_to_goal_errors, table_format))
         # aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
         # aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
-        aggregate_metrics['% Steps with MER Violations'].append(
-            make_row(planner_params, nums_mer_violations, table_format))
-        status_table_data.append([legend_nickname, percentage_solved, percentage_timeout, percentage_not_progressing])
+        # aggregate_metrics['% Steps with MER Violations'].append(
+        #     make_row(planner_params, nums_mer_violations, table_format))
+        # status_table_data.append([legend_nickname, percentage_solved, percentage_timeout, percentage_not_progressing])
 
         # print(f"{subfolder.name:30s}: {percentage_timeout:3.2f}% timeout")
         # for error, plan_idx in sorted(zip(final_execution_to_goal_errors, range(len(final_execution_to_goal_errors)))):
@@ -254,31 +231,31 @@ def metrics_main(args):
         #         print(f"{plan_idx}: {num_mer_violations:5.1f}% of steps violate MER")
     if not args.no_plot:
         execution_success_ax.axvline(goal_threshold, color='k', linestyle='--')
-        execution_error_ax.axvline(goal_threshold, color='k', linestyle='--')
-        planning_success_ax.axvline(goal_threshold, color='k', linestyle='--')
+        # execution_error_ax.axvline(goal_threshold, color='k', linestyle='--')
+        # planning_success_ax.axvline(goal_threshold, color='k', linestyle='--')
 
         execution_success_ax.set_title("Success In Execution, {}".format(scenario))
-        planning_success_ax.set_title("Success In Planning, {}".format(scenario))
-        execution_error_ax.set_title("Execution Task Error, {}".format(scenario))
-        planning_error_ax.set_title("Planning Task Error, {}".format(scenario))
+        # planning_success_ax.set_title("Success In Planning, {}".format(scenario))
+        # execution_error_ax.set_title("Execution Task Error, {}".format(scenario))
+        # planning_error_ax.set_title("Planning Task Error, {}".format(scenario))
         execution_success_ax.legend()
-        execution_error_ax.legend()
-        planning_success_ax.legend()
-        planning_error_ax.legend()
+        # execution_error_ax.legend()
+        # planning_success_ax.legend()
+        # planning_error_ax.legend()
 
         # Planner status plot
-        planner_status_fig, planner_status_ax = plt.subplots(figsize=(32, 10))
-        planner_status_ax = plt.gca()
-        timeout_bar = planner_status_ax.bar(legend_names, percentages_timeout)
-        not_progressing_bar = planner_status_ax.bar(
-            legend_names, percentages_not_progressing, bottom=percentages_timeout)
-        solved_bar = planner_status_ax.bar(legend_names, percentages_solved,
-                                           bottom=np.add(percentages_not_progressing, percentages_timeout))
-        planner_status_ax.set_ylabel("Percentage")
-        planner_status_ax.set_xlabel("Methods")
-        planner_status_ax.set_title("Planner Status Breakdown")
-        planner_status_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
-                                 ("Solved", "NotProgressing", "Timeout"))
+        # planner_status_fig, planner_status_ax = plt.subplots(figsize=(32, 10))
+        # planner_status_ax = plt.gca()
+        # timeout_bar = planner_status_ax.bar(legend_names, percentages_timeout)
+        # not_progressing_bar = planner_status_ax.bar(
+        #     legend_names, percentages_not_progressing, bottom=percentages_timeout)
+        # solved_bar = planner_status_ax.bar(legend_names, percentages_solved,
+        #                                    bottom=np.add(percentages_not_progressing, percentages_timeout))
+        # planner_status_ax.set_ylabel("Percentage")
+        # planner_status_ax.set_xlabel("Methods")
+        # planner_status_ax.set_title("Planner Status Breakdown")
+        # planner_status_ax.legend((solved_bar, not_progressing_bar,  timeout_bar),
+        #                          ("Solved", "NotProgressing", "Timeout"))
 
     # Planner status table
     print(Style.BRIGHT + "Planner Status" + Style.NORMAL)
@@ -319,10 +296,10 @@ def metrics_main(args):
     table_outfile.write('\n')
     if not args.no_plot:
         save_unconstrained_layout(execution_success_fig, first_results_dir / "execution_success.png")
-        save_unconstrained_layout(execution_error_fig, first_results_dir / "execution_error.png")
-        save_unconstrained_layout(planning_error_fig, first_results_dir / "planning_error.png")
-        save_unconstrained_layout(planning_success_fig, first_results_dir / "planning_success.png")
-        save_unconstrained_layout(planner_status_fig, first_results_dir / "status_breakdown.png")
+        # save_unconstrained_layout(execution_error_fig, first_results_dir / "execution_error.png")
+        # save_unconstrained_layout(planning_error_fig, first_results_dir / "planning_error.png")
+        # save_unconstrained_layout(planning_success_fig, first_results_dir / "planning_success.png")
+        # save_unconstrained_layout(planner_status_fig, first_results_dir / "status_breakdown.png")
         plt.show()
 
 

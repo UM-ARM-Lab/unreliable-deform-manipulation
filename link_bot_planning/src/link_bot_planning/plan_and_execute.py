@@ -5,6 +5,7 @@ import rospy
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
+from enum import Enum
 import numpy as np
 from colorama import Fore
 from ompl import base as ob
@@ -19,6 +20,11 @@ from link_bot_classifiers.random_recovery_policy import RandomRecoveryPolicy
 from link_bot_classifiers import recovery_policy_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
+
+
+class TrialStatus(Enum):
+    Reached = "reached"
+    Timeout = "timeout"
 
 
 @dataclass_json
@@ -141,9 +147,14 @@ class PlanAndExecute:
 
     def execute_recovery_action(self, action: Dict):
         if self.no_execution:
-            pass
+            actual_path = []
         else:
+            before_state = self.planner.scenario.get_state()
             self.planner.scenario.execute_action(action)
+            after_state = self.planner.scenario.get_state()
+            actual_path = [before_state, after_state]
+        execution_result = ExecutionResult(path=actual_path)
+        return execution_result
 
     def get_environment(self):
         # get the environment, which here means anything which is assumed constant during planning
@@ -158,8 +169,7 @@ class PlanAndExecute:
         total_timeout = self.planner_params['total_timeout']
 
         # Get the goal (default is to randomly sample one)
-        environment = self.get_environment()
-        goal = self.get_goal(environment)
+        goal = self.get_goal(self.get_environment())
 
         attempt_idx = 0
         steps_data = []
@@ -190,7 +200,7 @@ class PlanAndExecute:
                     if self.verbose >= 3:
                         rospy.loginfo("Chosen Recovery Action:")
                         rospy.loginfo(recovery_action)
-                    self.execute_recovery_action(recovery_action)
+                    execution_result = self.execute_recovery_action(recovery_action)
                     # Extract planner data now before it goes out of scope (in C++)
                     dt = time.perf_counter() - start_time
                     steps_data.append({
@@ -198,6 +208,7 @@ class PlanAndExecute:
                         'planning_query': planning_query,
                         'planning_result': planning_result,
                         'recovery_action': recovery_action,
+                        'execution_result': execution_result,
                         'time_since_start': dt,
                     })
             else:
@@ -221,11 +232,15 @@ class PlanAndExecute:
 
             if reached_goal or dt > total_timeout:
                 if reached_goal:
+                    trial_status = TrialStatus.Reached
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Goal reached!" + Fore.RESET)
-                elif dt > total_timeout:
+                else:
+                    trial_status = TrialStatus.Timeout
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {dt:.3f}" + Fore.RESET)
                 trial_data_dict = {
+                    'trial_status': trial_status,
                     'trial_idx': self.trial_idx,
+                    'goal': goal,
                     'steps': steps_data,
                 }
                 self.on_trial_complete(trial_data_dict)

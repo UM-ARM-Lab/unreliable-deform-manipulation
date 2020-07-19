@@ -1,5 +1,6 @@
 import gzip
 import numpy as np
+import uuid
 import json
 
 from enum import Enum
@@ -20,6 +21,8 @@ class MyEncoder(json.JSONEncoder):
             return str(obj)
         elif isinstance(obj, tf.Tensor):
             return obj.numpy().tolist()
+        elif isinstance(obj, uuid.UUID):
+            return str(obj)
         return json.JSONEncoder.default(self, obj)
 
 
