@@ -32,9 +32,11 @@ public:
 
   void load(const rviz::Config &config) override;
   void save(rviz::Config config) const override;
+  void Settle();
 
 public slots:
   void MoveRopeButtonClicked();
+  void GraspRopeButtonClicked();
 
 private:
   Ui_MerrrtWidget ui;

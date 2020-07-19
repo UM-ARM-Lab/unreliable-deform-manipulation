@@ -24,7 +24,7 @@
         </include>
     </group>
 
-    <node launch-prefix="gdb -ex run --args" name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
+    <node name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
         <param name="get_planning_scene_topic"  value="/get_planning_scene"/>
     </node>
 

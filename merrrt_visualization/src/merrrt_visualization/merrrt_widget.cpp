@@ -20,6 +20,16 @@ MerrrtWidget::MerrrtWidget(QWidget *parent)
                                                            &MerrrtWidget::OnRecoveryProbability, this);
 
   connect(ui.move_rope_button, &QPushButton::clicked, this, &MerrrtWidget::MoveRopeButtonClicked);
+  connect(ui.grasp_rope_button, &QPushButton::clicked, this, &MerrrtWidget::GraspRopeButtonClicked);
+}
+
+void MerrrtWidget::GraspRopeButtonClicked()
+{
+  peter_msgs::SetBool grasp;
+  grasp.request.data = true;
+  grasping_rope_srv_.call(grasp);
+
+  Settle();
 }
 
 void MerrrtWidget::MoveRopeButtonClicked()
@@ -36,6 +46,15 @@ void MerrrtWidget::MoveRopeButtonClicked()
   move_req.request.gripper2.y = 0.15;
   move_req.request.gripper2.z = 1.0;
   set_rope_state_srv_.call(move_req);
+
+  Settle();
+}
+
+void MerrrtWidget::Settle()
+{
+  peter_msgs::WorldControl settle;
+  settle.request.seconds = 10;
+  world_control_srv_.call(settle);
 }
 
 void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)
