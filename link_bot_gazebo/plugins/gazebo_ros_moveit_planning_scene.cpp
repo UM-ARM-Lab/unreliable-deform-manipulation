@@ -222,6 +222,10 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
       // Get all the collision objects for this link
       const auto &collisions = link->GetCollisions();
+      if (collisions.empty())
+      {
+        continue;
+      }
       for (auto coll_it = collisions.cbegin(); coll_it != collisions.end(); ++coll_it)
       {
         const CollisionPtr &collision = *coll_it;
