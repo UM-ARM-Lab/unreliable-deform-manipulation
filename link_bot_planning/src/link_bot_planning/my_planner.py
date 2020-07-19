@@ -108,7 +108,7 @@ class MyPlanner:
         return self.state_space.satisfiesBounds(state)
 
     def motions_valid(self, motions):
-        print(".", end='')
+        print(".", end='', flush=True)
         final_state = self.scenario.ompl_state_to_numpy(motions[-1].getState())
 
         motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
