@@ -59,13 +59,13 @@ def make_row(planner_params, metric_data, tablefmt):
 def metrics_main(args):
     headers = ['']
     aggregate_metrics = {
-        'Planning Time': [],
+        # 'Planning Time': [],
         'Final Execution To Goal Error': [],
         # 'Final Plan To Goal Error': [],
-        'Final Plan To Execution Error': [],
+        # 'Final Plan To Execution Error': [],
         # 'Num Nodes': [],
-        # 'Num Steps': [],
-        '% Steps with MER Violations': [],
+        'Num Steps': [],
+        # '% Steps with MER Violations': [],
     }
 
     with args.analysis_params.open('r') as analysis_params_file:
@@ -154,6 +154,7 @@ def metrics_main(args):
                 data_str = metrics_file.read()
             datum = json.loads(data_str.decode("utf-8"))
             steps = datum['steps']
+            nums_steps.append(len(steps))
             # goal = datum['goal']
             goal = steps[0]['planning_query']['goal']
 
@@ -218,7 +219,7 @@ def metrics_main(args):
         aggregate_metrics['Final Execution To Goal Error'].append(
             make_row(planner_params, final_execution_to_goal_errors, table_format))
         # aggregate_metrics['Num Nodes'].append(make_row(planner_params, nums_nodes, table_format))
-        # aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
+        aggregate_metrics['Num Steps'].append(make_row(planner_params, nums_steps, table_format))
         # aggregate_metrics['% Steps with MER Violations'].append(
         #     make_row(planner_params, nums_mer_violations, table_format))
         # status_table_data.append([legend_nickname, percentage_solved, percentage_timeout, percentage_not_progressing])

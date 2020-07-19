@@ -185,6 +185,8 @@ class PlanAndExecute:
 
             planning_result = self.plan(planning_query)
 
+            time_since_start = time.perf_counter() - start_time
+
             if planning_result.status == MyPlannerStatus.Failure:
                 # this run won't count if we return false, the environment will be randomized, then we'll try again
                 return False
@@ -202,24 +204,22 @@ class PlanAndExecute:
                         rospy.loginfo(recovery_action)
                     execution_result = self.execute_recovery_action(recovery_action)
                     # Extract planner data now before it goes out of scope (in C++)
-                    dt = time.perf_counter() - start_time
                     steps_data.append({
                         'type': 'executed_recovery',
                         'planning_query': planning_query,
                         'planning_result': planning_result,
                         'recovery_action': recovery_action,
                         'execution_result': execution_result,
-                        'time_since_start': dt,
+                        'time_since_start': time_since_start,
                     })
             else:
                 execution_result = self.execute(planning_query, planning_result)
-                dt = time.perf_counter() - start_time
                 steps_data.append({
                     'type': 'executed_plan',
                     'planning_query': planning_query,
                     'planning_result': planning_result,
                     'execution_result': execution_result,
-                    'time_since_start': dt,
+                    'time_since_start': time_since_start,
                 })
                 self.on_execution_complete(planning_query, planning_result, execution_result)
 
@@ -228,16 +228,15 @@ class PlanAndExecute:
             rospy.loginfo(f"distance to goal after execution is {d:.3f}")
             reached_goal = (d <= self.planner_params['goal_threshold'] + 1e-6)
 
-            dt = time.perf_counter() - start_time
-
-            if reached_goal or dt > total_timeout:
+            if reached_goal or time_since_start > total_timeout:
                 if reached_goal:
                     trial_status = TrialStatus.Reached
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Goal reached!" + Fore.RESET)
                 else:
                     trial_status = TrialStatus.Timeout
-                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {dt:.3f}" + Fore.RESET)
+                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {time_since_start:.3f}" + Fore.RESET)
                 trial_data_dict = {
+                    'total_time': time_since_start,
                     'trial_status': trial_status,
                     'trial_idx': self.trial_idx,
                     'goal': goal,

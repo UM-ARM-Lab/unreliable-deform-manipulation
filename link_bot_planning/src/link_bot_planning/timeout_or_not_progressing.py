@@ -15,13 +15,14 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
         self.attempted_extensions = 0
         self.all_rejected = True
         self.not_progressing = None
+        self.timed_out = False
 
     def condition(self):
         self.not_progressing = self.attempted_extensions >= self.params['attempted_extensions_threshold'] and self.all_rejected
         now = perf_counter()
         dt_s = now - self.t0
-        timed_out = dt_s > self.params['timeout']
-        should_terminate = timed_out or self.not_progressing
+        self.timed_out = dt_s > self.params['timeout']
+        should_terminate = self.timed_out or self.not_progressing
         if self.verbose >= 3:
             print(f"{self.attempted_extensions:6d}, {self.all_rejected}")
         return should_terminate

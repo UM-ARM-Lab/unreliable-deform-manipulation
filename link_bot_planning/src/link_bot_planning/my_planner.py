@@ -277,7 +277,12 @@ class MyPlanner:
                 planner_data = ob.PlannerData(self.si)
                 self.rrt.getPlannerData(planner_data)
                 tree = planner_data_to_json(planner_data, self.scenario)
-        else:
+        elif planner_status == MyPlannerStatus.Failure:
+            print("Failed at starting state:", start_state)
+            tree = {}
+            actions = []
+            planned_path = [start_state]
+        elif planner_status == MyPlannerStatus.NotProgressing:
             tree = {}
             actions = []
             planned_path = [start_state]
@@ -305,5 +310,7 @@ def interpret_planner_status(planner_status: ob.PlannerStatus, ptc: TimeoutOrNot
         return MyPlannerStatus.Solved
     elif ptc.not_progressing:
         return MyPlannerStatus.NotProgressing
-    else:
+    elif ptc.timed_out:
         return MyPlannerStatus.Timeout
+    else:
+        return MyPlannerStatus.Failure
