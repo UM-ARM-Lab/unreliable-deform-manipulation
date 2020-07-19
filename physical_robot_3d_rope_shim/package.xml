@@ -15,6 +15,7 @@
   <depend>tf2_ros</depend>
   <depend>tf2_msgs</depend>
   <depend>victor_hardware_interface</depend>
+  <depend>moveit_visual_tools</depend>
 
   <!-- <exec_depend>victor_moveit_config</exec_depend> -->
 </package>

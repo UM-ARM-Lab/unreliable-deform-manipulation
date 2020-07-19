@@ -1,6 +1,7 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_visual_tools/moveit_visual_tools.h>
 #include <std_msgs/String.h>
 #include <arc_utilities/arc_exceptions.hpp>
 #include <arc_utilities/arc_helpers.hpp>
@@ -102,6 +103,7 @@ PlanningInterface::PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std
 
   , tf_broadcaster_()
   , vis_pub_(nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true))
+  , visual_tools_("robot_root", "/moveit_visual_markers")
   , tf_buffer_(tf_buffer)
   , world_frame_("robot_root")
   , robot_frame_(model_->getRootLinkName())
@@ -130,6 +132,7 @@ void PlanningInterface::configureHomeState()
   home_state_.setToDefaultValues();
   home_state_.setJointGroupPositions(jmg_, q_home_);
   home_state_.update();
+  visual_tools_.publishRobotState(home_state_);
   home_state_tool_poses_ = getToolTransforms(home_state_);
   robot_nominal_tool_orientations_.resize(num_ees_);
   for (auto idx = 0ul; idx < num_ees_; ++idx)

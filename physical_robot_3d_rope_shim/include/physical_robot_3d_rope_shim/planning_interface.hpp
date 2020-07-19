@@ -5,6 +5,8 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_state/robot_state.h>
+#include <moveit_msgs/DisplayRobotState.h>
+#include <moveit_visual_tools/moveit_visual_tools.h>
 #include <ros/ros.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -38,6 +40,7 @@ public:
   // Debugging
   tf2_ros::TransformBroadcaster tf_broadcaster_;
   ros::Publisher vis_pub_;
+  moveit_visual_tools::MoveItVisualTools visual_tools_;
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::string const world_frame_;

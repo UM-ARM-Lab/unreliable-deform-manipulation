@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_msgs
   victor_hardware_interface
+  moveit_visual_tools
 )
 
 set(CMAKE_CXX_STANDARD 17)
