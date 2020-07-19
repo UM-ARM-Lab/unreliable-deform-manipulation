@@ -24,6 +24,18 @@ MerrrtWidget::MerrrtWidget(QWidget *parent)
 
 void MerrrtWidget::MoveRopeButtonClicked()
 {
+  peter_msgs::SetBool release_req;
+  release_req.request.data = false;
+  grasping_rope_srv_.call(release_req);
+
+  peter_msgs::SetRopeState move_req;
+  move_req.request.gripper1.x = 1.2;
+  move_req.request.gripper1.y = -0.15;
+  move_req.request.gripper1.z = 1.0;
+  move_req.request.gripper2.x = 1.2;
+  move_req.request.gripper2.y = 0.15;
+  move_req.request.gripper2.z = 1.0;
+  set_rope_state_srv_.call(move_req);
 }
 
 void MerrrtWidget::OnTrajIdx(const std_msgs::Float32::ConstPtr &msg)

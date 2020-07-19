@@ -312,8 +312,8 @@ trajectory_msgs::JointTrajectory PlanningInterface::moveInWorldFrame(ps::Plannin
       m.action = m.ADD;
       m.type = m.POINTS;
       m.points.resize(steps);
-      m.scale.x = 0.01;
-      m.scale.y = 0.01;
+      m.scale.x = 0.004;
+      m.scale.y = 0.004;
 
       m.colors.resize(steps);
       auto const start_color = ColorBuilder::MakeFromFloatColors(0, 1, 0, 1);
