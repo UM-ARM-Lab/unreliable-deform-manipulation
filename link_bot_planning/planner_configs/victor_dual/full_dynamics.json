@@ -1,8 +1,8 @@
 {
   "total_timeout": 180,
   "termination_criteria": {
-    "attempted_extensions_threshold": 32,
-    "timeout": 30
+    "attempted_extensions_threshold": 128,
+    "timeout": 60
   },
   "left_gripper_reset_position": [
     1.1,
@@ -33,8 +33,8 @@
   "objects_extent": [
     0.6,
     1.0,
-    -0.4,
-    0.4,
+    -0.45,
+    0.45,
     0.625,
     0.6251
   ],
@@ -55,6 +55,7 @@
       "Dynamics"
     ],
     "classifier": "None",
+    "recovery": "None",
     "dynamics": [
       "Single",
       "Full"

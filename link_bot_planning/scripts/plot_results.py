@@ -47,6 +47,7 @@ def main():
         datum = json.loads(metrics_str.decode("utf-8"))
 
         plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
+
         # print(f"{trial_idx} ", end='', flush=True)
         # for step_idx, step in enumerate(steps):
         #     if step['type'] == 'executed_plan':
