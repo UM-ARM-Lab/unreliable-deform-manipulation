@@ -180,29 +180,36 @@ class PlanAndExecute:
                 # this run won't count if we return false, the environment will be randomized, then we'll try again
                 return False
             elif planning_result.status == MyPlannerStatus.NotProgressing:
-                recovery_action = self.recovery_policy(environment=planning_query.environment,
-                                                       state=planning_query.start)
-                attempt_idx += 1
-                rospy.loginfo(f"Attempting recovery action {attempt_idx}")
+                if self.recovery_policy is None:
+                    pass  # do nothing
+                else:
+                    recovery_action = self.recovery_policy(environment=planning_query.environment,
+                                                           state=planning_query.start)
+                    attempt_idx += 1
+                    rospy.loginfo(f"Attempting recovery action {attempt_idx}")
 
-                if self.verbose >= 3:
-                    rospy.loginfo("Chosen Recovery Action:")
-                    rospy.loginfo(recovery_action)
-                self.execute_recovery_action(recovery_action)
-                # Extract planner data now before it goes out of scope (in C++)
-                steps_data.append({
-                    'type': 'executed_recovery',
-                    'planning_query': planning_query,
-                    'planning_result': planning_result,
-                    'recovery_action': recovery_action,
-                })
+                    if self.verbose >= 3:
+                        rospy.loginfo("Chosen Recovery Action:")
+                        rospy.loginfo(recovery_action)
+                    self.execute_recovery_action(recovery_action)
+                    # Extract planner data now before it goes out of scope (in C++)
+                    dt = time.perf_counter() - start_time
+                    steps_data.append({
+                        'type': 'executed_recovery',
+                        'planning_query': planning_query,
+                        'planning_result': planning_result,
+                        'recovery_action': recovery_action,
+                        'time_since_start': dt,
+                    })
             else:
                 execution_result = self.execute(planning_query, planning_result)
+                dt = time.perf_counter() - start_time
                 steps_data.append({
                     'type': 'executed_plan',
                     'planning_query': planning_query,
                     'planning_result': planning_result,
                     'execution_result': execution_result,
+                    'time_since_start': dt,
                 })
                 self.on_execution_complete(planning_query, planning_result, execution_result)
 
