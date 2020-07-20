@@ -222,7 +222,6 @@ class RopeDraggingScenario(Base3DScenario):
 
         # Apply delta
         gripper_position = state['gripper'][:, tf.newaxis, tf.newaxis] + gripper_delta_position
-        print(gripper_position.shape)
 
         actions = {
             'gripper_position': gripper_position,
