@@ -27,6 +27,12 @@
                         <uri>file://victor_description/meshes/baxter_pedestal/pedestal_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <script>
+                        <name>Gazebo/Grey</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
+                </material>
             </visual>
             <visual name='victor_root_fixed_joint_lump__victor_base_plate_visual_1'>
                 <pose frame=''>0 0 0.863 0 -0 0</pose>
@@ -35,6 +41,10 @@
                         <uri>file://victor_description/meshes/torso/torso_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_root_fixed_joint_lump__victor_left_arm_link_0_visual_2'>
                 <pose frame=''>-0.02 0.138488 1.248 -1.5708 0 -0.785398</pose>
@@ -388,6 +398,10 @@
                         <uri>file://media/materials/scripts/gazebo.material</uri>
                     </script>
                 </material>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_mounting_bracket_visual_1'>
                 <pose frame=''>0 0 0.045 0 -0 0</pose>
@@ -396,6 +410,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/kuka_to_palm_connectors_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.3 0.3 0.3 1.0</ambient>
+                    <diffuse>0.3 0.3 0.3 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_palm_visual_2'>
                 <pose frame=''>0 0 0.07205 0 -0 0.785398</pose>
@@ -404,6 +422,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/palm_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.3 0.3 0.3 1.0</ambient>
+                    <diffuse>0.3 0.3 0.3 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_left_arm_link_7_fixed_joint_lump__victor_left_gripper_fingerA_base_visual_3'>
                 <pose frame=''>0.015733 0.015733 0.133169 0 -0 0.785398</pose>
@@ -413,10 +435,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_arm_link_7_collision'>
@@ -536,10 +556,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_dist_collision'>
@@ -588,12 +606,6 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link3_med_visual.stl</uri>
                     </mesh>
                 </geometry>
-                <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
-                </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_med_collision'>
                 <max_contacts>4</max_contacts>
@@ -642,10 +654,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerA_prox_collision'>
@@ -695,10 +705,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_base_collision'>
@@ -748,10 +756,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_dist_collision'>
@@ -801,10 +807,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_med_collision'>
@@ -854,10 +858,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_left_gripper_fingerB_prox_collision'>
@@ -906,6 +908,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link1_base_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_left_gripper_fingerC_base_collision'>
                 <max_contacts>4</max_contacts>
@@ -953,6 +959,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link4_dist_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_left_gripper_fingerC_dist_collision'>
                 <max_contacts>4</max_contacts>
@@ -1000,6 +1010,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link3_med_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_left_gripper_fingerC_med_collision'>
                 <max_contacts>4</max_contacts>
@@ -1047,6 +1061,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link2_prox_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_left_gripper_fingerC_prox_collision'>
                 <max_contacts>4</max_contacts>
@@ -1403,6 +1421,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/kuka_to_palm_connectors_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.3 0.3 0.3 1.0</ambient>
+                    <diffuse>0.3 0.3 0.3 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_palm_visual_2'>
                 <pose frame=''>0 0 0.07205 0 -0 0.785398</pose>
@@ -1411,6 +1433,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/palm_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.3 0.3 0.3 1.0</ambient>
+                    <diffuse>0.3 0.3 0.3 1.0</diffuse>
+                </material>
             </visual>
             <visual name='victor_right_arm_link_7_fixed_joint_lump__victor_right_gripper_fingerA_base_visual_3'>
                 <pose frame=''>0.015733 0.015733 0.133169 0 -0 0.785398</pose>
@@ -1420,10 +1446,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.3 0.3 0.3 1.0</ambient>
+                    <diffuse>0.3 0.3 0.3 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_arm_link_7_collision'>
@@ -1543,10 +1567,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_dist_collision'>
@@ -1596,10 +1618,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_med_collision'>
@@ -1649,10 +1669,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerA_prox_collision'>
@@ -1702,10 +1720,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_base_collision'>
@@ -1755,10 +1771,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_dist_collision'>
@@ -1808,10 +1822,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_med_collision'>
@@ -1861,10 +1873,8 @@
                     </mesh>
                 </geometry>
                 <material>
-                    <script>
-                        <uri>__default__</uri>
-                        <name>__default__</name>
-                    </script>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
                 </material>
             </visual>
             <collision name='victor_right_gripper_fingerB_prox_collision'>
@@ -1913,6 +1923,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link1_base_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_right_gripper_fingerC_base_collision'>
                 <max_contacts>4</max_contacts>
@@ -1960,6 +1974,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link4_dist_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_right_gripper_fingerC_dist_collision'>
                 <max_contacts>4</max_contacts>
@@ -2007,6 +2025,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link3_med_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_right_gripper_fingerC_med_collision'>
                 <max_contacts>4</max_contacts>
@@ -2054,6 +2076,10 @@
                         <uri>file://victor_description/meshes/robotiq_3finger/finger_link2_prox_visual.stl</uri>
                     </mesh>
                 </geometry>
+                <material>
+                    <ambient>0.8 0.8 0.8 1.0</ambient>
+                    <diffuse>0.8 0.8 0.8 1.0</diffuse>
+                </material>
             </visual>
             <collision name='victor_right_gripper_fingerC_prox_collision'>
                 <max_contacts>4</max_contacts>
