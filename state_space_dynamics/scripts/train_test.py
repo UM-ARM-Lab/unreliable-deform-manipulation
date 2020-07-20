@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import json
+import time
 import pathlib
 
 import numpy as np
@@ -35,6 +36,7 @@ def train_main(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
+    model_hparams['latest_training_time'] = int(time.time())
     trial_path = None
     checkpoint_name = None
     if args.checkpoint:

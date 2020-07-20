@@ -1,12 +1,12 @@
 {
-  "total_timeout": 240,
+  "total_timeout": 180,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 240
+    "timeout": 180
   },
   "recovery": {
     "use_recovery": true,
-    "recovery_model_dir": "dragging/July_20_12-52-20_63a0754b63/best_checkpoint/"
+    "recovery_model_dir": "rcv_trials/dragging/July_20_13-56-54_53dfceb5b0/"
   },
   "extent": [
     -1.2,

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+import time
 import argparse
 from colorama import Fore
 import json
@@ -37,6 +38,7 @@ def train_main(args, seed: int):
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
+    model_hparams['latest_training_time'] = int(time.time())
     scenario = get_scenario(model_hparams['scenario'])
 
     # Dataset preprocessing

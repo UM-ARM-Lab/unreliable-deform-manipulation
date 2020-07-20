@@ -48,7 +48,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.max_action_attempts = 1000
 
         self.movable_object_services = {}
-        for i in range(1, 10):
+        for i in range(1, 11):
             k = f'moving_box{i}'
             self.movable_object_services[k] = make_movable_object_services(k)
 
@@ -187,7 +187,7 @@ class RopeDraggingScenario(Base3DScenario):
         _ = self.action_srv(req)
 
     def execute_action(self, action: Dict):
-        if rospy.get_param("use_val"):
+        if rospy.get_param("use_val", False):
             rospy.logwarn("TESTING WITH VAL")
             self.val_execute_action(action)
             return
@@ -196,7 +196,10 @@ class RopeDraggingScenario(Base3DScenario):
         req.position.x = action['gripper_position'][0]
         req.position.y = action['gripper_position'][1]
         req.position.z = action['gripper_position'][2]
-        req.timeout = action['timeout'][0]
+        if 'timeout' not in action:
+            req.timeout = 1.0
+        else:
+            req.timeout = action['timeout'][0]
 
         _ = self.move_srv(req)
 
@@ -263,6 +266,13 @@ class RopeDraggingScenario(Base3DScenario):
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
 
+    @staticmethod
+    def add_noise(action: Dict, noise_rng: np.random.RandomState):
+        gripper_noise = noise_rng.normal(scale=0.01, size=[3])
+        return {
+            'gripper_position': action['gripper_position'] + gripper_noise
+        }
+
     def gripper_out_of_bounds(self, gripper, data_collection_params: Dict):
         gripper_extent = data_collection_params['gripper_action_sample_extent']
         return RopeDraggingScenario.is_out_of_bounds(gripper, gripper_extent)
@@ -293,7 +303,7 @@ class RopeDraggingScenario(Base3DScenario):
         }
 
     def get_state(self):
-        if rospy.get_param("use_val"):
+        if rospy.get_param("use_val", False):
             rospy.logwarn("TESTING WITH VAL")
             return self.get_state_val()
 
@@ -372,9 +382,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        # We want goals to be very much in free space otherwise they're often not reachable
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=3 * planner_params['goal_threshold'], res=environment['res'])
+                                     radius_m=planner_params['goal_threshold'],
+                                     res=environment['res'])
         goal_extent = planner_params['goal_extent']
 
         while True:
@@ -453,7 +463,7 @@ class RopeDraggingScenario(Base3DScenario):
             services['set'](set_msg)
 
         req = WorldControlRequest()
-        req.seconds = 0.2
+        req.seconds = 0.1
         self.world_control_srv(req)
 
         for services in self.movable_object_services.values():

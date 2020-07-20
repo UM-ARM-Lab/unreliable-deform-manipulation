@@ -2,6 +2,7 @@
 import argparse
 import json
 import pathlib
+import time
 
 import link_bot_classifiers
 import numpy as np
@@ -42,6 +43,7 @@ def train_main(args, seed: int):
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = args.batch_size
     model_hparams['seed'] = seed
+    model_hparams['latest_training_time'] = int(time.time())
     model_hparams['datasets'] = paths_to_json(args.dataset_dirs)
     trial_path = None
     checkpoint_name = None
