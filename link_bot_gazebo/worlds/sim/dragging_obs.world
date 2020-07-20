@@ -82,6 +82,12 @@
             <pose>0.35 0.0 0 0 0 0</pose>
             <name>moving_box10</name>
         </include>
+        <include>
+            <uri>model://moving_box</uri>
+            <pose>0.35 -0.35 0 0 0 0</pose>
+            <name>moving_box11</name>
+        </include>
+
 
         <include>
             <uri>model://debugging_camera</uri>
