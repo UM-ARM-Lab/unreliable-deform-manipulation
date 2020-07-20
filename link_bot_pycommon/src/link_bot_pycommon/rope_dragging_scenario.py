@@ -216,7 +216,7 @@ class RopeDraggingScenario(Base3DScenario):
 
         displacement = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
 
-        zeros = tf.zeros([batch_size, n_action_samples, n_action_samples], dtype=tf.float32)
+        zeros = tf.zeros([batch_size, n_action_samples, n_actions], dtype=tf.float32)
 
         gripper_delta_position = tf.stack([tf.math.sin(yaw), tf.math.cos(yaw), zeros], axis=3) * displacement
 
