@@ -211,12 +211,12 @@ class RopeDraggingScenario(Base3DScenario):
                                       action_rng: np.random.RandomState):
         del action_rng  # unused, we used tf here
         # Sample a new random action
-        yaw = tf.random.uniform([batch_size, n_action_samples, n_actions, 1], -np.pi, np.pi)
+        yaw = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
         max_d = action_params['max_distance_gripper_can_move']
 
-        displacement = tf.random.uniform([batch_size, n_action_samples, n_actions, 1], 0, max_d)
+        displacement = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
 
-        zeros = tf.zeros([batch_size, n_action_samples, n_action_samples, 1], dtype=tf.float32)
+        zeros = tf.zeros([batch_size, n_action_samples, n_action_samples], dtype=tf.float32)
 
         gripper_delta_position = tf.stack([tf.math.sin(yaw), tf.math.cos(yaw), zeros], axis=3) * displacement
 
