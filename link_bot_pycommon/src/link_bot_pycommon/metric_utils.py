@@ -21,6 +21,7 @@ def brief_row_stats(metric_data):
 
 def dict_to_pvalue_table(data_dict: Dict, table_format: str = 'fancy_grid', fmt: str = '{:5.3f}'):
     """
+    uses a one-sided T-test
     :param data_dict: A dictionary of "rial_name(str): values(list/array)
     :param table_format:
     :param fmt:
@@ -31,6 +32,8 @@ def dict_to_pvalue_table(data_dict: Dict, table_format: str = 'fancy_grid', fmt:
         pvalues[i, 0] = name1
         for j, (_, e2) in enumerate(data_dict.items()):
             _, pvalue = stats.ttest_ind(e1, e2)
+            # one-sided, we simply divide pvalue by 2
+            pvalue = pvalue / 2
             if pvalue < 0.01:
                 prefix = "! "
             else:

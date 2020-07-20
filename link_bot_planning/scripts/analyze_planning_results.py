@@ -157,10 +157,8 @@ def metrics_main(args):
             datum = json.loads(data_str.decode("utf-8"))
             steps = datum['steps']
             nums_steps.append(len(steps))
-            # goal = datum['goal']
-            goal = steps[0]['planning_query']['goal']
+            goal = datum['goal']
 
-            # last_step = steps[-1]
             for step in steps[::-1]:
                 if step['type'] == 'executed_plan':
                     final_actual_state = step['execution_result']['path'][-1]
