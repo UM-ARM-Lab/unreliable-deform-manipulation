@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
-	<model name='camera'>
+	<model name='debugging_camera'>
 		<static>true</static>
 		<pose>3.8 0 3.8 0 0.75 3.14</pose>
 		<link name='link'>

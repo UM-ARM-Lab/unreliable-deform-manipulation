@@ -89,7 +89,7 @@
         </include>
 
         <include>
-            <uri>model://camera</uri>
+            <uri>model://debugging_camera</uri>
         </include>
     </world>
 </sdf>
