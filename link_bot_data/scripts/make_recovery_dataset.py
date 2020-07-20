@@ -64,8 +64,13 @@ def main():
     else:
         using_ensemble = False
         fwd_model_dir = str(args.fwd_model_dir[0])
+
+    scenario = fwd_models.scenario
+    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, scenario)
+
     recovery_dataser_hparams['dataset_dir'] = str(args.dataset_dir)
     recovery_dataser_hparams['fwd_model_dir'] = fwd_model_dir
+    recovery_dataser_hparams['classifier_model'] = str(args.classifier_model_dir)
     recovery_dataser_hparams['fwd_model_hparams'] = fwd_models.hparams
     recovery_dataser_hparams['using_ensemble'] = using_ensemble
     recovery_dataser_hparams['labeling_params'] = labeling_params
@@ -74,9 +79,6 @@ def main():
     recovery_dataser_hparams['start-at'] = args.start_at
     recovery_dataser_hparams['stop-at'] = args.stop_at
     json.dump(recovery_dataser_hparams, new_hparams_filename.open("w"), indent=2)
-
-    scenario = fwd_models.scenario
-    classifier_model = classifier_utils.load_generic_model(args.classifier_model_dir, scenario)
 
     tf_dataset = dataset.get_datasets(mode='all')
 
