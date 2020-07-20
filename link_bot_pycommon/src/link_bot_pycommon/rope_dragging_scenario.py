@@ -48,7 +48,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.max_action_attempts = 1000
 
         self.movable_object_services = {}
-        for i in range(1, 11):
+        for i in range(1, 12):
             k = f'moving_box{i}'
             self.movable_object_services[k] = make_movable_object_services(k)
 
