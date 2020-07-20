@@ -33,6 +33,7 @@
 					<stddev>0.007</stddev>
 					</noise>
 				</camera>
+				<!-- <plugin name="arm_video_recorder_plugin" filename="libarm_video_recorder_plugin.so"/> -->
 				<plugin name="camera_controller" filename="libgazebo_ros_camera.so">
 					<alwaysOn>true</alwaysOn>
 					<updateRate>0.0</updateRate>

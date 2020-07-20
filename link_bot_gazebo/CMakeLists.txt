@@ -6,6 +6,7 @@ find_package(
         REQUIRED COMPONENTS
         roscpp
         sdf_tools
+        arm_video_recorder
         peter_msgs
         control_msgs
         moveit_msgs
@@ -32,6 +33,7 @@ catkin_package(
         geometry_msgs
         message_runtime
         moveit_msgs
+        arm_video_recorder
         roscpp
         sensor_msgs
         std_msgs
@@ -74,12 +76,6 @@ target_link_libraries(position_3d_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES}
 add_dependencies(position_3d_plugin ${catkin_EXPORTED_TARGETS})
 target_compile_options(position_3d_plugin PRIVATE ${FLAGS})
 
-add_library(my_camera_plugin SHARED plugins/my_camera_plugin.cpp)
-target_include_directories(my_camera_plugin PUBLIC include)
-target_include_directories(my_camera_plugin SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(my_camera_plugin ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} CameraPlugin)
-add_dependencies(my_camera_plugin ${catkin_EXPORTED_TARGETS})
-target_compile_options(my_camera_plugin PRIVATE ${FLAGS})
 
 add_library(kinematic_victor_plugin SHARED plugins/kinematic_victor_plugin.cpp)
 target_include_directories(kinematic_victor_plugin PUBLIC include)
@@ -115,3 +111,18 @@ target_include_directories(gazebo_ros_tf_plugin SYSTEM PUBLIC ${catkin_INCLUDE_D
 add_dependencies(gazebo_ros_tf_plugin ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_tf_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
 target_compile_options(gazebo_ros_tf_plugin PRIVATE ${FLAGS})
+
+add_library(arm_video_recorder_plugin plugins/arm_video_recorder_plugin.cpp)
+target_include_directories(arm_video_recorder_plugin PUBLIC include)
+target_include_directories(arm_video_recorder_plugin SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
+add_dependencies(arm_video_recorder_plugin ${catkin_EXPORTED_TARGETS})
+set(LIBAV
+    avformat
+    avcodec
+    swresample
+    swscale
+    avutil
+)
+
+target_link_libraries(arm_video_recorder_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES} CameraPlugin ${LIBAV})
+target_compile_options(arm_video_recorder_plugin PRIVATE ${FLAGS})
