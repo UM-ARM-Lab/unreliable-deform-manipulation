@@ -3,14 +3,12 @@
   "scenario": "link_bot",
   "state_keys": [
     "link_bot",
-    "gripper1",
-    "gripper2"
+    "gripper"
   ],
   "action_keys": [
-    "gripper1_position",
-    "gripper2_position"
+    "gripper_position"
   ],
-  "rope_image_k": 2000,
+  "rope_image_k": 1500,
   "rnn_size": 128,
   "fc_layer_sizes": [
     128
@@ -18,7 +16,7 @@
   "pooling": [
     2,
     2,
-    2
+    1
   ],
   "conv_filters": [
     [
@@ -26,7 +24,7 @@
       [
         3,
         3,
-        3
+        1
       ]
     ],
     [
@@ -34,7 +32,7 @@
       [
         3,
         3,
-        3
+        1
       ]
     ],
     [
@@ -42,18 +40,17 @@
       [
         3,
         3,
-        3
+        1
       ]
     ]
   ],
   "loss_type": "weighted_sequence",
   "kernel_reg": 0.05,
   "bias_reg": 0.05,
-  "activity_reg": 0.05,
   "batch_norm": true,
-  "local_env_h_rows": 40,
-  "local_env_w_cols": 40,
-  "local_env_c_channels": 40,
+  "local_env_h_rows": 100,
+  "local_env_w_cols": 100,
+  "local_env_c_channels": 4,
   "learning_rate": 0.001,
-  "stdev": false
+  "stdev": true
 }

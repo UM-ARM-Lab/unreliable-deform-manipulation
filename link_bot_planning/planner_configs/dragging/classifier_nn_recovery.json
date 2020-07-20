@@ -1,12 +1,12 @@
 {
+  "total_timeout": 240,
   "termination_criteria": {
-    "attempted_extensions_threshold": 128,
+    "attempted_extensions_threshold": 32,
     "timeout": 240
   },
   "recovery": {
-    "use_recovery": false,
-    "n_attempts": 0,
-    "recovery_model_dir": null
+    "use_recovery": true,
+    "recovery_model_dir": "dragging/July_20_12-52-20_63a0754b63/best_checkpoint/"
   },
   "extent": [
     -1.2,
@@ -42,7 +42,7 @@
     "dy_trials/dragging_no_obs_6/best_checkpoint",
     "dy_trials/dragging_no_obs_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dragging_z4_no_stdev/July_09_23-23-45_902924f87a/best_checkpoint",
+  "classifier_model_dir": "cl_trials/dragging_balance/July_11_17-08-01_eccab5e838/best_checkpoint",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,
@@ -51,11 +51,10 @@
   "table_config": {
     "nickname": [
       "Classifier",
-      "(No stdev)"
+      "+Recovery"
     ],
     "classifier": [
-      "Learned",
-      "No stdev"
+      "Learned"
     ],
     "dynamics": [
       "Ensemble",

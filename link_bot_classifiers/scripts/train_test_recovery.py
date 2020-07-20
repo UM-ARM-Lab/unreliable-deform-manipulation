@@ -46,10 +46,6 @@ def train_main(args, seed: int):
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, args.batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, args.batch_size, drop_remainder=True)
 
-    # FIXME: need to re-balance the dataset, but since it's not binary that's actually not easy to do
-    # and in my experince just having class weights on the loss doesn't work very well,
-    # so we should re-sample elements and write that out as a new dataset? maybe?
-
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed)
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -90,9 +86,9 @@ def train_main(args, seed: int):
                          training=True,
                          params=model_hparams,
                          trial_path=trial_path,
-                         val_every_n_batches=50,
+                         val_every_n_batches=1,
                          mid_epoch_val_batches=100,
-                         validate_first=False,
+                         validate_first=True,
                          restore_from_name=checkpoint_name,
                          batch_metadata=train_dataset.batch_metadata)
 

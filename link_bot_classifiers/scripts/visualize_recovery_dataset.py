@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from progressbar import progressbar
+from time import sleep
 import tensorflow as tf
 import json
 import pickle
@@ -10,7 +11,7 @@ import argparse
 import pathlib
 import rospy
 
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from moonshine.moonshine_utils import listify
 from moonshine.gpu_config import limit_gpu_mem
@@ -36,27 +37,13 @@ def main():
 
     rospy.init_node('vis_recovery_dataset')
 
-    with args.dataset_dirs[0].open("rb") as infile:
-        dataset = pickle.load(infile)
-
-    scenario = DualFloatingGripperRopeScenario()
-
-    anim = RvizAnimationController(np.arange(1000))
-    for example in dataset:
-        visualize_example(scenario,
-                          example,
-                          scenario.states_description().keys(),
-                          scenario.actions_description().keys())
-        anim.step()
-
-    # dataset = RecoveryDataset(args.dataset_dirs)
-
-    # if args.type == 'best_to_worst':
-    #     visualize_best_to_worst(args, dataset)
-    # elif args.type == 'in_order':
-    #     visualize_in_order(args, dataset)
-    # elif args.type == 'stats':
-    #     stats(args, dataset)
+    dataset = RecoveryDataset(args.dataset_dirs)
+    if args.type == 'best_to_worst':
+        visualize_best_to_worst(args, dataset)
+    elif args.type == 'in_order':
+        visualize_in_order(args, dataset)
+    elif args.type == 'stats':
+        stats(args, dataset)
 
 
 def stats(args, dataset):
@@ -86,14 +73,18 @@ def visualize_best_to_worst(args, dataset: RecoveryDataset):
     examples_to_sort = []
     for example in progressbar(tf_dataset):
         recovery_probability_1 = example['recovery_probability'][1]
-        if recovery_probability_1 > 0.0:
-            examples_to_sort.append(example)
+        # if recovery_probability_1 > 0.0:
+        examples_to_sort.append(example)
 
     examples_to_sort = sorted(examples_to_sort, key=lambda e: e['recovery_probability'][1], reverse=True)
 
+    scenario = get_scenario(dataset.hparams['scenario'])
+
     # print("BEST")
+    rstepper = RvizSimpleStepper()
     for example in examples_to_sort:
-        visualize_example(dataset, example)
+        visualize_example(scenario, example, dataset.state_keys, dataset.action_keys)
+        rstepper.step()
 
     # print("WORST")
     # for example in examples_to_sort[:10]:
@@ -118,9 +109,11 @@ def visualize_example(scenario, example, state_keys, action_keys):
     s_1 = {k: example[k][1] for k in state_keys}
     a = {k: example[k][0] for k in action_keys}
 
-    scenario.plot_action_rviz(s_0, a, label='observed')
-    scenario.plot_state_rviz(s_0, label='observed', idx=1, color='w')
-    scenario.plot_state_rviz(s_1, label='observed', idx=2, color=cm.Reds(color_factor))
+    for i in range(5):
+        scenario.plot_action_rviz(s_0, a, label='observed')
+        scenario.plot_state_rviz(s_0, label='observed', idx=1, color='w')
+        scenario.plot_state_rviz(s_1, label='observed', idx=2, color=cm.Reds(color_factor))
+        sleep(0.01)
 
 
 if __name__ == '__main__':

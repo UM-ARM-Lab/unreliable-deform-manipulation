@@ -282,8 +282,8 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
             raise RuntimeError("Failed to restore!!!")
 
         self.action_rng = np.random.RandomState(0)
-        self.n_action_samples = self.hparams['n_action_samples']
         self.data_collection_params = self.hparams['recovery_dataset_hparams']['data_collection_params']
+        self.n_action_samples = self.data_collection_params['labeling_params']['n_action_samples']
 
         self.noise_rng = np.random.RandomState(0)
 

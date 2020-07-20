@@ -4,6 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
+from link_bot_data.link_bot_dataset_utils import filter_and_cache
 
 
 class RecoveryDataset(BaseDataset):
@@ -47,6 +48,11 @@ class RecoveryDataset(BaseDataset):
 
         return features_description
 
+    @staticmethod
+    def is_stuck(example):
+        stuck = example['recovery_probability'][0] <= 0
+        return stuck
+
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         def _add_recovery_probabilities(example):
             n_accepts = tf.math.count_nonzero(example['accept_probabilities'] > 0.5, axis=1)
@@ -54,4 +60,5 @@ class RecoveryDataset(BaseDataset):
             return example
 
         dataset = dataset.map(_add_recovery_probabilities)
+        dataset = filter_and_cache(dataset, RecoveryDataset.is_stuck)
         return dataset

@@ -117,6 +117,12 @@ def batch_tf_dataset(dataset: tf.data.Dataset, batch_size: int, drop_remainder: 
     return dataset
 
 
+def filter_and_cache(dataset, filter_func):
+    dataset = dataset.filter(filter_func)
+    dataset = dataset.cache(cachename())
+    return dataset
+
+
 def balance(dataset, labeling_params: Dict, cache_negative: bool = True):
     def _label_is(label_is):
         def __filter(transition):

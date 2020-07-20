@@ -1,12 +1,11 @@
 {
+  "total_timeout": 240,
   "termination_criteria": {
-    "attempted_extensions_threshold": 128,
+    "attempted_extensions_threshold": 32,
     "timeout": 240
   },
   "recovery": {
-    "use_recovery": false,
-    "n_attempts": 0,
-    "recovery_model_dir": null
+    "use_recovery": false
   },
   "extent": [
     -1.2,
