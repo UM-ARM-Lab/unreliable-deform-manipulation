@@ -103,7 +103,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         batch_sample = actual_batch_size * n_action_samples
         random_actions_dict = {k: tf.reshape(v, [batch_sample, n_actions, -1])
                                for k, v in random_actions_dict.items()}
-        print(random_actions_dict)
 
         def _predict_and_classify(_actual_states, _random_actions_dict):
             # [t:t+1] to keep dim, as opposed to just [t]
