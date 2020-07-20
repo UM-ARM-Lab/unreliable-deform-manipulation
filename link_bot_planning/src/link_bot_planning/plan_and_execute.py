@@ -208,7 +208,8 @@ class PlanAndExecute:
                 return False
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:
-                    pass  # do nothing
+                    # Nothing else to do here, just give up
+                    return True
                 else:
                     recovery_action = self.recovery_policy(environment=planning_query.environment,
                                                            state=planning_query.start)
