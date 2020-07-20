@@ -174,7 +174,6 @@ class RopeDraggingScenario(Base3DScenario):
 
         self.action_viz_pub.publish(msg)
 
-
     def val_execute_action(self, action: Dict):
         target_gripper1_point = ros_numpy.msgify(Point, action['gripper_position'])
         target_gripper1_point.z = max(target_gripper1_point.z, -0.38)
@@ -184,7 +183,7 @@ class RopeDraggingScenario(Base3DScenario):
         req = DualGripperTrajectoryRequest()
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
-        print(target_gripper1_point, target_gripper2_point )
+        print(target_gripper1_point, target_gripper2_point)
         _ = self.action_srv(req)
 
     def execute_action(self, action: Dict):
@@ -200,6 +199,34 @@ class RopeDraggingScenario(Base3DScenario):
         req.timeout = action['timeout'][0]
 
         _ = self.move_srv(req)
+
+    def batch_stateless_sample_action(self,
+                                      environment: Dict,
+                                      state: Dict,
+                                      batch_size: int,
+                                      n_action_samples: int,
+                                      n_actions: int,
+                                      data_collection_params: Dict,
+                                      action_params: Dict,
+                                      action_rng: np.random.RandomState):
+        del action_rng  # unused, we used tf here
+        # Sample a new random action
+        yaw = tf.random.uniform([batch_size, n_action_samples, n_actions, 1], -np.pi, np.pi)
+        max_d = action_params['max_distance_gripper_can_move']
+
+        displacement = tf.random.uniform([batch_size, n_action_samples, n_actions, 1], 0, max_d)
+
+        zeros = tf.zeros([batch_size, n_action_samples, n_action_samples, 1], dtype=tf.float32)
+
+        gripper_delta_position = tf.stack([tf.math.sin(yaw), tf.math.cos(yaw), zeros], axis=3) * displacement
+
+        # Apply delta
+        gripper_position = state['gripper'][:, tf.newaxis, tf.newaxis] + gripper_delta_position
+
+        actions = {
+            'gripper_position': gripper_position,
+        }
+        return actions
 
     def sample_action(self,
                       action_rng: np.random.RandomState,
