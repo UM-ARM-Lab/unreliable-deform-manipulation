@@ -226,8 +226,6 @@ class RopeDraggingScenario(Base3DScenario):
 
         actions = {
             'gripper_position': gripper_position,
-            'gripper_delta_position': gripper_delta_position,
-            'timeout': [action_params['dt']],
         }
         return actions
 
