@@ -100,10 +100,10 @@ class PlanAndExecute:
         self.trial_idx = 0
         attempt_idx = 0
         while True:
+            self.randomize_environment()
             done = self.run_and_check_valid()
             if done:
                 return
-            self.randomize_environment()
             attempt_idx += 1
 
     def run_and_check_valid(self):
