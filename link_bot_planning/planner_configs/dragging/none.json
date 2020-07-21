@@ -1,8 +1,8 @@
 {
-  "total_timeout": 60,
+  "total_timeout": 180,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 60
+    "timeout": 180
   },
   "recovery": {
     "use_recovery": false
@@ -44,7 +44,7 @@
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
-  "goal_threshold": 0.05,
+  "goal_threshold": 0.03,
   "fixed_goal": null,
   "real_time_rate": 0.0,
   "table_config": {

@@ -454,7 +454,10 @@ class RopeDraggingScenario(Base3DScenario):
         }
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
-        self.reset_sim_srv(EmptyRequest())
+        # If we reset the sim we'd get less interesting/diverse obstacle configurations
+        # but without resetting we can't have repeatable trials because the rope can get in the way differently
+        # depending on where it ended up from the previous trial
+        # self.reset_sim_srv(EmptyRequest())
 
         # set random positions for all the objects
         for services in self.movable_object_services.values():
