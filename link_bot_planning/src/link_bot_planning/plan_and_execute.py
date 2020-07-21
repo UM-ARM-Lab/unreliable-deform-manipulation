@@ -27,6 +27,7 @@ from link_bot_pycommon.ros_pycommon import get_occupancy_data
 class TrialStatus(Enum):
     Reached = "reached"
     Timeout = "timeout"
+    NotProgressingNoRecovery = "not_progressing_no_recovery"
 
 
 @dataclass_json
@@ -209,6 +210,17 @@ class PlanAndExecute:
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:
                     # Nothing else to do here, just give up
+                    trial_status = TrialStatus.NotProgressingNoRecovery
+                    print(
+                        Fore.BLUE + f"Trial {self.trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
+                    trial_data_dict = {
+                        'total_time': time_since_start,
+                        'trial_status': trial_status,
+                        'trial_idx': self.trial_idx,
+                        'goal': goal,
+                        'steps': steps_data,
+                    }
+                    self.on_trial_complete(trial_data_dict)
                     return True
                 else:
                     recovery_action = self.recovery_policy(environment=planning_query.environment,
@@ -251,7 +263,7 @@ class PlanAndExecute:
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Goal reached!" + Fore.RESET)
                 else:
                     trial_status = TrialStatus.Timeout
-                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {time_since_start:.3f}" + Fore.RESET)
+                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
                 trial_data_dict = {
                     'total_time': time_since_start,
                     'trial_status': trial_status,
