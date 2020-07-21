@@ -21,16 +21,6 @@ from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays
 
 
-def invert_dict(data: List) -> Dict:
-    d = {}
-    for di in data:
-        for k, v in di.items():
-            if k not in d:
-                d[k] = []
-            d[k].append(v)
-    return d
-
-
 def make_cell(text, tablefmt):
     if isinstance(text, list):
         if tablefmt == 'latex_raw':

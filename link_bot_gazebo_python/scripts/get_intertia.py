@@ -28,11 +28,10 @@ def main():
     cylinder_parser.set_defaults(func=cylinder)
 
     args = parser.parse_args()
-    print(args)
     inertia = args.func(args)
-    print("ixx: {:.8f}".format(inertia[0]))
-    print("iyy: {:.8f}".format(inertia[1]))
-    print("izz: {:.8f}".format(inertia[2]))
+    print(f"<ixx>{inertia[0]:.8f}</ixx>")
+    print(f"<iyy>{inertia[1]:.8f}</iyy>")
+    print(f"<izz>{inertia[2]:.8f}</izz>")
 
 
 if __name__ == '__main__':

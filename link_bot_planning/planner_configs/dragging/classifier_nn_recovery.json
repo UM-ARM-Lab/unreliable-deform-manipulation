@@ -1,8 +1,8 @@
 {
-  "total_timeout": 180,
+  "total_timeout": 60,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 180
+    "timeout": 60
   },
   "recovery": {
     "use_recovery": true,

@@ -48,7 +48,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.max_action_attempts = 1000
 
         self.movable_object_services = {}
-        for i in range(1, 12):
+        for i in range(1, 10):
             k = f'moving_box{i}'
             self.movable_object_services[k] = make_movable_object_services(k)
 
@@ -382,8 +382,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        # add more inflating to reduce the number of truly unacheivable gols
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=planner_params['goal_threshold'],
+                                     radius_m=2*planner_params['goal_threshold'],
                                      res=environment['res'])
         goal_extent = planner_params['goal_extent']
 
@@ -463,7 +464,7 @@ class RopeDraggingScenario(Base3DScenario):
             services['set'](set_msg)
 
         req = WorldControlRequest()
-        req.seconds = 0.1
+        req.seconds = 0.2
         self.world_control_srv(req)
 
         for services in self.movable_object_services.values():
