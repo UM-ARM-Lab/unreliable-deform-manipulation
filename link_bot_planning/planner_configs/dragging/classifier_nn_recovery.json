@@ -45,7 +45,7 @@
   "classifier_model_dir": "cl_trials/dragging_balance/July_11_17-08-01_eccab5e838/best_checkpoint",
   "accept_threshold": 0.5,
   "movable_obstacles": {},
-  "goal_threshold": 0.03,
+  "goal_threshold": 0.05,
   "fixed_goal": null,
   "real_time_rate": 0.0,
   "table_config": {
