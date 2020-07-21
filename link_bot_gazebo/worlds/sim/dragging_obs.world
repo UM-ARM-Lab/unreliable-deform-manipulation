@@ -1,6 +1,10 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
     <world name="default">
+        <scene>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+        </scene>
         <gui>
             <camera name='user_camera'>
                 <pose frame=''>0.75 0 3.23 0 1.35 -3.14159</pose>
@@ -38,8 +42,8 @@
             <name>moving_box1</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>0.0 0.65 0 0 0 0</pose>
+            <uri>model://corner1</uri>
+            <pose>0.0 0.65 0 0 0 1.5707</pose>
             <name>moving_box2</name>
         </include>
         <include>
@@ -58,36 +62,25 @@
             <name>moving_box5</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>0.65 .0 0 0 0 0</pose>
+            <uri>model://corner1</uri>
+            <pose>-0.65 -0.65 0 0 0 0</pose>
             <name>moving_box6</name>
         </include>
         <include>
             <uri>model://moving_box</uri>
-            <pose>-0.65 -0.65 0 0 0 0</pose>
+            <pose>0.0 -0.65 0 0 0 0</pose>
             <name>moving_box7</name>
         </include>
         <include>
             <uri>model://moving_box</uri>
-            <pose>0.0 -0.65 0 0 0 0</pose>
+            <pose>0.65 -0.65 0 0 0 0</pose>
             <name>moving_box8</name>
         </include>
         <include>
-            <uri>model://moving_box</uri>
-            <pose>0.65 -0.65 0 0 0 0</pose>
+            <uri>model://corner1</uri>
+            <pose>0.5 -0.4 0 0 0 -0.8</pose>
             <name>moving_box9</name>
         </include>
-        <include>
-            <uri>model://moving_box</uri>
-            <pose>0.35 0.0 0 0 0 0</pose>
-            <name>moving_box10</name>
-        </include>
-        <include>
-            <uri>model://moving_box</uri>
-            <pose>0.35 -0.35 0 0 0 0</pose>
-            <name>moving_box11</name>
-        </include>
-
 
         <include>
             <uri>model://debugging_camera</uri>

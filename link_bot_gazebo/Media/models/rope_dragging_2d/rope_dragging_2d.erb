@@ -3,7 +3,9 @@ mass = ENV['mass'].to_f
 length = ENV['length'].to_f
 radius = ENV['radius'].to_f
 link_length = length/n_links
-link_mass = mass/n_links %>
+link_mass = mass/n_links
+colors = ["Red", "Orange", "Yellow", "Green", "Blue", "Purple", "White", "Black"]
+n_colors = colors.length%>
 <sdf version="1.6">
     <model name="link_bot">
         <pose frame="">0 0 0 0 0 0</pose>
@@ -111,8 +113,10 @@ link_mass = mass/n_links %>
                 </cylinder>
             </geometry>
             <material>
-                <ambient>0.8 0.80 0.39 1.0</ambient>
-                <diffuse>0.9 0.70 0.29 1.0</diffuse>
+                <script>
+                    <name>Gazebo/<%=colors[i%n_colors]%> </name>
+                    <uri>file://media/materials/scripts/gazebo.material</uri>
+                </script>
             </material>
         </visual>
         <self_collide>1</self_collide>
@@ -198,7 +202,8 @@ link_mass = mass/n_links %>
             <pose frame=''>0 0 0 0 0 0</pose>
             <geometry>
                 <sphere>
-                    <radius><%=radius%></radius>
+                    <radius><%=radius%>
+                    </radius>
                 </sphere>
             </geometry>
             <material>

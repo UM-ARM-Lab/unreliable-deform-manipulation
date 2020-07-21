@@ -1,21 +1,34 @@
 <sdf version="1.6">
-    <model name="wall1">
+    <model name="corner1">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
-            <pose>0 0 0.1 0 0 0 0</pose>
             <inertial>
-                <pose>0 0 -0.15 0 0 0</pose>
+                <pose>0 0.1 -0.02 0 0 0</pose>
                 <inertia>
-                    <ixx>0.00541667</ixx>
-                    <iyy>0.05208333</iyy>
-                    <izz>0.04708333</izz>
+                    <ixx>0.00416667</ixx>
+                    <iyy>0.02166667</iyy>
+                    <izz>0.02416667</izz>
                 </inertia>
                 <mass>1</mass>
             </inertial>
-            <visual name="visual">
+            <pose>0 0 0.05 0 0 0 0</pose>
+            <visual name="visual1">
+                <pose>0 0 0 0 0 0</pose>
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.25</size>
+                        <size>0.5 0.08 0.1</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.6 0.55 0.5 1.0</ambient>
+                    <diffuse>0.6 0.55 0.5 1.0</diffuse>
+                </material>
+            </visual>
+            <visual name="visual2">
+                <pose>0.21 0.10 0 0 0 1.5707</pose>
+                <geometry>
+                    <box>
+                        <size>0.2 0.08 0.1</size>
                     </box>
                 </geometry>
                 <material>
@@ -26,7 +39,29 @@
             <collision name="collision1">
                 <geometry>
                     <box>
-                        <size>0.75 0.1 0.25</size>
+                        <size>0.5 0.08 0.1</size>
+                    </box>
+                </geometry>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1.0</mu>
+                            <mu2>1.0</mu2>
+                        </ode>
+                    </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e12</kd>
+                        </ode>
+                    </contact>
+                </surface>
+            </collision>
+            <collision name="collision2">
+                <pose>0.21 0.1 0 0 0 1.5707</pose>
+                <geometry>
+                    <box>
+                        <size>0.2 0.08 0.1</size>
                     </box>
                 </geometry>
                 <surface>

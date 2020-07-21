@@ -1,5 +1,14 @@
 <sdf version='1.6'>
     <world name='default'>
+        <scene>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+            <sky>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
         <gui>
             <camera name='user_camera'>
                 <pose frame=''>2.89 -2.13 2.55 0 0.56 2.34</pose>
