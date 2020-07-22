@@ -11,6 +11,7 @@ import pathlib
 
 import numpy as np
 
+from link_bot_planning.my_planner import MyPlannerStatus
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
@@ -46,7 +47,13 @@ def main():
             metrics_str = metrics_file.read()
         datum = json.loads(metrics_str.decode("utf-8"))
 
-        plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
+        for step in datum['steps']:
+            status = step['planning_result']['status']
+            if status == 'MyPlannerStatus.NotProgressing':
+                print("recovery")
+
+        if if_filter_with_status(datum, args.filter_by_status):
+            plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
 
         # print(f"{trial_idx} ", end='', flush=True)
         # for step_idx, step in enumerate(steps):
@@ -63,7 +70,7 @@ def main():
         #         plot_recovery(args, scenario, step, metadata)
         # print()
 
-        input(f"Trial {trial_idx} complete with status {datum['trial_status']}. press enter to see the next trial.")
+        print(f"Trial {trial_idx} complete with status {datum['trial_status']}")
 
 
 def plot_recovery(args, scenario, step, metadata):
@@ -107,6 +114,20 @@ def plot_plan(args, scenario, step, metadata, fallback_labeing_params: Dict):
                                         horizon=metadata['horizon'])
 
 
+def if_filter_with_status(datum, filter_by_status):
+    if not filter_by_status:
+        return True
+
+    # for step in datum['steps']:
+    #     status = step['planning_result']['status']
+    #     if status == 'MyPlannerStatus.NotProgressing':
+    #         return True
+    if datum['trial_status'] == 'TrialStatus.Timeout':
+        return True
+
+    return False
+
+
 def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     planner_params = metadata['planner_params']
     goal_threshold = planner_params['goal_threshold']
@@ -118,6 +139,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     first_step = steps[0]
     environment = numpify(first_step['planning_query']['environment'])
     all_actual_states = []
+    types = []
     all_predicted_states = []
     all_actions = []
     for step_idx, step in enumerate(steps):
@@ -131,6 +153,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
             predicted_states = [None, None]
 
         all_actions.extend(actions)
+        types.extend([step['type']] * len(actions))
         all_actual_states.extend(actual_states[:-1])
         all_predicted_states.extend(predicted_states[:-1])
 
@@ -142,6 +165,12 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
 
     anim = RvizAnimationController(n_time_steps=len(all_actual_states))
 
+    def _type_action_color(type_t: str):
+        if type_t == 'executed_plan':
+            return 'b'
+        elif type_t == 'executed_recovery':
+            return '#ff00ff'
+
     scenario.reset_planning_viz()
     while not anim.done:
         t = anim.t()
@@ -151,9 +180,13 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
         c = '#0000ffaa'
         if len(all_actions) > 0:
             if t < anim.max_t:
-                scenario.plot_action_rviz(s_t, all_actions[t])
+                type_t = types[t]
+                action_color = _type_action_color(type_t)
+                scenario.plot_action_rviz(s_t, all_actions[t], color=action_color)
             else:
-                scenario.plot_action_rviz(all_actual_states[t - 1], all_actions[t - 1])
+                type_t = types[t - 1]
+                action_color = _type_action_color(type_t)
+                scenario.plot_action_rviz(all_actual_states[t - 1], all_actions[t - 1], color=action_color)
 
         if s_t_pred is not None:
             scenario.plot_state_rviz(s_t_pred, label='predicted', color=c)

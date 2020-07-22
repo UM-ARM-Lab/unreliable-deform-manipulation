@@ -210,6 +210,7 @@ class PlanAndExecute:
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:
                     # Nothing else to do here, just give up
+                    end_state = self.planner.scenario.get_state()
                     trial_status = TrialStatus.NotProgressingNoRecovery
                     print(
                         Fore.BLUE + f"Trial {self.trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
@@ -217,6 +218,7 @@ class PlanAndExecute:
                         'total_time': time_since_start,
                         'trial_status': trial_status,
                         'trial_idx': self.trial_idx,
+                        'end_state': end_state,
                         'goal': goal,
                         'steps': steps_data,
                     }
@@ -270,6 +272,7 @@ class PlanAndExecute:
                     'trial_idx': self.trial_idx,
                     'goal': goal,
                     'steps': steps_data,
+                    'end_state': end_state,
                 }
                 self.on_trial_complete(trial_data_dict)
                 break

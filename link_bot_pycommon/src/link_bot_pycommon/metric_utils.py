@@ -38,7 +38,7 @@ def dict_to_pvalue_table(data_dict: Dict, table_format: str = 'fancy_grid', fmt:
                 prefix = "! "
             else:
                 prefix = "  "
-            if j > i:
+            if j != i:
                 pvalues[i, j + 1] = prefix + fmt.format(pvalue)
             else:
                 pvalues[i, j + 1] = '-'

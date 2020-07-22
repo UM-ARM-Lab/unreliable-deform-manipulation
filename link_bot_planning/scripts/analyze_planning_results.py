@@ -107,6 +107,7 @@ def metrics_main(args):
 
         final_execution_to_goal_errors = []
         total_times = []
+        n_recovery = 0
         # TODO: parallelize this
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
@@ -116,9 +117,10 @@ def metrics_main(args):
             total_time = datum['total_time']
             goal = datum['goal']
 
-            for step in steps[::-1]:
-                final_actual_state = step['execution_result']['path'][-1]
-                break
+            final_actual_state = steps[-1]['execution_result']['path'][-1]
+            for step in steps:
+                if step['type'] == 'executed_recovery':
+                    n_recovery += 1
 
             final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
             final_execution_to_goal_errors.append(final_execution_to_goal_error)
@@ -128,6 +130,7 @@ def metrics_main(args):
         ###############################################################################################
 
         n_for_metrics = len(final_execution_to_goal_errors)
+        print(legend_nickname, n_recovery)
 
         if not args.no_plot:
             # Execution Success Plot

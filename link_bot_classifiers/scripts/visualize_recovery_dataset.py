@@ -82,8 +82,9 @@ def visualize_best_to_worst(args, dataset: RecoveryDataset):
 
     # print("BEST")
     rstepper = RvizSimpleStepper()
-    for example in examples_to_sort:
+    for i, example in enumerate(examples_to_sort):
         visualize_example(scenario, example, dataset.state_keys, dataset.action_keys)
+        print(i)
         rstepper.step()
 
     # print("WORST")
