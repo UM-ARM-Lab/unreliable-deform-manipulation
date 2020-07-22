@@ -3,13 +3,6 @@
     <arg name="use_victor"  default="false"/>
     <arg name="use_val"     default="false"/>
 
-    <include file="$(find physical_robot_3d_rope_shim)/launch/static_transforms.launch">
-        <arg name="use_sim_time"    value="false"/>
-        <arg name="use_mocap_shims" value="true"/>
-        <arg name="use_victor"      value="$(arg use_victor)"/>
-        <arg name="use_val"         value="$(arg use_val)"/>
-    </include>
-
     <include file="$(find lightweight_vicon_bridge)/launch/vicon_bridge.launch" if="$(arg live)">
         <arg name="use_sim_time" value="false"/>
     </include>

@@ -1,0 +1,115 @@
+<sdf version="1.6">
+    <model name="car_front">
+        <allow_auto_disable>true</allow_auto_disable>
+        <link name="link_1">
+            <kinematic>true</kinematic>
+            <pose>-0.644539 -0.18 0.23 0 -0 0.8</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.4 0.4 0.8 1.0</ambient>
+                    <diffuse>0.4 0.4 0.8 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+        <link name="link_2">
+            <kinematic>true</kinematic>
+            <pose>-0.370443 -0.03 0.23 0 -0 0.2</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.4 0.4 0.8 1.0</ambient>
+                    <diffuse>0.4 0.4 0.8 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+        <link name="link_3">
+            <kinematic>true</kinematic>
+            <pose>0 0 0.23 0 0 0 0</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.4 0.4 0.8 1.0</ambient>
+                    <diffuse>0.4 0.4 0.8 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+        <link name="link_4">
+            <kinematic>true</kinematic>
+            <pose>0.37331 -0.03 0.23 0 0 -0.2</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.4 0.4 0.8 1.0</ambient>
+                    <diffuse>0.4 0.4 0.8 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+        <link name="link_5">
+            <kinematic>true</kinematic>
+            <pose>0.658656 -0.18 0.23 0 0 -0.8</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.4 0.4 0.8 1.0</ambient>
+                    <diffuse>0.4 0.4 0.8 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.5 0.15 0.47</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+    </model>
+</sdf>

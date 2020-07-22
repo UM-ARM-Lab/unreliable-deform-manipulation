@@ -1,0 +1,26 @@
+<sdf version="1.6">
+    <model name="car_tube">
+        <static>true</static>
+        <allow_auto_disable>true</allow_auto_disable>
+        <link name="link_1">
+            <kinematic>true</kinematic>
+            <pose>0 0 0 0 0 0 0</pose>
+            <visual name="visual">
+                <geometry>
+                    <cylinder>
+                        <radius>0.025</radius>
+                        <length>0.54</length>
+                    </cylinder>
+                </geometry>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <cylinder>
+                        <radius>0.025</radius>
+                        <length>0.54</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+        </link>
+    </model>
+</sdf>

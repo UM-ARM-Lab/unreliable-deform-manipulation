@@ -1,0 +1,24 @@
+<sdf version="1.6">
+    <model name="car_alternator">
+        <static>true</static>
+        <allow_auto_disable>true</allow_auto_disable>
+        <link name="link_1">
+            <kinematic>true</kinematic>
+            <pose>0 0 0.105 0 0 0 0</pose>
+            <visual name="visual">
+                <geometry>
+                    <box>
+                        <size>0.25 0.23 0.21</size>
+                    </box>
+                </geometry>
+            </visual>
+            <collision name="collision">
+                <geometry>
+                    <box>
+                        <size>0.25 0.23 0.21</size>
+                    </box>
+                </geometry>
+            </collision>
+        </link>
+    </model>
+</sdf>
