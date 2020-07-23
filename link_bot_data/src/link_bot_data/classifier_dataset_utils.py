@@ -2,6 +2,7 @@ from typing import Dict
 
 import numpy as np
 import tensorflow as tf
+from time import perf_counter
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
@@ -34,7 +35,7 @@ def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
                                  dataset: DynamicsDataset,
                                  labeling_params: Dict):
-    batch_size = 128
+    batch_size = 16
     classifier_horizon = labeling_params['classifier_horizon']
     scenario = fwd_model.scenario
     assert classifier_horizon >= 2
@@ -44,12 +45,14 @@ def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
         pass
     n_total_batches = idx
 
+    t0 = perf_counter()
     for idx, example in enumerate(tf_dataset):
-        print(f"{idx} / {n_total_batches}")
+        dt = perf_counter() - t0
+        print(f"{idx} / {n_total_batches} batches in {dt:.3f} seconds")
         actual_batch_size = int(example['traj_idx'].shape[0])
 
         for start_t in range(0, dataset.sequence_length - classifier_horizon + 1, labeling_params['start_step']):
-            prediction_end_t = dataset.sequence_length
+            prediction_end_t = min(dataset.sequence_length, start_t + 20)
             actual_prediction_horizon = prediction_end_t - start_t
             actual_states_from_start_t = {k: example[k][:, start_t:prediction_end_t] for k in fwd_model.state_keys}
             actions_from_start_t = {k: example[k][:, start_t:prediction_end_t - 1] for k in fwd_model.action_keys}

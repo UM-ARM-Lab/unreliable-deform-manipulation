@@ -68,7 +68,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             "car_pulley",
             "car_engine2",
         ]
-        self.start_object_poses = self.get_object_poses(self.obstacles)
+        # self.start_object_poses = self.get_object_poses(self.obstacles)
 
         self.buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.buffer)
@@ -204,9 +204,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def noisy_object_poses(self, env_rng: np.random.RandomState, obstacles: List):
         object_poses = {}
         for obj, pose in self.start_object_poses.items():
-            noisy_position = [pose.pose.position.x + env_rng.uniform(-0.05, 0.05),
-                              pose.pose.position.y + env_rng.uniform(-0.05, 0.05),
-                              pose.pose.position.z + env_rng.uniform(-0.05, 0.05)]
+            noisy_position = [pose.pose.position.x + env_rng.uniform(-0.1, 0.1),
+                              pose.pose.position.y + env_rng.uniform(-0.1, 0.1),
+                              pose.pose.position.z + env_rng.uniform(-0.1, 0.1)]
 
             object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
         return object_poses

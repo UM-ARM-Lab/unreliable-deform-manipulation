@@ -78,7 +78,7 @@ def main():
 
     t0 = perf_counter()
     total_count = 0
-    for mode in ['train', 'test', 'val']:
+    for mode in ['val', 'test', 'train']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
 
         full_output_directory = args.out_dir / mode
@@ -96,7 +96,7 @@ def main():
                 with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                     writer.write(example)
                 total_count += 1
-            print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
+                print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
 
 
 if __name__ == '__main__':

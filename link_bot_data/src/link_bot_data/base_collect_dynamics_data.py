@@ -154,7 +154,7 @@ def generate(service_provider, params: Dict, args):
 
     # full_output_directory = data_directory(args.outdir, args.trajs)
     print("USING OUTDIR EXACTLY")
-    full_output_directory = args.outdir
+    full_output_directory = pathlib.Path(args.outdir)
     full_output_directory.mkdir(exist_ok=True)
 
     if not os.path.isdir(full_output_directory) and args.verbose:
