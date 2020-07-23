@@ -148,6 +148,7 @@ class NNClassifier(MyKerasModel):
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
             # # DEBUG
+            # b = 0
             # raster_dict = {
             #     'env': tf.clip_by_value(tf.reduce_max(local_voxel_grid_t[b][:, :, :, 1:], axis=-1), 0, 1),
             #     'origin': local_env_origin_t[b].numpy(),
@@ -167,10 +168,10 @@ class NNClassifier(MyKerasModel):
 
             # debugging_s_t = {k: input_dict[add_predicted(k)][b, t] for k in self.state_keys}
             # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
-            # # true state (not known to classifier!)
+            # true state (not known to classifier!)
             # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
             # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
-            # # action
+            # action
             # if t < time - 1:
             #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
             #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
@@ -188,7 +189,7 @@ class NNClassifier(MyKerasModel):
             # bbox_msg.dimensions.z = height
             # self.local_env_bbox_pub.publish(bbox_msg)
 
-            # anim.step()
+            # # anim.step()
             # # END DEBUG
 
             conv_z = local_voxel_grid_t

@@ -650,6 +650,15 @@
           <izz>0.00010001</izz>
         </inertia>
       </inertial>
+      <collision name='drive50_cylinder'>
+        <pose frame=''>0 0 0.13 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.045</radius>
+            <length>0.15</length>
+          </cylinder>
+        </geometry>
+      </collision>
       <collision name='drive50_fixed_joint_lump__end_effector_left_collision'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
@@ -1238,6 +1247,15 @@
           <izz>0.00010001</izz>
         </inertia>
       </inertial>
+      <collision name='drive10_cylinder'>
+        <pose frame=''>0 0 0.13 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.045</radius>
+            <length>0.15</length>
+          </cylinder>
+        </geometry>
+      </collision>
       <collision name='drive10_fixed_joint_lump__end_effector_right_collision'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>

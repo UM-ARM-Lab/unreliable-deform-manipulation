@@ -1,0 +1,77 @@
+{
+  "total_timeout": 600,
+  "termination_criteria": {
+    "attempted_extensions_threshold": 32,
+    "timeout": 60
+  },
+  "left_gripper_reset_position": [
+    1.1,
+    0.15,
+    1.0
+  ],
+  "right_gripper_reset_position": [
+    1.1,
+    -0.15,
+    1.0
+  ],
+  "extent": [
+    -0.7,
+    0.5,
+    0.1,
+    1.5,
+    -0.5,
+    0.80
+  ],
+  "goal_extent": [
+    0.6,
+    1.1,
+    -0.4,
+    0.4,
+    0.6,
+    0.85
+  ],
+  "objects_extent": [
+    0.6,
+    1.0,
+    -0.45,
+    0.45,
+    0.625,
+    0.6251
+  ],
+  "recovery": {
+    "use_recovery": true,
+    "recovery_model_dir": "rcv_trials/weighted_loss/July_19_02-44-36_7fbf55043c"
+  },
+  "fwd_model_dir": [
+    "dy_trials/no_victor_longer_0/best_checkpoint",
+    "dy_trials/no_victor_longer_1/best_checkpoint",
+    "dy_trials/no_victor_longer_2/best_checkpoint",
+    "dy_trials/no_victor_longer_3/best_checkpoint",
+    "dy_trials/no_victor_longer_4/best_checkpoint",
+    "dy_trials/no_victor_longer_5/best_checkpoint",
+    "dy_trials/no_victor_longer_6/best_checkpoint",
+    "dy_trials/no_victor_longer_7/best_checkpoint"
+  ],
+  "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
+  "accept_threshold": 0.98,
+  "goal_threshold": 0.04,
+  "fixed_goal": {
+    "midpoint": [
+      -0.18,
+      1.07,
+      -0.08
+    ]
+  },
+  "real_time_rate": 0.0,
+  "table_config": {
+    "nickname": [
+      "Classifier + Recovery"
+    ],
+    "classifier": "Learned",
+    "recovery": "Learned",
+    "dynamics": [
+      "Ensemble",
+      "Unconstrained"
+    ]
+  }
+}
