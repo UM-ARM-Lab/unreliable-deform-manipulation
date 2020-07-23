@@ -152,7 +152,7 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
                                          "defaulting to 1.1");
       double const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
       double const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
-      ROS_WARN_STREAM(gripper1_dist << " " << gripper2_dist << " " << dist_factor.first);
+      // ROS_WARN_STREAM(gripper1_dist << " " << gripper2_dist << " " << dist_factor.first);
       max_dist_between_gripper_and_link_ = dist_factor.first * std::max(gripper1_dist, gripper2_dist);
       ROS_WARN_STREAM_COND(max_dist_between_gripper_and_link_ < 1e-3, "max_dist_between_gripper_and_link_ is set to "
                                                                           << max_dist_between_gripper_and_link_
@@ -308,9 +308,9 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
     // Check if the rope has become overstretched
     auto const rewind_needed = [this] {
       auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
-      ROS_WARN_STREAM(gripper1_->WorldPose().Pos().Z() << " "
-      << gripper1_rope_link_->WorldPose().Pos().Z() << " "
-      << gripper1_dist << " ");
+      // ROS_WARN_STREAM(gripper1_->WorldPose().Pos().Z() << " "
+      // << gripper1_rope_link_->WorldPose().Pos().Z() << " "
+      // << gripper1_dist << " ");
       auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
       return (gripper1_dist > max_dist_between_gripper_and_link_) ||
              (gripper2_dist > max_dist_between_gripper_and_link_);

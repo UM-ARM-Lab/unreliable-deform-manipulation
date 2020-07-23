@@ -46,9 +46,9 @@
     </group>
 
     <group if="$(arg use_val)">
-        <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_val_static_transform.launch" if="$(arg use_mocap_shims)">
+        <!-- <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_val_static_transform.launch" if="$(arg use_mocap_shims)">
             <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-        </include>
+        </include> -->
 
         <group ns="static_transform_publishers">
             <node pkg="tf2_ros" type="static_transform_publisher" name="active_robot_root_broadcaster" required="true"
@@ -70,10 +70,10 @@
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>
             </node>
 
-            <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
+            <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="active_table_broadcaster" required="true"
                   args="0 0 0 0 0 0 short_childs_table_surface table_surface" if="$(arg use_mocap_shims)">
                 <param name="use_sim_time" value="$(arg use_sim_time)"/>
-            </node>
+            </node> -->
         </group>
     </group>
 </launch>

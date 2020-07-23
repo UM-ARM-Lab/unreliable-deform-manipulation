@@ -650,7 +650,7 @@
           <izz>0.00010001</izz>
         </inertia>
       </inertial>
-      <collision name='drive50_cylinder'>
+      <collision name='link_bot_drive50_cylinder'>
         <pose frame=''>0 0 0.07 0 -0 0</pose>
         <geometry>
           <cylinder>
@@ -659,7 +659,7 @@
           </cylinder>
         </geometry>
       </collision>
-      <collision name='drive50_cylinder2'>
+      <collision name='link_bot_drive50_cylinder2'>
         <pose frame=''>0 0 0.09 0 -0 0</pose>
         <geometry>
           <cylinder>
@@ -1256,7 +1256,7 @@
           <izz>0.00010001</izz>
         </inertia>
       </inertial>
-      <collision name='drive10_cylinder'>
+      <collision name='link_bot_drive10_cylinder'>
         <pose frame=''>0 0 0.07 0 -0 0</pose>
         <geometry>
           <cylinder>
@@ -1265,7 +1265,7 @@
           </cylinder>
         </geometry>
       </collision>
-      <collision name='drive10_cylinder2'>
+      <collision name='link_bot_drive10_cylinder2'>
         <pose frame=''>0 0 0.09 0 -0 0</pose>
         <geometry>
           <cylinder>

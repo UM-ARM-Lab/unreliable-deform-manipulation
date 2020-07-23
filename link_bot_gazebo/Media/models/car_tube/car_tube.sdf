@@ -1,6 +1,5 @@
 <sdf version="1.6">
     <model name="car_tube">
-        <static>true</static>
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <kinematic>true</kinematic>

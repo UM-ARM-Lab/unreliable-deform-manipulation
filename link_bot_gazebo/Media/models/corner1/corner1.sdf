@@ -3,7 +3,7 @@
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <inertial>
-                <pose>0 0.1 -0.02 0 0 0</pose>
+                <pose>0 0.05 -0.05 0 0 0</pose>
                 <inertia>
                     <ixx>0.00416667</ixx>
                     <iyy>0.02166667</iyy>
