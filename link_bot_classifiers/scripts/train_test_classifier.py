@@ -262,6 +262,8 @@ def eval_main(args, seed: int):
 
 
 def main():
+    rospy.init_node("train_test_classifier")
+
     np.set_printoptions(linewidth=250, precision=4, suppress=True)
     parser = argparse.ArgumentParser()
 
@@ -313,8 +315,6 @@ def main():
     print("Using seed {}".format(seed))
     np.random.seed(seed)
     tf.random.set_seed(seed)
-
-    rospy.init_node("train_test_classifier")
 
     if args == argparse.Namespace():
         parser.print_usage()

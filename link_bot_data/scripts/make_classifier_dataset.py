@@ -78,7 +78,7 @@ def main():
 
     t0 = perf_counter()
     total_count = 0
-    for mode in ['val', 'test', 'train']:
+    for mode in ['train', 'val', 'test']:
         tf_dataset = dataset.get_datasets(mode=mode, take=take_split[mode])
 
         full_output_directory = args.out_dir / mode

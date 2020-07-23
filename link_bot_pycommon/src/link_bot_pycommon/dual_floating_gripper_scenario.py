@@ -2,6 +2,7 @@ from typing import Dict, Optional, List
 
 import numpy as np
 from time import sleep
+from tf import transformations
 import tf2_ros
 import ros_numpy
 import tensorflow as tf
@@ -13,7 +14,6 @@ from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
 from matplotlib import colors
 from link_bot_data.link_bot_dataset_utils import add_predicted
-from tf import transformations
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
