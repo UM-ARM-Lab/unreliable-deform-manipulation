@@ -23,6 +23,8 @@ limit_gpu_mem(6)
 
 
 def main():
+    rospy.init_node("make_classifier_dataset")
+
     tf.get_logger().setLevel(logging.ERROR)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
@@ -42,12 +44,11 @@ def main():
 
     dataset = DynamicsDataset([args.dataset_dir])
 
-    rospy.init_node("make_classifier_dataset")
-
-    success = mkdir_and_ask(args.out_dir, parents=True)
-    if not success:
-        print(Fore.RED + "Aborting" + Fore.RESET)
-        return
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    # success = mkdir_and_ask(args.out_dir, parents=True)
+    # if not success:
+    #     print(Fore.RED + "Aborting" + Fore.RESET)
+    #     return
 
     new_hparams_filename = args.out_dir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams

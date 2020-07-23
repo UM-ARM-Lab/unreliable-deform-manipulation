@@ -152,7 +152,11 @@ def generate(service_provider, params: Dict, args):
 
     assert args.trajs % params['trajs_per_file'] == 0, f"num trajs must be multiple of {params['trajs_per_file']}"
 
-    full_output_directory = data_directory(args.outdir, args.trajs)
+    # full_output_directory = data_directory(args.outdir, args.trajs)
+    print("USING OUTDIR EXACTLY")
+    full_output_directory = args.outdir
+    full_output_directory.mkdir(exist_ok=True)
+
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
         os.mkdir(full_output_directory)

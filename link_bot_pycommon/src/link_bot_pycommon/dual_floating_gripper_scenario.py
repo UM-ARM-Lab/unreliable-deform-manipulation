@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import numpy as np
 from time import sleep
@@ -44,18 +44,34 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.max_action_attempts = 500
 
         self.object_reset_poses = {
-            'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            # 'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_hood": (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_alternator": (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_tube_and_tank": (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_coolant_tank": (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_pulley": (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            "car_engine2": (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
+
+        # Hacking for car env randomization
+        self.obstacles = [
+            "car_hood",
+            "car_alternator",
+            "car_tube_and_tank",
+            "car_coolant_tank",
+            "car_pulley",
+            "car_engine2",
+        ]
+        self.start_object_poses = self.get_object_poses(self.obstacles)
 
         self.buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.buffer)
-
 
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
@@ -70,7 +86,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_rope_state_srv(reset)
 
     def reset_robot(self, data_collection_params: Dict):
-        self.goto_home(EmptyRequest())
+        try:
+            self.goto_home(EmptyRequest())
+        except Exception:
+            pass
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
@@ -182,8 +201,18 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.seconds = 6
         self.world_control_srv(req)
 
+    def noisy_object_poses(self, env_rng: np.random.RandomState, obstacles: List):
+        object_poses = {}
+        for obj, pose in self.start_object_poses.items():
+            noisy_position = [pose.pose.position.x + env_rng.uniform(-0.05, 0.05),
+                              pose.pose.position.y + env_rng.uniform(-0.05, 0.05),
+                              pose.pose.position.z + env_rng.uniform(-0.05, 0.05)]
+
+            object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
+        return object_poses
+
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
-        # move the objects out of the way
+        # # move the objects out of the way
         self.set_object_poses(self.object_reset_poses)
 
         # Let go of rope
@@ -203,16 +232,19 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         grasp.data = True
         self.grasping_rope_srv(grasp)
 
-        # replace the objects in a new random configuration
-        random_object_poses = {
-            'box1': self.random_object_pose(env_rng, objects_params),
-            'box2': self.random_object_pose(env_rng, objects_params),
-            'box3': self.random_object_pose(env_rng, objects_params),
-            'box4': self.random_object_pose(env_rng, objects_params),
-            'box5': self.random_object_pose(env_rng, objects_params),
-            'hook1': self.random_object_pose(env_rng, objects_params),
-            'hook2': self.random_object_pose(env_rng, objects_params),
-        }
+        # # replace the objects in a new random configuration
+        # random_object_poses = {
+        #     'box1': self.random_object_pose(env_rng, objects_params),
+        #     'box2': self.random_object_pose(env_rng, objects_params),
+        #     'box3': self.random_object_pose(env_rng, objects_params),
+        #     'box4': self.random_object_pose(env_rng, objects_params),
+        #     'box5': self.random_object_pose(env_rng, objects_params),
+        #     'hook1': self.random_object_pose(env_rng, objects_params),
+        #     'hook2': self.random_object_pose(env_rng, objects_params),
+        # }
+
+        # add noise to the objects locations
+        random_object_poses = self.noisy_object_poses(env_rng, self.obstacles)
         self.set_object_poses(random_object_poses)
 
         # wait a second so that the rope can drap on the objects AND the planning scene monitor can update...
@@ -252,12 +284,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)
 
-        # state is in gazebo world frame, and we need to translate them by the position of the robot in gazebo world frame
-        robot_to_world = buffer.lookup_transform("robot_root", "gazebo_world", rospy.Time(), rospy.Duration(0.1))
-        robot_position = ros_numpy.numpify(robot_to_world.transform.translation)
-
-        gripper1_robot = state['gripper1'] - robot_position
-        gripper2_robot = state['gripper2'] - robot_position
+        # This assumes robot is at 0 0 0
+        robot_position = tf.constant([[0, 0, 0]], tf.float32)
+        gripper1_robot = state['gripper1']
+        gripper2_robot = state['gripper2']
 
         rope_points_robot = rope_points - tf.expand_dims(robot_position, axis=-2)
         rope_robot = tf.reshape(rope_points_robot, rope.shape)

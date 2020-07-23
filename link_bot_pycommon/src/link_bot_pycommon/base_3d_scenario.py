@@ -15,9 +15,9 @@ from tf import transformations
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
+from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from gazebo_msgs.srv import SetModelStateRequest
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl
 from moonshine.moonshine_utils import remove_batch, add_batch
@@ -55,6 +55,7 @@ class Base3DScenario(ExperimentScenario):
         self.sample_idx = 0
 
         self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
+        self.get_model_state_srv = rospy.ServiceProxy("gazebo/get_model_state", GetModelState)
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
@@ -299,3 +300,12 @@ class Base3DScenario(ExperimentScenario):
             set_req.model_state.pose.orientation.z = orientation[2]
             set_req.model_state.pose.orientation.w = orientation[3]
             self.set_model_state_srv(set_req)
+
+    def get_object_poses(self, names: List):
+        poses = {}
+        for object_name in names:
+            get_req = GetModelStateRequest()
+            get_req.model_name = object_name
+            res = self.get_model_state_srv(get_req)
+            poses[object_name] = res
+        return poses
