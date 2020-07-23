@@ -651,11 +651,20 @@
         </inertia>
       </inertial>
       <collision name='drive50_cylinder'>
-        <pose frame=''>0 0 0.13 0 -0 0</pose>
+        <pose frame=''>0 0 0.07 0 -0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.045</radius>
-            <length>0.15</length>
+            <radius>0.025</radius>
+            <length>0.16</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name='drive50_cylinder2'>
+        <pose frame=''>0 0 0.09 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.012</radius>
+            <length>0.16</length>
           </cylinder>
         </geometry>
       </collision>
@@ -1248,11 +1257,20 @@
         </inertia>
       </inertial>
       <collision name='drive10_cylinder'>
-        <pose frame=''>0 0 0.13 0 -0 0</pose>
+        <pose frame=''>0 0 0.07 0 -0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.045</radius>
-            <length>0.15</length>
+            <radius>0.025</radius>
+            <length>0.16</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name='drive10_cylinder2'>
+        <pose frame=''>0 0 0.09 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.012</radius>
+            <length>0.16</length>
           </cylinder>
         </geometry>
       </collision>
