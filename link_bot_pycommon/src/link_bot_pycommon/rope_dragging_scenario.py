@@ -467,7 +467,7 @@ class RopeDraggingScenario(Base3DScenario):
             services['set'](set_msg)
 
         req = WorldControlRequest()
-        req.seconds = 0.2
+        req.seconds = 0.1
         self.world_control_srv(req)
 
         for services in self.movable_object_services.values():
