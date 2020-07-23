@@ -7,5 +7,6 @@ data
 results
 viz_results
 fwd_model_data
+classifier_data
 ss_log_dir
 classifier_data
