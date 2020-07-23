@@ -2,6 +2,7 @@ from typing import Dict, Optional
 
 import numpy as np
 from time import sleep
+import tf2_ros
 import ros_numpy
 import tensorflow as tf
 import ompl.base as ob
@@ -51,6 +52,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
         }
+
+        self.buffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.buffer)
+
 
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
@@ -240,6 +245,28 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         _ = self.action_srv(req)
+
+    @ staticmethod
+    def put_state_in_robot_frame(state: Dict):
+        rope = state['link_bot']
+        rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
+        rope_points = tf.reshape(rope, rope_points_shape)
+
+        # state is in gazebo world frame, and we need to translate them by the position of the robot in gazebo world frame
+        robot_to_world = buffer.lookup_transform("robot_root", "gazebo_world", rospy.Time(), rospy.Duration(0.1))
+        robot_position = ros_numpy.numpify(robot_to_world.transform.translation)
+
+        gripper1_robot = state['gripper1'] - robot_position
+        gripper2_robot = state['gripper2'] - robot_position
+
+        rope_points_robot = rope_points - tf.expand_dims(robot_position, axis=-2)
+        rope_robot = tf.reshape(rope_points_robot, rope.shape)
+
+        return {
+            'gripper1': gripper1_robot,
+            'gripper2': gripper2_robot,
+            'link_bot': rope_robot,
+        }
 
     @ staticmethod
     def put_state_local_frame(state: Dict):

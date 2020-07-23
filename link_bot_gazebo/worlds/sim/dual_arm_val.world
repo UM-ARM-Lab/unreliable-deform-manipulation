@@ -3,11 +3,6 @@
         <scene>
             <grid>false</grid>
             <origin_visual>false</origin_visual>
-            <sky>
-                <clouds>
-                    <speed>12</speed>
-                </clouds>
-            </sky>
         </scene>
         <gui>
             <camera name='user_camera'>
