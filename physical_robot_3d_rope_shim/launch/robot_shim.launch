@@ -18,6 +18,13 @@
         </include>
     </group>
     <group if="$(arg use_val)">
+        <rosparam subst_value="true" param="left_arm_home">
+            [-0.5, 0, 0, 0.6, 0, 0, 0]
+        </rosparam>
+        <rosparam subst_value="true" param="right_arm_home">
+            [-0.5, 0, 0, 0.6, 0, 0, 0]
+        </rosparam>
+
         <!-- Load Val's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
