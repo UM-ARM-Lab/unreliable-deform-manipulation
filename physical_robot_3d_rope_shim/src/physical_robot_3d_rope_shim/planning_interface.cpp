@@ -264,6 +264,7 @@ trajectory_msgs::JointTrajectory PlanningInterface::plan(ps::PlanningScenePtr pl
   return msg.trajectory.joint_trajectory;
 }
 
+// move a move group with one arm and toros joints, then just pass one target_tool_positions...
 trajectory_msgs::JointTrajectory PlanningInterface::moveInRobotFrame(ps::PlanningScenePtr planning_scene,
                                                                      PointSequence const& target_tool_positions)
 {

@@ -8,7 +8,7 @@
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.29 0.38 0.35</size>
+                        <size>0.29 0.34 0.35</size>
                     </box>
                 </geometry>
                 <material>
@@ -19,18 +19,18 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.29 0.38 0.35</size>
+                        <size>0.29 0.34 0.35</size>
                     </box>
                 </geometry>
             </collision>
         </link>
         <link name="lift_tab1">
             <kinematic>true</kinematic>
-            <pose>0.195 0.11 0.17 0 0 0 0</pose>
+            <pose>0.195 0.12 0.18 0 0 0 0</pose>
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
                 <material>
@@ -41,18 +41,18 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
             </collision>
         </link>
         <link name="lift_tab2">
             <kinematic>true</kinematic>
-            <pose>0.195 -0.11 0.17 0 0 0 0</pose>
+            <pose>0.195 -0.12 0.18 0 0 0 0</pose>
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
                 <material>
@@ -63,18 +63,18 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
             </collision>
         </link>
         <link name="lift_tab3">
             <kinematic>true</kinematic>
-            <pose>-0.195 0.13 0.17 0 0 0 0</pose>
+            <pose>-0.195 0.12 0.18 0 0 0 0</pose>
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
                 <material>
@@ -85,18 +85,18 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
             </collision>
         </link>
         <link name="lift_tab4">
             <kinematic>true</kinematic>
-            <pose>-0.195 -0.13 0.17 0 0 0 0</pose>
+            <pose>-0.195 -0.12 0.18 0 0 0 0</pose>
             <visual name="visual">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
                 <material>
@@ -107,7 +107,7 @@
             <collision name="collision">
                 <geometry>
                     <box>
-                        <size>0.1 0.12 0.04</size>
+                        <size>0.1 0.09 0.04</size>
                     </box>
                 </geometry>
             </collision>

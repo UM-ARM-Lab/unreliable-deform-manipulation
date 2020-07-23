@@ -37,6 +37,7 @@ Eigen::VectorXd ValInterface::lookupQHome()
         Eigen::Map<Eigen::VectorXd>(right_home.data(), right_home.size());
     return home;
   }
+  // add a new home group here for one arm and torso
   else
   {
     ROS_FATAL("Unknown planning group %s", planning_group_);
