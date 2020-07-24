@@ -18,7 +18,6 @@ limit_gpu_mem(7.5)
 
 def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
-    ou.setLogLevel(ou.LOG_ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("env_type", choices=['victor', 'val', 'gazebo'], default='gazebo', help='env type')
@@ -32,6 +31,9 @@ def main():
     parser.add_argument('--record', action='store_true', help='record')
 
     args = parser.parse_args()
+
+    ou.setLogLevel(ou.LOG_ERROR)
+    ou.RNG.setSeed(args.seed)
 
     print(Fore.CYAN + "Using Seed {}".format(args.seed) + Fore.RESET)
 

@@ -760,14 +760,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         num_diverged_subspace.setName("stdev")
         state_space.addSubspace(num_diverged_subspace, weight=0)
 
-        # def _state_sampler_allocator(state_space):
-        #     return DualGripperStateSampler(state_space,
-        #                                    scenario=self,
-        #                                    extent=planner_params['extent'],
-        #                                    rng=state_sampler_rng,
-        #                                    plot=plot)
+        def _state_sampler_allocator(state_space):
+            return DualGripperStateSampler(state_space,
+                                           scenario=self,
+                                           extent=planner_params['extent'],
+                                           rng=state_sampler_rng,
+                                           plot=plot)
 
-        # state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
+        state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
 
         return state_space
 
@@ -1252,13 +1252,28 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
                  rng: np.random.RandomState,
                  plot: bool):
         super().__init__(state_space)
+        self.state_space = state_space
         self.scenario = scenario
         self.extent = np.array(extent).reshape(3, 2)
         self.rng = rng
         self.plot = plot
 
+    def sample_point_for_R3_subspace(self, subspace, subspace_state_out):
+        bounds = subspace.getBounds()
+        min_x = bounds.low[0]
+        min_y = bounds.low[1]
+        min_z = bounds.low[2]
+        max_x = bounds.high[0]
+        max_y = bounds.high[1]
+        max_z = bounds.high[2]
+        p = self.rng.uniform([min_x, min_y, min_z], [max_x, max_y, max_z])
+        subspace_state_out[0] = p[0]
+        subspace_state_out[1] = p[1]
+        subspace_state_out[2] = p[2]
+
     def sampleUniform(self, state_out: ob.CompoundState):
-        super().sampleUniform(state_out)
+        for i in range(2 + DualFloatingGripperRopeScenario.n_links):
+            self.sample_point_for_R3_subspace(self.state_space.getSubspace(i), state_out[i])
 
         state_np = self.scenario.ompl_state_to_numpy(state_out)
 
@@ -1464,11 +1479,8 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
 
 
     def sampleGoal(self, state_out: ob.CompoundState):
-        sampler = self.getSpaceInformation().allocStateSampler()
-        # sample a random state via the state space sampler, in hopes that OMPL will clean up the memory...
-        sampler.sampleUniform(state_out)
-
         # attempt to sample "legit" rope states
+        print("*")
         kd = 0.05
         rope = sample_rope_and_grippers(self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
 

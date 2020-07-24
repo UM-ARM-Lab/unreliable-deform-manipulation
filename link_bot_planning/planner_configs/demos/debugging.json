@@ -1,8 +1,8 @@
 {
-  "total_timeout": 1000,
+  "total_timeout": 600,
   "termination_criteria": {
     "attempted_extensions_threshold": 128,
-    "timeout": 600
+    "timeout": 180
   },
   "left_gripper_reset_position": [
     1.1,
@@ -55,21 +55,21 @@
   "!classifier_model_dir": "cl_trials/car/July_23_10-40-33_2bde9dc337/best_checkpoint/",
   "classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.09,
+  "goal_threshold": 0.08,
   "fixed_goal": {
     "gripper1": [
       -0.15,
-      0.69,
+      0.70,
       0.33
     ],
     "gripper2": [
       0.15,
-      0.69,
+      0.70,
       0.33
     ],
     "point": [
       0.0,
-      0.69,
+      0.70,
       0.0
     ]
   },

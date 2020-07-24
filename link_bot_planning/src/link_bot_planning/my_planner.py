@@ -76,6 +76,7 @@ class MyPlanner:
         self.seed = seed
         self.classifier_rng = np.random.RandomState(seed)
         self.state_sampler_rng = np.random.RandomState(seed)
+        self.goal_sampler_rng = np.random.RandomState(seed)
         self.control_sampler_rng = np.random.RandomState(seed)
         self.scenario = scenario
         self.action_params = self.fwd_model.data_collection_params
@@ -222,7 +223,7 @@ class MyPlanner:
 
         self.environment = planning_query.environment
         self.goal_region = self.scenario.make_goal_region(self.si,
-                                                          rng=self.state_sampler_rng,
+                                                          rng=self.goal_sampler_rng,
                                                           params=self.params,
                                                           goal=planning_query.goal,
                                                           plot=self.verbose >= 2)
