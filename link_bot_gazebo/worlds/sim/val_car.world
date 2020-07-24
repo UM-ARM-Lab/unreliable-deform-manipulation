@@ -35,7 +35,7 @@
                 <robotName>hdt_michigan</robotName>
                 <frameId>val_root</frameId>
                 <updatePeriod>0</updatePeriod>
-                <scalePrimitivesFactor>1.1</scalePrimitivesFactor>
+                <scalePrimitivesFactor>1.0</scalePrimitivesFactor>
             </plugin>
         </model>
 
@@ -68,7 +68,7 @@
         </include>
 
         <include>
-            <pose>-0.05 0.78 -0.12 0 0 -1.570796</pose>
+            <pose>-0.05 0.78 -0.10 0 0 -1.570796</pose>
             <uri>model://car_engine2</uri>
         </include>
 

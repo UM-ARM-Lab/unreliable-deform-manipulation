@@ -18,5 +18,6 @@
   <export>
     <rviz plugin="${prefix}/merrrt_widget_description.xml"/>
     <rviz plugin="${prefix}/rviz_animation_controller_description.xml"/>
+    <rviz plugin="${prefix}/color_filter_widget_description.xml"/>
   </export>
 </package>

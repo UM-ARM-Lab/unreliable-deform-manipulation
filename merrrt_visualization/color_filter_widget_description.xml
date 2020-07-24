@@ -1,0 +1,7 @@
+<library path="lib/libcolor_filter_widget">
+    <class name="merrrt_visualization/ColorFilterWidget"
+           type="merrrt_visualization::ColorFilterWidget"
+           base_class_type="rviz::Panel">
+        <description>color filter for cdcpd mask</description>
+    </class>
+</library>
