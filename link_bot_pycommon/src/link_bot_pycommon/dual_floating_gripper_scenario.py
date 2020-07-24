@@ -123,9 +123,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         ]
         # self.start_object_poses = self.get_object_poses(self.obstacles)
 
-        self.buffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.buffer)
-
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
 
