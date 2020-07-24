@@ -1,8 +1,8 @@
 {
-  "total_timeout": 600,
+  "total_timeout": 1000,
   "termination_criteria": {
-    "attempted_extensions_threshold": 32,
-    "timeout": 60
+    "attempted_extensions_threshold": 128,
+    "timeout": 600
   },
   "left_gripper_reset_position": [
     1.1,
@@ -52,14 +52,14 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
+  "classifier_model_dir": "cl_trials/car/July_23_10-40-33_2bde9dc337/best_checkpoint/",
   "accept_threshold": 0.98,
   "goal_threshold": 0.04,
   "fixed_goal": {
     "midpoint": [
       -0.18,
       1.07,
-      -0.08
+      -0.00
     ]
   },
   "real_time_rate": 0.0,

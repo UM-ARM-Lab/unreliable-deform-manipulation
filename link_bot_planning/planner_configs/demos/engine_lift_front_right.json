@@ -1,8 +1,8 @@
 {
   "total_timeout": 600,
   "termination_criteria": {
-    "attempted_extensions_threshold": 32,
-    "timeout": 10
+    "attempted_extensions_threshold": 128,
+    "timeout": 600
   },
   "left_gripper_reset_position": [
     1.1,
@@ -15,12 +15,12 @@
     1.0
   ],
   "extent": [
-    -0.7,
-    0.5,
-    0.1,
-    1.5,
-    -0.5,
-    0.80
+    -0.2,
+    0.7,
+    0.2,
+    0.8,
+    -0.1,
+    0.55
   ],
   "goal_extent": [
     0.6,
@@ -28,7 +28,7 @@
     -0.4,
     0.4,
     0.6,
-    0.85
+    0.65
   ],
   "objects_extent": [
     0.6,
@@ -40,7 +40,8 @@
   ],
   "recovery": {
     "use_recovery": true,
-    "recovery_model_dir": "rcv_trials/weighted_loss/July_19_02-44-36_7fbf55043c"
+    "recovery_model_dir": "rcv_trials/car/July_23_18-06-34_07769a72f3/",
+    "!recovery_model_dir": "rcv_trials/weighted_loss/July_19_02-44-36_7fbf55043c"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
@@ -52,14 +53,25 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
-  "accept_threshold": 0.98,
-  "goal_threshold": 0.04,
+  "!classifier_model_dir": "cl_trials/car/July_23_10-40-33_2bde9dc337/best_checkpoint/",
+  "classifier_model_dir": "cl_trials/cc_baseline/cc",
+  "accept_threshold": 0.95,
+  "goal_threshold": 0.14,
   "fixed_goal": {
-    "midpoint": [
-      0.09,
-      0.72,
-      -0.08
+    "gripper1": [
+      -0.09,
+      0.62,
+      0.26
+    ],
+    "gripper2": [
+      0.25,
+      0.62,
+      0.26
+    ],
+    "point": [
+      0.08,
+      0.62,
+      -0.05
     ]
   },
   "real_time_rate": 0.0,

@@ -26,6 +26,59 @@ from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, 
     GetDualGripperPointsRequest, SetBoolRequest, SetBool, GetJointState, GetJointStateRequest
 from std_srvs.srv import Empty, EmptyRequest
 
+def sample_rope_and_grippers(rng, g1, g2, p, n_links, kd):
+    g1 = g1 + rng.uniform(-0.05, 0.05, 3)
+    g2 = g2 + rng.uniform(-0.05, 0.05, 3)
+    p = p + rng.uniform(-0.05, 0.05, 3)
+    n_exclude = 5
+    k = rng.randint(n_exclude, n_links + 1 - n_exclude)
+    rope = [g2]
+    for i in range(1, k - 1):
+        new_p = (p - g2) * (i / (k - 1))
+        noise = rng.uniform([-kd, -kd, -kd], [kd, kd, kd], 3)
+        new_p = g2 + new_p + noise
+        rope.append(new_p)
+    rope.append(p)
+    for i in range(1, n_links - k + 1):
+        new_p = (g1 - p) * i / (n_links - k)
+        noise = rng.uniform([-kd, -kd, -kd], [kd, kd, kd], 3)
+        new_p = p + new_p + noise
+        rope.append(new_p)
+    rope = np.array(rope)
+    return rope
+
+def sample_rope_grippers(rng, g1, g2, n_links):
+    rope = [g2 + rng.uniform(-0.01, 0.01, 3)]
+    for _ in range(n_links - 2):
+        xmin = min(g1[0], g2[0]) - 0.1
+        ymin = min(g1[1], g2[1]) - 0.1
+        zmin = min(g1[2], g2[2]) - 0.4
+        xmax = max(g1[0], g2[0]) + 0.1
+        ymax = max(g1[1], g2[1]) + 0.1
+        zmax = max(g1[2], g2[2]) + 0.01
+        p = rng.uniform([xmin, ymin, zmin], [xmax, ymax, zmax])
+        rope.append(p)
+    rope.append(g1 + rng.uniform(-0.01, 0.01, 3))
+    return np.array(rope)
+
+def sample_rope(rng, p, n_links, kd : float):
+    p = np.array(p, dtype=np.float32)
+    n_exclude = 5
+    k = rng.randint(n_exclude, n_links + 1 - n_exclude)
+    # the kth point of the rope is put at the point p
+    rope = [p]
+    previous_point = np.copy(p)
+    for i in range(0, k):
+        noise = rng.uniform([-kd, -kd, -kd/2], [kd, kd, kd*1.2], 3)
+        previous_point = previous_point + noise
+        rope.insert(0, previous_point)
+    next_point = np.copy(p)
+    for i in range(k, n_links):
+        noise = rng.uniform([-kd, -kd, -kd/2], [kd, kd, kd*1.2], 3)
+        next_point = next_point + noise
+        rope.append(next_point)
+    rope = np.array(rope)
+    return rope
 
 # TODO: not floating
 class DualFloatingGripperRopeScenario(Base3DScenario):
@@ -450,7 +503,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return "dual_floating_gripper_rope"
 
     @ staticmethod
-    def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
+    def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):
         for i in range(3):
             state_out[0][i] = np.float64(state_np['gripper1'][i])
         for i in range(3):
@@ -461,7 +514,20 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         state_out[4][0] = np.float64(state_np['num_diverged'][0])
 
     @ staticmethod
-    def ompl_state_to_numpy(ompl_state: ob.CompoundState):
+    def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
+        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
+        for i in range(3):
+            state_out[0][i] = np.float64(state_np['gripper1'][i])
+        for i in range(3):
+            state_out[1][i] = np.float64(state_np['gripper2'][i])
+        for j in range(DualFloatingGripperRopeScenario.n_links):
+            for i in range(3):
+                state_out[2 + j][i] = np.float64(rope_points[j][i])
+        state_out[DualFloatingGripperRopeScenario.n_links + 2][0] = np.float64(state_np['stdev'][0])
+        state_out[DualFloatingGripperRopeScenario.n_links + 3][0] = np.float64(state_np['num_diverged'][0])
+
+    @ staticmethod
+    def ompl_state_to_numpy1(ompl_state: ob.CompoundState):
         gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
         gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
         rope = []
@@ -476,6 +542,24 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'link_bot': rope,
             'stdev': np.array([ompl_state[3][0]]),
             'num_diverged': np.array([ompl_state[4][0]]),
+        }
+
+    @ staticmethod
+    def ompl_state_to_numpy(ompl_state: ob.CompoundState):
+        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
+        rope = []
+        for i in range(DualFloatingGripperRopeScenario.n_links):
+            rope.append(ompl_state[2 + i][0])
+            rope.append(ompl_state[2 + i][1])
+            rope.append(ompl_state[2 + i][2])
+        rope = np.array(rope)
+        return {
+            'gripper1': gripper1,
+            'gripper2': gripper2,
+            'link_bot': rope,
+            'stdev': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 2][0]]),
+            'num_diverged': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 3][0]]),
         }
 
     @ staticmethod
@@ -501,6 +585,39 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @ staticmethod
     def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        return self.sample_gripper_goal(environment, rng, planner_params)
+
+    @ staticmethod
+    def sample_gripper_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        env_inflated = inflate_tf_3d(env=environment['env'],
+                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+        goal_extent = planner_params['goal_extent']
+
+        while True:
+            extent = np.array(goal_extent).reshape(3, 2)
+            gripper1 = rng.uniform(extent[:, 0], extent[:, 1])
+            gripper2 = rng.uniform(extent[:, 0], extent[:, 1])
+            goal = {
+                'gripper1': gripper1,
+                'gripper2': gripper2,
+            }
+            row1, col1, channel1 = link_bot_sdf_utils.point_to_idx_3d_in_env(gripper1[0], gripper1[1], gripper1[2], environment)
+            row2, col2, channel2 = link_bot_sdf_utils.point_to_idx_3d_in_env(gripper2[0], gripper2[1], gripper2[2], environment)
+            collision1 = env_inflated[row1, col1, channel1] > 0.5
+            collision2 = env_inflated[row2, col2, channel2] > 0.5
+            if not collision1 and not collision2:
+                return goal
+
+    @ staticmethod
+    def distance_to_gripper_goal(state: Dict, goal: Dict):
+        gripper1 = state['gripper1']
+        gripper2 = state['gripper2']
+        distance1 = np.linalg.norm(goal['gripper1'] - gripper1)
+        distance2 = np.linalg.norm(goal['gripper2'] - gripper2)
+        return max(distance1, distance2)
+
+    @ staticmethod
+    def sample_midpoint_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_threshold'], res=environment['res'])
         goal_extent = planner_params['goal_extent']
@@ -515,18 +632,37 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 return goal
 
     @ staticmethod
-    def distance_to_goal(state: Dict, goal: Dict):
+    def distance_grippers_and_any_point_goal(state: Dict, goal: Dict):
+        rope_points = np.reshape(state['link_bot'], [-1, 3])
+        # well ok not _any_ node, but ones near the middle
+        n_from_ends = 5
+        distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) - rope_points, axis=1)[n_from_ends:-n_from_ends]
+        rope_distance = np.min(distances)
+
+        gripper1 = state['gripper1']
+        gripper2 = state['gripper2']
+        distance1 = np.linalg.norm(goal['gripper1'] - gripper1)
+        distance2 = np.linalg.norm(goal['gripper2'] - gripper2)
+        return max(max(distance1, distance2), rope_distance)
+
+    @ staticmethod
+    def distance_to_any_point_goal(state: Dict, goal: Dict):
+        rope_points = np.reshape(state['link_bot'], [-1, 3])
+        # well ok not _any_ node, but ones near the middle
+        n_from_ends = 5
+        distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) - rope_points, axis=1)[n_from_ends:-n_from_ends]
+        min_distance = np.min(distances)
+        return min_distance
+
+    @ staticmethod
+    def distance_to_midpoint_goal(state: Dict, goal: Dict):
         rope_points = np.reshape(state['link_bot'], [-1, 3])
         rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    @ staticmethod
-    def distance_to_goal_differentiable(state, goal):
-        rope_points = tf.reshape(state['link_bot'], [-1, 3])
-        rope_midpoint = rope_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
-        distance = tf.linalg.norm(goal['midpoint'] - rope_midpoint)
-        return distance
+    def distance_to_goal(self, state, goal):
+        return self.distance_grippers_and_any_point_goal(state, goal)
 
     @ staticmethod
     def full_distance_tf(s1: Dict, s2: Dict):
@@ -560,14 +696,85 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return is_close
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
-        return DualGripperGoalRegion(si=si,
-                                     scenario=self,
-                                     rng=rng,
-                                     threshold=params['goal_threshold'],
-                                     goal=goal,
-                                     plot=plot)
+        return RopeAndGrippersGoalRegion(si=si,
+                                         scenario=self,
+                                         rng=rng,
+                                         threshold=params['goal_threshold'],
+                                         goal=goal,
+                                         plot=plot)
 
     def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
+        state_space = ob.CompoundStateSpace()
+
+        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
+
+        gripper1_subspace = ob.RealVectorStateSpace(3)
+        gripper1_bounds = ob.RealVectorBounds(3)
+        gripper1_bounds.setLow(0, min_x)
+        gripper1_bounds.setHigh(0, max_x)
+        gripper1_bounds.setLow(1, min_y)
+        gripper1_bounds.setHigh(1, max_y)
+        gripper1_bounds.setLow(2, min_z)
+        gripper1_bounds.setHigh(2, max_z)
+        gripper1_subspace.setBounds(gripper1_bounds)
+        gripper1_subspace.setName("gripper1")
+        state_space.addSubspace(gripper1_subspace, weight=1)
+
+        gripper2_subspace = ob.RealVectorStateSpace(3)
+        gripper2_bounds = ob.RealVectorBounds(3)
+        gripper2_bounds.setLow(0, min_x)
+        gripper2_bounds.setHigh(0, max_x)
+        gripper2_bounds.setLow(1, min_y)
+        gripper2_bounds.setHigh(1, max_y)
+        gripper2_bounds.setLow(2, min_z)
+        gripper2_bounds.setHigh(2, max_z)
+        gripper2_subspace.setBounds(gripper2_bounds)
+        gripper2_subspace.setName("gripper2")
+        state_space.addSubspace(gripper2_subspace, weight=1)
+
+        for i in range(DualFloatingGripperRopeScenario.n_links):
+            rope_point_subspace = ob.RealVectorStateSpace(3)
+            rope_point_bounds = ob.RealVectorBounds(3)
+            rope_point_bounds.setLow(0, min_x)
+            rope_point_bounds.setHigh(0, max_x)
+            rope_point_bounds.setLow(1, min_y)
+            rope_point_bounds.setHigh(1, max_y)
+            rope_point_bounds.setLow(2, min_z)
+            rope_point_bounds.setHigh(2, max_z)
+            rope_point_subspace.setBounds(rope_point_bounds)
+            rope_point_subspace.setName(f"rope_{i}")
+            state_space.addSubspace(rope_point_subspace, weight=1)
+
+        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
+        stdev_subspace = ob.RealVectorStateSpace(1)
+        stdev_bounds = ob.RealVectorBounds(1)
+        stdev_bounds.setLow(-1000)
+        stdev_bounds.setHigh(1000)
+        stdev_subspace.setBounds(stdev_bounds)
+        stdev_subspace.setName("stdev")
+        state_space.addSubspace(stdev_subspace, weight=0)
+
+        # extra subspace component for the number of diverged steps
+        num_diverged_subspace = ob.RealVectorStateSpace(1)
+        num_diverged_bounds = ob.RealVectorBounds(1)
+        num_diverged_bounds.setLow(-1000)
+        num_diverged_bounds.setHigh(1000)
+        num_diverged_subspace.setBounds(num_diverged_bounds)
+        num_diverged_subspace.setName("stdev")
+        state_space.addSubspace(num_diverged_subspace, weight=0)
+
+        # def _state_sampler_allocator(state_space):
+        #     return DualGripperStateSampler(state_space,
+        #                                    scenario=self,
+        #                                    extent=planner_params['extent'],
+        #                                    rng=state_sampler_rng,
+        #                                    plot=plot)
+
+        # state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
+
+        return state_space
+
+    def make_ompl_state_space1(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
         state_space = ob.CompoundStateSpace()
 
         min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
@@ -681,33 +888,103 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return control_space
 
     def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
-        goal_marker_msg = MarkerArray()
-        midpoint_marker = Marker()
-        midpoint_marker.scale.x = goal_threshold * 2
-        midpoint_marker.scale.y = goal_threshold * 2
-        midpoint_marker.scale.z = goal_threshold * 2
-        midpoint_marker.action = Marker.ADD
-        midpoint_marker.type = Marker.SPHERE
-        midpoint_marker.header.frame_id = "/world"
-        midpoint_marker.header.stamp = rospy.Time.now()
-        midpoint_marker.ns = 'goal'
-        midpoint_marker.id = 0
         if actually_at_goal:
-            midpoint_marker.color.r = 0.4
-            midpoint_marker.color.g = 0.8
-            midpoint_marker.color.b = 0.4
-            midpoint_marker.color.a = 0.8
+            r = 0.4
+            g = 0.8
+            b = 0.4
+            a = 0.8
         else:
-            midpoint_marker.color.r = 0.5
-            midpoint_marker.color.g = 0.3
-            midpoint_marker.color.b = 0.8
-            midpoint_marker.color.a = 0.8
-        midpoint_marker.pose.position.x = goal['midpoint'][0]
-        midpoint_marker.pose.position.y = goal['midpoint'][1]
-        midpoint_marker.pose.position.z = goal['midpoint'][2]
-        midpoint_marker.pose.orientation.w = 1
+            r = 0.5
+            g = 0.3
+            b = 0.8
+            a = 0.8
 
-        goal_marker_msg.markers.append(midpoint_marker)
+        goal_marker_msg = MarkerArray()
+
+        if 'midpoint' in goal:
+            midpoint_marker = Marker()
+            midpoint_marker.scale.x = goal_threshold * 2
+            midpoint_marker.scale.y = goal_threshold * 2
+            midpoint_marker.scale.z = goal_threshold * 2
+            midpoint_marker.action = Marker.ADD
+            midpoint_marker.type = Marker.SPHERE
+            midpoint_marker.header.frame_id = "/world"
+            midpoint_marker.header.stamp = rospy.Time.now()
+            midpoint_marker.ns = 'goal'
+            midpoint_marker.id = 0
+            midpoint_marker.color.r = r
+            midpoint_marker.color.g = g
+            midpoint_marker.color.b = b
+            midpoint_marker.color.a = a
+            midpoint_marker.pose.position.x = goal['midpoint'][0]
+            midpoint_marker.pose.position.y = goal['midpoint'][1]
+            midpoint_marker.pose.position.z = goal['midpoint'][2]
+            midpoint_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(midpoint_marker)
+
+        if 'point' in goal:
+            point_marker = Marker()
+            point_marker.scale.x = goal_threshold * 2
+            point_marker.scale.y = goal_threshold * 2
+            point_marker.scale.z = goal_threshold * 2
+            point_marker.action = Marker.ADD
+            point_marker.type = Marker.SPHERE
+            point_marker.header.frame_id = "/world"
+            point_marker.header.stamp = rospy.Time.now()
+            point_marker.ns = 'goal'
+            point_marker.id = 0
+            point_marker.color.r = r
+            point_marker.color.g = g
+            point_marker.color.b = b
+            point_marker.color.a = a
+            point_marker.pose.position.x = goal['point'][0]
+            point_marker.pose.position.y = goal['point'][1]
+            point_marker.pose.position.z = goal['point'][2]
+            point_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(point_marker)
+
+        if 'gripper1' in goal:
+            gripper1_marker = Marker()
+            gripper1_marker.scale.x = goal_threshold * 2
+            gripper1_marker.scale.y = goal_threshold * 2
+            gripper1_marker.scale.z = goal_threshold * 2
+            gripper1_marker.action = Marker.ADD
+            gripper1_marker.type = Marker.SPHERE
+            gripper1_marker.header.frame_id = "/world"
+            gripper1_marker.header.stamp = rospy.Time.now()
+            gripper1_marker.ns = 'goal'
+            gripper1_marker.id = 1
+            gripper1_marker.color.r = r
+            gripper1_marker.color.g = g
+            gripper1_marker.color.b = b
+            gripper1_marker.color.a = a
+            gripper1_marker.pose.position.x = goal['gripper1'][0]
+            gripper1_marker.pose.position.y = goal['gripper1'][1]
+            gripper1_marker.pose.position.z = goal['gripper1'][2]
+            gripper1_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(gripper1_marker)
+
+        if 'gripper2' in goal:
+            gripper2_marker = Marker()
+            gripper2_marker.scale.x = goal_threshold * 2
+            gripper2_marker.scale.y = goal_threshold * 2
+            gripper2_marker.scale.z = goal_threshold * 2
+            gripper2_marker.action = Marker.ADD
+            gripper2_marker.type = Marker.SPHERE
+            gripper2_marker.header.frame_id = "/world"
+            gripper2_marker.header.stamp = rospy.Time.now()
+            gripper2_marker.ns = 'goal'
+            gripper2_marker.id = 2
+            gripper2_marker.color.r = r
+            gripper2_marker.color.g = g
+            gripper2_marker.color.b = b
+            gripper2_marker.color.a = a
+            gripper2_marker.pose.position.x = goal['gripper2'][0]
+            gripper2_marker.pose.position.y = goal['gripper2'][1]
+            gripper2_marker.pose.position.z = goal['gripper2'][2]
+            gripper2_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(gripper2_marker)
+
         self.state_viz_pub.publish(goal_marker_msg)
 
     @ staticmethod
@@ -969,7 +1246,7 @@ class DualGripperControlSampler(oc.ControlSampler):
         return step_count
 
 
-class DualGripperStateSampler(ob.RealVectorStateSampler):
+class DualGripperStateSampler(ob.CompoundStateSampler):
 
     def __init__(self,
                  state_space,
@@ -984,21 +1261,9 @@ class DualGripperStateSampler(ob.RealVectorStateSampler):
         self.plot = plot
 
     def sampleUniform(self, state_out: ob.CompoundState):
-        # trying to sample a "valid" rope state is difficult, and probably unimportant
-        # because the only role this plays in planning is to cause exploration/expansion
-        # by biasing towards regions of empty space. So here we just pick a random point
-        # and duplicate it, as if all points on the rope were at this point
-        random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
-        random_point_rope = np.concatenate([random_point]*DualFloatingGripperRopeScenario.n_links)
-        state_np = {
-            'gripper1': random_point,
-            'gripper2': random_point,
-            'link_bot': random_point_rope,
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
-        }
+        super().sampleUniform(state_out)
 
-        self.scenario.numpy_to_ompl_state(state_np, state_out)
+        state_np = self.scenario.ompl_state_to_numpy(state_out)
 
         if self.plot:
             self.scenario.plot_sampled_state(state_np)
@@ -1025,7 +1290,7 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         Uses the distance between a specific point in a specific subspace and the goal point
         """
         state_np = self.scenario.ompl_state_to_numpy(state)
-        distance = self.scenario.distance_to_goal(state_np, self.goal)
+        distance = self.scenario.distance_to_gripper_goal(state_np, self.goal)
 
         # this ensures the goal must have num_diverged = 0
         if state_np['num_diverged'] > 0:
@@ -1039,12 +1304,181 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
 
         # don't bother trying to sample "legit" rope states, because this is only used to bias sampling towards the goal
         # so just prenteing every point on therope is at the goal should be sufficient
-        rope = np.concatenate([self.goal['midpoint']]*DualFloatingGripperRopeScenario.n_links)
+        rope = sample_rope_grippers(self.rng,
+                                    self.goal['gripper1'],
+                                    self.goal['gripper2'],
+                                    DualFloatingGripperRopeScenario.n_links)
 
         goal_state_np = {
-            'gripper1': self.goal['midpoint'],
-            'gripper2': self.goal['midpoint'],
-            'link_bot': rope,
+            'gripper1': self.goal['gripper1'],
+            'gripper2': self.goal['gripper2'],
+            'link_bot': rope.flatten(),
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def maxSampleCount(self):
+        return 100
+
+
+class RopeMidpointGoalRegion(ob.GoalSampleableRegion):
+
+    def __init__(self,
+                 si: oc.SpaceInformation,
+                 scenario: DualFloatingGripperRopeScenario,
+                 rng: np.random.RandomState,
+                 threshold: float,
+                 goal: Dict,
+                 plot: bool):
+        super(RopeMidpointGoalRegion, self).__init__(si)
+        self.setThreshold(threshold)
+        self.goal = goal
+        self.scenario = scenario
+        self.rng = rng
+        self.plot = plot
+
+    def distanceGoal(self, state: ob.CompoundState):
+        """
+        Uses the distance between a specific point in a specific subspace and the goal point
+        """
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_to_midpoint_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
+
+    def sampleGoal(self, state_out: ob.CompoundState):
+        sampler = self.getSpaceInformation().allocStateSampler()
+        # sample a random state via the state space sampler, in hopes that OMPL will clean up the memory...
+        sampler.sampleUniform(state_out)
+
+        # attempt to sample "legit" rope states
+        kd = 0.04
+        rope = sample_rope(self.rng, self.goal['midpoint'], DualFloatingGripperRopeScenario.n_links, kd)
+        # gripper 1 is attached to the last link
+        gripper1 = rope[-1] + self.rng.uniform(-kd, kd, 3)
+        gripper2 = rope[0] + self.rng.uniform(-kd, kd, 3)
+
+        goal_state_np = {
+            'gripper1': gripper1,
+            'gripper2': gripper2,
+            'link_bot': rope.flatten(),
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def maxSampleCount(self):
+        return 100
+
+
+class RopeAnyPointGoalRegion(ob.GoalSampleableRegion):
+
+    def __init__(self,
+                 si: oc.SpaceInformation,
+                 scenario: DualFloatingGripperRopeScenario,
+                 rng: np.random.RandomState,
+                 threshold: float,
+                 goal: Dict,
+                 plot: bool):
+        super(RopeAnyPointGoalRegion, self).__init__(si)
+        self.setThreshold(threshold)
+        self.goal = goal
+        self.scenario = scenario
+        self.rng = rng
+        self.plot = plot
+
+    def distanceGoal(self, state: ob.CompoundState):
+        """
+        Uses the distance between a specific point in a specific subspace and the goal point
+        """
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_to_any_point_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
+
+    def sampleGoal(self, state_out: ob.CompoundState):
+        sampler = self.getSpaceInformation().allocStateSampler()
+        # sample a random state via the state space sampler, in hopes that OMPL will clean up the memory...
+        sampler.sampleUniform(state_out)
+
+        # attempt to sample "legit" rope states
+        kd = 0.05
+        rope = sample_rope(self.rng, self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
+        # gripper 1 is attached to the last link
+        gripper1 = rope[-1] + self.rng.uniform(-kd, kd, 3)
+        gripper2 = rope[0] + self.rng.uniform(-kd, kd, 3)
+
+        goal_state_np = {
+            'gripper1': gripper1,
+            'gripper2': gripper2,
+            'link_bot': rope.flatten(),
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def maxSampleCount(self):
+        return 100
+
+
+class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
+
+    def __init__(self,
+                 si: oc.SpaceInformation,
+                 scenario: DualFloatingGripperRopeScenario,
+                 rng: np.random.RandomState,
+                 threshold: float,
+                 goal: Dict,
+                 plot: bool):
+        super(RopeAndGrippersGoalRegion, self).__init__(si)
+        self.setThreshold(threshold)
+        self.goal = goal
+        self.scenario = scenario
+        self.rng = rng
+        self.plot = plot
+
+    def distanceGoal(self, state: ob.CompoundState):
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_grippers_and_any_point_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
+
+
+    def sampleGoal(self, state_out: ob.CompoundState):
+        sampler = self.getSpaceInformation().allocStateSampler()
+        # sample a random state via the state space sampler, in hopes that OMPL will clean up the memory...
+        sampler.sampleUniform(state_out)
+
+        # attempt to sample "legit" rope states
+        kd = 0.05
+        rope = sample_rope_and_grippers(self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
+
+        goal_state_np = {
+            'gripper1': self.goal['gripper1'],
+            'gripper2': self.goal['gripper2'],
+            'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }

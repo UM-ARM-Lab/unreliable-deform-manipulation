@@ -1,6 +1,7 @@
 import sys
 from enum import Enum
 import time
+from time import sleep
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
@@ -82,6 +83,7 @@ class MyPlanner:
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
                                                                state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
+        self.state_space.sanityChecks()
         self.control_space = self.scenario.make_ompl_control_space(self.state_space,
                                                                    self.control_sampler_rng,
                                                                    action_params=self.action_params)
@@ -164,6 +166,8 @@ class MyPlanner:
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
         final_classifier_probability = classifier_probabilities[-1]
+        # print(final_classifier_probability)
+        # sleep(0.4)
         if self.verbose >= 2:
             self.scenario.plot_accept_probability(final_classifier_probability)
         if final_classifier_probability > self.params['accept_threshold']:
