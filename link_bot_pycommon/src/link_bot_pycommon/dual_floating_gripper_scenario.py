@@ -1272,10 +1272,20 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
         subspace_state_out[2] = p[2]
 
     def sampleUniform(self, state_out: ob.CompoundState):
-        for i in range(2 + DualFloatingGripperRopeScenario.n_links):
-            self.sample_point_for_R3_subspace(self.state_space.getSubspace(i), state_out[i])
+        # for i in range(2 + DualFloatingGripperRopeScenario.n_links):
+        #     self.sample_point_for_R3_subspace(self.state_space.getSubspace(i), state_out[i])
+        # state_np = self.scenario.ompl_state_to_numpy(state_out)
 
-        state_np = self.scenario.ompl_state_to_numpy(state_out)
+        random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
+        random_point_rope = np.concatenate([random_point]*DualFloatingGripperRopeScenario.n_links)
+        state_np = {
+            'gripper1': random_point,
+            'gripper2': random_point,
+            'link_bot': random_point_rope,
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+        self.scenario.numpy_to_ompl_state(state_np, state_out)
 
         if self.plot:
             self.scenario.plot_sampled_state(state_np)
@@ -1480,7 +1490,6 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
 
     def sampleGoal(self, state_out: ob.CompoundState):
         # attempt to sample "legit" rope states
-        print("*")
         kd = 0.05
         rope = sample_rope_and_grippers(self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
 

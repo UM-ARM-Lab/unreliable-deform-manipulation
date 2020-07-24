@@ -131,6 +131,9 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color=color)
         self.tree_state_idx += 1
 
+    def plot_state_closest_to_goal(self, state: Dict, color='#00C282'):
+        self.plot_state_rviz(state, label='best', color=color)
+
     def plot_is_close(self, label_t):
         msg = LabelStatus()
         if label_t is None:

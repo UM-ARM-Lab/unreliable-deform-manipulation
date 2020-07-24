@@ -106,6 +106,8 @@ class MyPlanner:
         # a Dictionary containing the parts of state which are not predicted/planned for, i.e. the environment
         self.environment = None
         self.start_state = None
+        self.closest_state_to_goal = None
+        self.min_dist_to_goal = 10000
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -124,6 +126,11 @@ class MyPlanner:
         self.ptc.attempted_extensions += 1
         if motions_valid:
             self.ptc.all_rejected = False
+            dist_to_goal = self.scenario.distance_to_goal(final_state, self.goal_region.goal)
+            if dist_to_goal < self.min_dist_to_goal:
+                self.min_dist_to_goal = dist_to_goal
+                self.closest_state_to_goal = final_state
+                self.scenario.plot_state_closest_to_goal(final_state)
         # end PTC bookkeeping
 
         return motions_valid
