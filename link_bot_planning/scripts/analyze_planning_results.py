@@ -198,6 +198,7 @@ def get_all_subfolders(args):
 
 
 def main():
+    rospy.init_node("analyse_planning_results")
     np.set_printoptions(suppress=True, precision=4, linewidth=180)
     plt.style.use('paper')
 

@@ -106,6 +106,7 @@ def test_main(args, seed: int):
     ###############
     test_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode, take=args.take)
+    test_tf_dataset = balance(test_tf_dataset)
     scenario = test_dataset.scenario
 
     ###############

@@ -111,7 +111,7 @@ def generate_trajs(service_provider,
 
     for traj_idx in range(args.trajs):
         # Randomize the environment
-        if not params['no_objects'] and traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
+        if not params['no_objects'] and traj_idx > 0 and traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
             scenario.randomize_environment(env_rng, objects_params=params, data_collection_params=params)
 
         # Generate a new trajectory
@@ -152,10 +152,10 @@ def generate(service_provider, params: Dict, args):
 
     assert args.trajs % params['trajs_per_file'] == 0, f"num trajs must be multiple of {params['trajs_per_file']}"
 
-    # full_output_directory = data_directory(args.outdir, args.trajs)
-    print("USING OUTDIR EXACTLY")
-    full_output_directory = pathlib.Path(args.outdir)
-    full_output_directory.mkdir(exist_ok=True)
+    full_output_directory = data_directory(args.outdir, args.trajs)
+    # print("USING OUTDIR EXACTLY")
+    # full_output_directory = pathlib.Path(args.outdir)
+    # full_output_directory.mkdir(exist_ok=True)
 
     if not os.path.isdir(full_output_directory) and args.verbose:
         print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
