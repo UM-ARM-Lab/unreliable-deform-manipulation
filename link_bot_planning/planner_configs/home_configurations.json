@@ -150,5 +150,43 @@
             0.0,
             0
         ]
+    },
+    "engine_release": {
+        "name": [
+            "joint56",
+            "joint57",
+            "joint41",
+            "joint42",
+            "joint43",
+            "joint44",
+            "joint45",
+            "joint46",
+            "joint47",
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7"
+        ],
+        "position": [
+            0.0,
+            0,
+            0.1,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+            0.1,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0
+        ]
     }
 }

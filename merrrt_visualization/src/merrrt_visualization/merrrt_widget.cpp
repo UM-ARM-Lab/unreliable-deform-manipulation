@@ -41,10 +41,10 @@ void MerrrtWidget::MoveRopeButtonClicked()
   peter_msgs::SetRopeState move_req;
   move_req.request.gripper1.x = -0.15;
   move_req.request.gripper1.y = 1.0;
-  move_req.request.gripper1.z = 1.0;
+  move_req.request.gripper1.z = 0.7;
   move_req.request.gripper2.x = 0.15;
   move_req.request.gripper2.y = 1.0;
-  move_req.request.gripper2.z = 1.0;
+  move_req.request.gripper2.z = 0.7;
   set_rope_state_srv_.call(move_req);
 
   Settle();
