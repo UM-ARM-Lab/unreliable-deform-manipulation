@@ -4,9 +4,9 @@
     <arg name="use_victor"      default="false"/>
     <arg name="use_val"         default="false"/>
 
-    <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_tables_static_transform.launch" if="$(arg use_mocap_shims)">
+    <!-- <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_tables_static_transform.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-    </include>
+    </include> -->
 
     <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_kinect_static_transforms.launch" if="$(arg use_mocap_shims)">
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
@@ -46,9 +46,9 @@
     </group>
 
     <group if="$(arg use_val)">
-        <!-- <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_val_static_transform.launch" if="$(arg use_mocap_shims)">
+        <include file="$(find lightweight_vicon_bridge)/launch/mocap_to_val_static_transform.launch" if="$(arg use_mocap_shims)">
             <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-        </include> -->
+        </include>
 
         <group ns="static_transform_publishers">
             <node pkg="tf2_ros" type="static_transform_publisher" name="active_robot_root_broadcaster" required="true"

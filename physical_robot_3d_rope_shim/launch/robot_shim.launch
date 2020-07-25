@@ -18,16 +18,6 @@
         </include>
     </group>
     <group if="$(arg use_val)">
-        <rosparam subst_value="true" param="left_arm_home">
-            [0.26047419515123593, -0.09131782454450033, -0.41070305966477144, 0.06107462294192967, 0.5285513175937897, -0.49152220465715135, -0.5944475898991977]
-        </rosparam>
-        <rosparam subst_value="true" param="right_arm_home">
-            [1.5296327097252806, 0.1305616732518864, -0.7131289839614849, -2.211993474038108, -1.6251822030095413, -0.7956860276909165, 2.331045691314553]
-        </rosparam>
-        <rosparam subst_value="true" param="torso_home">
-            [-0.9487858325762472, -0.009684007811449291]
-        </rosparam>
-
         <!-- Load Val's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>

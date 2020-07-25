@@ -1446,17 +1446,17 @@
     <plugin name='kinematic_val' filename='libkinematic_val_plugin.so'>
       <max_dist_between_gripper_and_link_scale_factor>1.1</max_dist_between_gripper_and_link_scale_factor>
       <initial_positions>
-        <joint1>-0.5</joint1>
+        <joint1>0.0</joint1>
         <joint2>0.0</joint2>
         <joint3>0.0</joint3>
-        <joint4>0.6</joint4>
+        <joint4>0.0</joint4>
         <joint5>0.0</joint5>
         <joint6>0.0</joint6>
         <joint7>0.0</joint7>
-        <joint41>-0.5</joint41>
+        <joint41>0.0</joint41>
         <joint42>0.0</joint42>
         <joint43>0.0</joint43>
-        <joint44>0.6</joint44>
+        <joint44>0.0</joint44>
         <joint45>0.</joint45>
         <joint46>0.0</joint46>
         <joint47>0.0</joint47>

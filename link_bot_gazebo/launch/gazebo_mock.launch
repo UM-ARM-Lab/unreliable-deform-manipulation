@@ -23,10 +23,8 @@
         <arg name="use_sim_time" value="false"/>
         <arg name="use_val" value="$(arg use_val)"/>
         <arg name="use_victor" value="$(arg use_victor)"/>
-        <arg name="use_mocap_shims" value="$(arg use_mocap_shims)"/>
+        <arg name="use_mocap_shims" value="true"/>
     </include>
-
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name"   value="$(find link_bot_gazebo)/worlds/$(arg world)"/>
@@ -53,7 +51,7 @@
             <arg name="load_robot_description" value="true"/>
         </include>
         <include file="$(find hdt_michigan_moveit)/launch/move_group.launch">
-            <arg name="allow_trajectory_execution" value="true"/>
+            <arg name="allow_trajectory_execution" value="false"/>
             <arg name="fake_execution" value="false"/>
             <arg name="info" value="true"/>
             <arg name="debug" value="$(arg debug_moveit)"/>

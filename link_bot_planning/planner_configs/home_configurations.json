@@ -74,5 +74,81 @@
             -0.7956860276909165,
             2.331045691314553
         ]
+    },
+    "engine_lift": {
+        "name": [
+            "joint56",
+            "joint57",
+            "joint41",
+            "joint42",
+            "joint43",
+            "joint44",
+            "joint45",
+            "joint46",
+            "joint47",
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7"
+        ],
+        "position": [
+            -0.2,
+            0,
+            -0.1,
+            0,
+            -0.4,
+            0.9,
+            1.5707,
+            -0.8,
+            0,
+            -0.1,
+            0,
+            0,
+            0.9,
+            1.5707,
+            -0.8,
+            0
+        ]
+    },
+    "engine_lift_droopy": {
+        "name": [
+            "joint56",
+            "joint57",
+            "joint41",
+            "joint42",
+            "joint43",
+            "joint44",
+            "joint45",
+            "joint46",
+            "joint47",
+            "joint1",
+            "joint2",
+            "joint3",
+            "joint4",
+            "joint5",
+            "joint6",
+            "joint7"
+        ],
+        "position": [
+            0.0,
+            0,
+            0.0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+            0.0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0.0,
+            0
+        ]
     }
 }
