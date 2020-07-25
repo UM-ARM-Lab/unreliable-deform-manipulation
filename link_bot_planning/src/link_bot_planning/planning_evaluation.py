@@ -91,8 +91,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.bag = rosbag.Bag(bagname, 'w')
 
     def follow_joint_trajectory_goal_callback(self, goal_msg):
-        self.bag.write('/both_arms_controller/follow_joint_trajectory/goal', goal_msg)
-        self.bag.flush()
+        if self.record:
+            self.bag.write('/both_arms_controller/follow_joint_trajectory/goal', goal_msg)
+            self.bag.flush()
 
     def get_goal(self, environment: Dict):
         if self.goal is not None:

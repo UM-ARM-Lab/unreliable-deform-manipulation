@@ -213,7 +213,7 @@ class NNClassifier(MyKerasModel):
     def calculate_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
         time = input_dict['time']
@@ -227,7 +227,8 @@ class NNClassifier(MyKerasModel):
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
         padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
-        concat_args = [conv_output] + list(states_in_robot_frame.values()) + list(states_in_local_frame.values()) + padded_actions
+        # concat_args = [conv_output] + list(states_in_robot_frame.values()) + list(states_in_local_frame.values()) + padded_actions
+        concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]

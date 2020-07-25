@@ -120,12 +120,8 @@ class Base3DScenario(ExperimentScenario):
         self.plot_state_rviz(state, idx=self.maybe_rejected_state_idx, label='rejected', color='#fac57f')
         self.maybe_rejected_state_idx += 1
 
-    def plot_current_tree_state(self, state: Dict, horizon: int):
-        if horizon is None:
-            c = "#777777"
-        else:
-            c = cm.Oranges(state['num_diverged'][0] / horizon)
-        self.plot_state_rviz(state, idx=1, label='current tree state', color=c)
+    def plot_current_tree_state(self, state: Dict, horizon: int, **kwargs):
+        self.plot_state_rviz(state, idx=1, label='current tree state', **kwargs)
 
     def plot_tree_state(self, state: Dict, color='#777777'):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color=color)

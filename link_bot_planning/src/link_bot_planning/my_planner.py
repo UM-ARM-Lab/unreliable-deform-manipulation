@@ -199,6 +199,7 @@ class MyPlanner:
 
         if self.verbose >= 2:
             alpha = final_classifier_probability
+            classifier_probability_color = cm.Reds_r(final_classifier_probability)
             if len(previous_actions) == 0:
                 random_color = cm.Dark2(self.control_sampler_rng.uniform(0, 1))
                 MyPlanner.propagate.r = random_color[0]
@@ -209,12 +210,11 @@ class MyPlanner:
                 MyPlanner.propagate.r = random_color[0]
                 MyPlanner.propagate.g = random_color[1]
                 MyPlanner.propagate.b = random_color[2]
-                classifier_probability_color = cm.Reds_r(final_classifier_probability)
-                self.scenario.plot_tree_state(previous_state, color=classifier_probability_color)
-                # plot the end of the extension, which is just the previous state
-                self.scenario.plot_tree_state(MyPlanner.propagate.cached_previous_state, color=classifier_probability_color)
 
-            self.scenario.plot_current_tree_state(np_final_state, horizon=self.classifier_model.horizon)
+            if final_classifier_probability > 0.5:
+                self.scenario.plot_tree_state(np_final_state, color=classifier_probability_color)
+            self.scenario.plot_current_tree_state(
+                np_final_state, horizon=self.classifier_model.horizon, color=classifier_probability_color)
 
             self.scenario.plot_tree_action(previous_state,
                                            new_action,
@@ -222,7 +222,6 @@ class MyPlanner:
                                            g=MyPlanner.propagate.g,
                                            b=MyPlanner.propagate.b,
                                            a=alpha)
-            MyPlanner.propagate.cached_previous_state = np_final_state
     propagate.r = 0
     propagate.g = 0
     propagate.b = 0

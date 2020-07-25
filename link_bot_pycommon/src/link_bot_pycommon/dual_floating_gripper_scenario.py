@@ -464,7 +464,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
             'link_bot': np.array(rope_state_vector, np.float32),
-            'joint_positions': joints_res.position,
+            'joint_positions': joints_res.joint_state.position,
         }
 
     @ staticmethod
@@ -684,9 +684,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    def distance_to_goal(self, state, goal):
-        return self.distance_to_midpoint_goal(state, goal)
-
     @ staticmethod
     def full_distance_tf(s1: Dict, s2: Dict):
         """ the same as the distance metric used in planning """
@@ -704,10 +701,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return distance
 
     @ staticmethod
-    def distance_differentiable(s1: Dict, s2: Dict):
-        raise NotImplementedError()
-
-    @ staticmethod
     def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
         # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
         # done when making the classifier dataset
@@ -717,6 +710,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         threshold = labeling_params['threshold']
         is_close = model_error < threshold
         return is_close
+
+    def distance_to_goal(self, state, goal):
+        return self.distance_to_midpoint_goal(state, goal)
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
         return RopeMidpointGoalRegion(si=si,
