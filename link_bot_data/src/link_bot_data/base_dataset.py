@@ -38,6 +38,16 @@ class BaseDataset:
                      shard: Optional[int] = None,
                      take: Optional[int] = None,
                      **kwargs) -> tf.data.Dataset:
+        all_filenames = self.get_record_filenames(mode)
+        return self.get_datasets_from_records(all_filenames,
+                                              n_parallel_calls=n_parallel_calls,
+                                              do_not_process=do_not_process,
+                                              shard=shard,
+                                              take=take,
+                                              **kwargs)
+
+
+    def get_record_filenames(self, mode: str) -> List[str]:
         if mode == 'all':
             train_filenames = []
             test_filenames = []
@@ -56,12 +66,7 @@ class BaseDataset:
                 all_filenames.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
 
         all_filenames = sorted(all_filenames)
-        return self.get_datasets_from_records(all_filenames,
-                                              n_parallel_calls=n_parallel_calls,
-                                              do_not_process=do_not_process,
-                                              shard=shard,
-                                              take=take,
-                                              **kwargs)
+        return all_filenames
 
     def get_datasets_from_records(self,
                                   records: List[str],

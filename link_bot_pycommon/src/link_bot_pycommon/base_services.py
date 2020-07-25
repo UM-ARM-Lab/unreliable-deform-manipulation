@@ -37,7 +37,7 @@ class BaseServices:
         start_msg = TriggerVideoRecordingRequest()
         start_msg.record = True
         start_msg.filename = filename
-        start_msg.timeout_in_sec = 300.0
+        start_msg.timeout_in_sec = 600.0
         self.record(start_msg)
 
     def stop_record_trial(self):

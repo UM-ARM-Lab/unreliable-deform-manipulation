@@ -182,6 +182,8 @@ class PlanAndExecute:
                                               robot_name=self.planner.fwd_model.scenario.robot_name())
 
     def plan_and_execute(self):
+        self.on_start_trial()
+
         start_time = time.perf_counter()
         total_timeout = self.planner_params['total_timeout']
 
@@ -297,6 +299,9 @@ class PlanAndExecute:
                                                      actions=planning_result.actions)
 
     def on_before_execute(self):
+        pass
+
+    def on_start_trial(self):
         pass
 
     def on_execution_complete(self,

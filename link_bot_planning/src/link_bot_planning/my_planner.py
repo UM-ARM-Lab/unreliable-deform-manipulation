@@ -209,8 +209,10 @@ class MyPlanner:
                 MyPlanner.propagate.r = random_color[0]
                 MyPlanner.propagate.g = random_color[1]
                 MyPlanner.propagate.b = random_color[2]
-                self.scenario.plot_tree_state(previous_state)
-                self.scenario.plot_tree_state(MyPlanner.propagate.cached_previous_state)
+                classifier_probability_color = cm.Reds_r(final_classifier_probability)
+                self.scenario.plot_tree_state(previous_state, color=classifier_probability_color)
+                # plot the end of the extension, which is just the previous state
+                self.scenario.plot_tree_state(MyPlanner.propagate.cached_previous_state, color=classifier_probability_color)
 
             self.scenario.plot_current_tree_state(np_final_state, horizon=self.classifier_model.horizon)
 

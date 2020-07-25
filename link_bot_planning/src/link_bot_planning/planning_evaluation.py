@@ -6,9 +6,11 @@ from time import sleep, time
 from typing import Optional, Dict, List
 
 import rospy
+import rosbag
 import numpy as np
 from dataclasses_json import dataclass_json
 from dataclasses_json import DataClassJsonMixin
+from control_msgs.msg import FollowJointTrajectoryActionGoal
 import ompl.util as ou
 import tensorflow as tf
 from colorama import Fore
@@ -54,12 +56,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.outdir = outdir
         self.seed = seed
 
-        self.subfolder = "{}_{}".format(self.planner_config_name, comparison_item_idx)
+        self.subfolder = "{}_{}".format(
+            self.planner_config_name, comparison_item_idx)
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         print(Fore.CYAN + str(self.root) + Fore.RESET)
-        self.failures_root = self.root / 'failures'
-        self.successfully_completed_plan_idx = 0
         self.goal = goal
 
         metadata = {
@@ -72,13 +73,26 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         with (self.root / 'metadata.json').open("w") as metadata_file:
             json.dump(metadata, metadata_file, indent=2)
 
+        self.joint_goal_sub = rospy.Subscriber("/both_arms_controller/follow_joint_trajectory/goal",
+                                               FollowJointTrajectoryActionGoal,
+                                               self.follow_joint_trajectory_goal_callback,
+                                               queue_size=10)
+        self.bag = None
+
     def randomize_environment(self):
         super().randomize_environment()
 
-    def on_before_execute(self):
+    def on_start_trial(self):
         if self.record:
-            filename = self.root.absolute() / 'plan-{}.avi'.format(self.plan_idx)
-            self.service_provider.start_record_trial(str(filename))
+            filename = self.root.absolute() / 'plan-{}.avi'.format(self.trial_idx)
+            # self.service_provider.start_record_trial(str(filename))
+            bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{self.trial_idx}.bag"
+            print(Fore.YELLOW + str(bagname) + Fore.RESET)
+            self.bag = rosbag.Bag(bagname, 'w')
+
+    def follow_joint_trajectory_goal_callback(self, goal_msg):
+        self.bag.write('/both_arms_controller/follow_joint_trajectory/goal', goal_msg)
+        self.bag.flush()
 
     def get_goal(self, environment: Dict):
         if self.goal is not None:
@@ -100,12 +114,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         data_filename = self.root / f'{self.trial_idx}_metrics.json.gz'
         dummy_proof_write(trial_data, data_filename)
 
-        self.successfully_completed_plan_idx += 1
-
         if self.record:
             # TODO: maybe make this happen async?
-            sleep(1)
-            self.service_provider.stop_record_trial()
+            # sleep(1)
+            # self.service_provider.stop_record_trial()
+            self.bag.close()
 
 
 def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory):

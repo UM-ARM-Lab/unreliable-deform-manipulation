@@ -13,6 +13,7 @@ import rospy
 from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
 from matplotlib import colors
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from link_bot_pycommon import link_bot_sdf_utils
@@ -25,6 +26,21 @@ from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, 
     SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest, SetBoolRequest, SetBool, GetJointState, GetJointStateRequest
 from std_srvs.srv import Empty, EmptyRequest
+
+def make_box_marker_from_extents(extent):
+    m = Marker()
+    ysize, xsize, zsize = extent_to_env_size(extent)
+    xcenter, ycenter, zcenter = extent_to_center(extent)
+    m.scale.x = xsize
+    m.scale.y = ysize
+    m.scale.z = zsize
+    m.action = Marker.ADD
+    m.type = Marker.CUBE
+    m.pose.position.x = xcenter
+    m.pose.position.y = ycenter
+    m.pose.position.z = zcenter
+    m.pose.orientation.w = 1
+    return m
 
 def sample_rope_and_grippers(rng, g1, g2, p, n_links, kd):
     g1 = g1 + rng.uniform(-0.05, 0.05, 3)
@@ -419,7 +435,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def get_state(self):
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
-        rope_res = self.get_rope_srv(GetRopeStateRequest())
+        while True:
+            try:
+                rope_res = self.get_rope_srv(GetRopeStateRequest())
+                break
+            except Exception:
+                print("CDCPD failed? Restart it!")
+                input("press enter.")
 
         rope_state_vector = []
         for p in rope_res.positions:
@@ -889,12 +911,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             r = 0.4
             g = 0.8
             b = 0.4
-            a = 0.8
+            a = 0.6
         else:
             r = 0.5
             g = 0.3
             b = 0.8
-            a = 0.8
+            a = 0.6
 
         goal_marker_msg = MarkerArray()
 
@@ -983,6 +1005,59 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             goal_marker_msg.markers.append(gripper2_marker)
 
         self.state_viz_pub.publish(goal_marker_msg)
+
+    def plot_goal_boxes(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
+        if actually_at_goal:
+            r = 0.4
+            g = 0.8
+            b = 0.4
+            a = 0.6
+        else:
+            r = 0.5
+            g = 0.3
+            b = 0.8
+            a = 0.6
+
+        goal_marker_msg = MarkerArray()
+
+        if 'point_box' in goal:
+            point_marker = make_box_marker_from_extents(goal['point_box'])
+            point_marker.header.frame_id = "/world"
+            point_marker.header.stamp = rospy.Time.now()
+            point_marker.ns = 'goal'
+            point_marker.id = 0
+            point_marker.color.r = r
+            point_marker.color.g = g
+            point_marker.color.b = b
+            point_marker.color.a = a
+            goal_marker_msg.markers.append(point_marker)
+
+        if 'gripper1_box' in goal:
+            gripper1_marker = make_box_marker_from_extents(goal['gripper1_box'])
+            gripper1_marker.header.frame_id = "/world"
+            gripper1_marker.header.stamp = rospy.Time.now()
+            gripper1_marker.ns = 'goal'
+            gripper1_marker.id = 1
+            gripper1_marker.color.r = r
+            gripper1_marker.color.g = g
+            gripper1_marker.color.b = b
+            gripper1_marker.color.a = a
+            goal_marker_msg.markers.append(gripper1_marker)
+
+        if 'gripper2_box' in goal:
+            gripper2_marker = make_box_marker_from_extents(goal['gripper2_box'])
+            gripper2_marker.header.frame_id = "/world"
+            gripper2_marker.header.stamp = rospy.Time.now()
+            gripper2_marker.ns = 'goal'
+            gripper2_marker.id = 2
+            gripper2_marker.color.r = r
+            gripper2_marker.color.g = g
+            gripper2_marker.color.b = b
+            gripper2_marker.color.a = a
+            goal_marker_msg.markers.append(gripper2_marker)
+
+        self.state_viz_pub.publish(goal_marker_msg)
+
 
     @ staticmethod
     def dynamics_loss_function(dataset_element, predictions):
@@ -1227,8 +1302,8 @@ class DualGripperControlSampler(oc.ControlSampler):
         yaw_1 = self.rng.uniform(-np.pi, np.pi)
         yaw_2 = self.rng.uniform(-np.pi, np.pi)
         # Displacement
-        displacement1 = self.rng.uniform(0, self.action_params['max_distance_gripper_can_move'])
-        displacement2 = self.rng.uniform(0, self.action_params['max_distance_gripper_can_move'])
+        displacement1 = self.rng.uniform(0, 0.75 * self.action_params['max_distance_gripper_can_move'])
+        displacement2 = self.rng.uniform(0, 0.75 * self.action_params['max_distance_gripper_can_move'])
 
         control_out[0][0] = pitch_1
         control_out[0][1] = yaw_1
@@ -1505,6 +1580,71 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
 
         if self.plot:
             self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def maxSampleCount(self):
+        return 100
+
+
+class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
+
+    def __init__(self,
+                 si: oc.SpaceInformation,
+                 scenario: DualFloatingGripperRopeScenario,
+                 rng: np.random.RandomState,
+                 threshold: float,
+                 goal: Dict,
+                 plot: bool):
+        super(RopeAndGrippersBoxesGoalRegion, self).__init__(si)
+        self.goal = goal
+        self.scenario = scenario
+        self.setThreshold(threshold)
+        self.rng = rng
+        self.plot = plot
+
+    def isSatisfied(self, state: ob.CompoundState, distance):
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
+        n_from_ends = 5
+        near_center_rope_points = rope_points[n_from_ends:-n_from_ends]
+
+        gripper1_extent = np.reshape(self.goal['gripper1_box'], [3, 2])
+        gripper1_satisfied = np.logical_and(state_np['gripper1'] >= gripper1_extent[:, 0], state_np['gripper1'] <= gripper1_extent[:, 1])
+
+        gripper2_extent = np.reshape(self.goal['gripper2_box'], [3, 2])
+        gripper2_satisfied = np.logical_and(state_np['gripper2'] >= gripper2_extent[:, 0], state_np['gripper2'] <= gripper2_extent[:, 1])
+
+        point_extent = np.reshape(self.goal['point_box'], [3, 2])
+        points_satisfied = np.logical_and(near_center_rope_points >= point_extent[:, 0], near_center_rope_points <= point_extent[:, 1])
+        any_point_satisfied = np.reduce_any(points_satisfied)
+
+        return float(any_point_satisfied and gripper1_satisfied and gripper2_satisfied)
+
+    def sampleGoal(self, state_out: ob.CompoundState):
+        # attempt to sample "legit" rope states
+        kd = 0.05
+        rope = sample_rope_and_grippers(self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
+
+        goal_state_np = {
+            'gripper1': self.goal['gripper1'],
+            'gripper2': self.goal['gripper2'],
+            'link_bot': rope.flatten(),
+            'num_diverged': np.zeros(1, dtype=np.float64),
+            'stdev': np.zeros(1, dtype=np.float64),
+        }
+
+        self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
+
+        if self.plot:
+            self.scenario.plot_sampled_goal_state(goal_state_np)
+
+    def distanceGoal(self, state: ob.CompoundState):
+        state_np = self.scenario.ompl_state_to_numpy(state)
+        distance = self.scenario.distance_grippers_and_any_point_goal(state_np, self.goal)
+
+        # this ensures the goal must have num_diverged = 0
+        if state_np['num_diverged'] > 0:
+            distance = 1e9
+        return distance
 
     def maxSampleCount(self):
         return 100
