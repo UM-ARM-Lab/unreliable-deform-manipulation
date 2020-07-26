@@ -31,6 +31,7 @@ def main():
     parser.add_argument("--seed", '-s', type=int, default=1)
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
     parser.add_argument('--record', action='store_true', help='record')
+    parser.add_argument('--skip-on-exception', action='store_true', help='skip method if exception is raise')
 
     args = parser.parse_args()
 
@@ -49,12 +50,15 @@ def main():
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
     for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
-        evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
-        # try:
-        #     evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
-        # except Exception as e:
-        #     traceback.print_exc()
-        #     print(e)
+        if args.skip_on_exception:
+            try:
+                evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
+            except Exception as e:
+                traceback.print_exc()
+                print(e)
+        else:
+            evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
+        print(f"Results written to {common_output_directory}")
 
 
 if __name__ == '__main__':

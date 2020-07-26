@@ -20,7 +20,6 @@ def main():
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("env_type", choices=['victor', 'val', 'gazebo'], default='gazebo', help='env type')
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
     parser.add_argument("--nickname", type=str, help='output will be in results/$nickname-compare-$time', required=True)
@@ -46,7 +45,7 @@ def main():
         common_output_directory.mkdir(parents=True)
 
     rospy.init_node("planning_evaluation")
-    rospy.set_param('service_provider', args.env_type)
+    rospy.set_param('service_provider', 'gazebo')
 
     planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
     setattr(args, 'n_trials', 1)

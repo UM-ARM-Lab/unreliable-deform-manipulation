@@ -118,11 +118,7 @@ def metrics_main(args):
 
             goal = datum['goal']
             final_actual_state = datum['end_state']
-            if final_actual_state is None:
-                print("Missing final state! Using constant large error")
-                final_execution_to_goal_error = 0.75
-            else:
-                final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
+            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
 
             final_execution_to_goal_errors.append(final_execution_to_goal_error)
 

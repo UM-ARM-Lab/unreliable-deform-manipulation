@@ -198,7 +198,7 @@ class MyPlanner:
         self.scenario.numpy_to_ompl_state(np_final_state, state_out)
 
         if self.verbose >= 2:
-            alpha = final_classifier_probability
+            alpha = final_classifier_probability * 0.8 + 0.2
             classifier_probability_color = cm.Reds_r(final_classifier_probability)
             if len(previous_actions) == 0:
                 random_color = cm.Dark2(self.control_sampler_rng.uniform(0, 1))

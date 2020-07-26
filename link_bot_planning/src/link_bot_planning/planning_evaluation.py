@@ -136,12 +136,7 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
     planner_config_name = p_params_name.stem
 
     # Start Services
-    if args.env_type == 'victor':
-        service_provider = victor_services.VictorServices()
-    elif args.env_type == 'val':
-        service_provider = victor_services.VictorServices()
-    else:
-        service_provider = gazebo_services.GazeboServices()
+    service_provider = gazebo_services.GazeboServices()
 
     # look up the planner params
     planner, _ = get_planner(planner_params=planner_params,
