@@ -1,8 +1,8 @@
 {
-  "total_timeout": 180,
+  "total_timeout": 1200,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 180
+    "timeout": 600
   },
   "left_gripper_reset_position": [
     1.1,
@@ -54,12 +54,12 @@
   ],
   "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.05,
+  "goal_threshold": 0.08,
   "fixed_goal": {
     "midpoint": [
-      0.7,
+      0.84,
       -0.5,
-      0.7
+      0.68
     ]
   },
   "real_time_rate": 0.0,

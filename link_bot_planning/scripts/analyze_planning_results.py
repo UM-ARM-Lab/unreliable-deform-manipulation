@@ -113,19 +113,23 @@ def metrics_main(args):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
             datum = json.loads(data_str.decode("utf-8"))
-            steps = datum['steps']
             total_time = datum['total_time']
-            goal = datum['goal']
+            total_times.append(total_time)
 
-            final_actual_state = steps[-1]['execution_result']['path'][-1]
+            goal = datum['goal']
+            final_actual_state = datum['end_state']
+            if final_actual_state is None:
+                print("Missing final state! Using constant large error")
+                final_execution_to_goal_error = 0.75
+            else:
+                final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
+
+            final_execution_to_goal_errors.append(final_execution_to_goal_error)
+
+            steps = datum['steps']
             for step in steps:
                 if step['type'] == 'executed_recovery':
                     n_recovery += 1
-
-            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
-            final_execution_to_goal_errors.append(final_execution_to_goal_error)
-
-            total_times.append(total_time)
 
         ###############################################################################################
 

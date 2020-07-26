@@ -67,5 +67,5 @@ class ClassifierDataset(BaseDataset):
         def _add_rope_noise(example):
             example[add_predicted('link_bot')] = example[add_predicted('link_bot')] + tf.random.normal([75], 0, 0.01)
             return example
-        dataset = dataset.map(_add_rope_noise)
+        # dataset = dataset.map(_add_rope_noise)
         return dataset
