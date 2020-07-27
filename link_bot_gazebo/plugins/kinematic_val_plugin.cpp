@@ -195,6 +195,11 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       if (grasping_rope_)
       {
         TeleportGrippers();
+        ignore_overstretching_ = false;
+      }
+      else
+      {
+        ignore_overstretching_ = true;
       }
       return true;
     };
