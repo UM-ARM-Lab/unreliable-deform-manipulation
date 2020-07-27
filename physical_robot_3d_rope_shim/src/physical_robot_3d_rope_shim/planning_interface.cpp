@@ -103,6 +103,7 @@ PlanningInterface::PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std
 
   , tf_broadcaster_()
   , vis_pub_(nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10, true))
+  , configure_home_srv_(nh_.advertiseService("configure_home", &PlanningInterface::ConfigureHomeCB, this))
   , visual_tools_("robot_root", "/moveit_visual_markers")
   , tf_buffer_(tf_buffer)
   , world_frame_("robot_root")
@@ -125,6 +126,12 @@ PlanningInterface::PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std
     tool_names_[idx] = ees[idx] + "_tool";
     tool_offsets_[idx] = lookupTransform(*tf_buffer, ee_baselink, tool_names_[idx], ros::Time(0), ros::Duration(1));
   }
+}
+
+bool PlanningInterface::ConfigureHomeCB(std_srvs::EmptyRequest& /*req*/, std_srvs::EmptyResponse& /*res*/)
+{
+  configureHomeState();
+  return true;
 }
 
 void PlanningInterface::configureHomeState()

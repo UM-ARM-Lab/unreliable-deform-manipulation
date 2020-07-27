@@ -8,6 +8,7 @@
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <trajectory_msgs/JointTrajectory.h>
@@ -40,6 +41,7 @@ public:
   // Debugging
   tf2_ros::TransformBroadcaster tf_broadcaster_;
   ros::Publisher vis_pub_;
+  ros::ServiceServer configure_home_srv_;
   moveit_visual_tools::MoveItVisualTools visual_tools_;
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -65,6 +67,8 @@ public:
 
   PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
                     std::string const& group);
+
+  bool ConfigureHomeCB(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res);
 
   virtual Eigen::VectorXd lookupQHome() = 0;
 
