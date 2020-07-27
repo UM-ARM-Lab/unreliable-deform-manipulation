@@ -1,4 +1,14 @@
 {
+  "scene": "tabletop",
+  "objects": [
+    "box1",
+    "box2",
+    "box3",
+    "box4",
+    "box5",
+    "hook1",
+    "hook2"
+  ],
   "total_timeout": 180,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
@@ -47,7 +57,6 @@
   "classifier_model_dir": "cl_trials/none_baseline/none",
   "accept_threshold": 0.5,
   "goal_type": "midpoint",
-  "scene": "tabletop",
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "real_time_rate": 0.0,

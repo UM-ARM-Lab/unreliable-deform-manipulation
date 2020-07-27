@@ -1,5 +1,14 @@
 {
   "scene": "tabletop",
+  "objects": [
+    "box1",
+    "box2",
+    "box3",
+    "box4",
+    "box5",
+    "hook1",
+    "hook2"
+  ],
   "total_timeout": 180,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
