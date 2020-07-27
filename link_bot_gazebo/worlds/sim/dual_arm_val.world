@@ -84,14 +84,9 @@
         </include>
 
         <include>
-            <pose>0 1 0 -0.89 0 0</pose>
+            <pose>0 1 0 -1.0 0 0</pose>
             <uri>model://car_hood</uri>
         </include>
 
-        <!-- <include>
-            <static>true</static>
-            <pose>0.0 -0.19 -0.31 0 0 1.570796</pose>
-            <uri>model://husky</uri>
-        </include> -->
     </world>
 </sdf>

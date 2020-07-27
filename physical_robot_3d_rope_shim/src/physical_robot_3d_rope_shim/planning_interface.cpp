@@ -113,6 +113,7 @@ PlanningInterface::PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std
 
   , jiggle_fraction_(ROSHelpers::GetParam<double>(ph_, "move_group/jiggle_fraction", 0.05))
   , translation_step_size_(ROSHelpers::GetParam<double>(ph_, "translation_step_size", 0.002))
+  , minimize_rotation_(ROSHelpers::GetParam<bool>(ph_, "minimize_rotation", true))
 {
   auto const& ees = jmg_->getAttachedEndEffectorNames();
 
@@ -667,27 +668,36 @@ bool PlanningInterface::jacobianIK(planning_scene::PlanningScenePtr planning_sce
       MPS_ASSERT(nextMatrixRowIdx == nullspaceConstraintMatrix.rows());
 
       // Project the rotation step into the nullspace of position servoing
-      const Eigen::MatrixXd nullspaceConstraintMatrixPinv =
-          EigenHelpers::Pinv(nullspaceConstraintMatrix, EigenHelpers::SuggestedRcond());
-      const Eigen::MatrixXd nullspaceProjector =
-          Eigen::MatrixXd::Identity(ndof, ndof) - (nullspaceConstraintMatrixPinv * nullspaceConstraintMatrix);
-      const Eigen::VectorXd nullspaceRotationStep = nullspaceProjector * rotationCorrectionStep;
-      const Eigen::VectorXd step = positionCorrectionStep + nullspaceRotationStep;
-      if (bPRINT)
-      {
-        std::cerr << "\n\n";
-        std::cerr << "fullJacobian                  = [\n" << fullJacobian << "];\n";
-        std::cerr << "nullspaceConstraintMatrix     = [\n" << nullspaceConstraintMatrix << "];\n";
-        std::cerr << "nullspaceConstraintMatrixPinv = [\n" << nullspaceConstraintMatrixPinv << "];\n";
-        std::cerr << "posErrorVec        = [" << posErrorVec.transpose() << "]';\n";
-        std::cerr << "rotErrorVec        = [" << rotErrorVec.transpose() << "]';\n";
-        std::cerr << "drotTransEffect    = [" << drotTransEffect.transpose() << "]';\n";
-        std::cerr << "drotEffective      = [" << drotEffective.transpose() << "]';\n";
-        std::cerr << "positionCorrectionStep = [" << positionCorrectionStep.transpose() << "]';\n";
-        std::cerr << "rotationCorrectionStep = [" << rotationCorrectionStep.transpose() << "]';\n";
-        std::cerr << "nullspaceRotationStep  = [" << nullspaceRotationStep.transpose() << "]';\n";
-        std::cerr << "step                   = [" << step.transpose() << "]';\n\n";
-      }
+      const Eigen::VectorXd step = [&]() -> Eigen::VectorXd {
+        if (minimize_rotation_)
+        {
+          const Eigen::MatrixXd nullspaceConstraintMatrixPinv =
+              EigenHelpers::Pinv(nullspaceConstraintMatrix, EigenHelpers::SuggestedRcond());
+          const Eigen::MatrixXd nullspaceProjector =
+              Eigen::MatrixXd::Identity(ndof, ndof) - (nullspaceConstraintMatrixPinv * nullspaceConstraintMatrix);
+          const Eigen::VectorXd nullspaceRotationStep = nullspaceProjector * rotationCorrectionStep;
+          return positionCorrectionStep + nullspaceRotationStep;
+        }
+        else
+        {
+          return positionCorrectionStep;
+        }
+      }();
+      // if (bPRINT)
+      // {
+      //   std::cerr << "\n\n";
+      //   std::cerr << "fullJacobian                  = [\n" << fullJacobian << "];\n";
+      //   std::cerr << "nullspaceConstraintMatrix     = [\n" << nullspaceConstraintMatrix << "];\n";
+      //   std::cerr << "nullspaceConstraintMatrixPinv = [\n" << nullspaceConstraintMatrixPinv << "];\n";
+      //   std::cerr << "posErrorVec        = [" << posErrorVec.transpose() << "]';\n";
+      //   std::cerr << "rotErrorVec        = [" << rotErrorVec.transpose() << "]';\n";
+      //   std::cerr << "drotTransEffect    = [" << drotTransEffect.transpose() << "]';\n";
+      //   std::cerr << "drotEffective      = [" << drotEffective.transpose() << "]';\n";
+      //   std::cerr << "positionCorrectionStep = [" << positionCorrectionStep.transpose() << "]';\n";
+      //   std::cerr << "rotationCorrectionStep = [" << rotationCorrectionStep.transpose() << "]';\n";
+      //   std::cerr << "nullspaceRotationStep  = [" << nullspaceRotationStep.transpose() << "]';\n";
+      //   std::cerr << "step                   = [" << step.transpose() << "]';\n\n";
+      // }
 
       // add step and check for joint limits
       newJointAtLimit = false;

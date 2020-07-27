@@ -61,6 +61,8 @@ public:
   // For use when moving the EE positions using moveIn[Robot/World]Frame
   double const translation_step_size_;
 
+  bool minimize_rotation_{ true };
+
   PlanningInterface(ros::NodeHandle nh, ros::NodeHandle ph, std::shared_ptr<tf2_ros::Buffer> tf_buffer,
                     std::string const& group);
 
