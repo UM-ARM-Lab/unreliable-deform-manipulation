@@ -226,9 +226,12 @@ class NNClassifier(MyKerasModel):
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
         padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
-        # states_in_robot_frame = self.scenario.put_state_in_robot_frame(states)
-        # concat_args = [conv_output] + list(states_in_robot_frame.values()) + list(states_in_local_frame.values()) + padded_actions
-        concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
+        if 'with_robot_frame' in self.hparams and self.hparams['with_robot_frame']:
+            states_in_robot_frame = self.scenario.put_state_in_robot_frame(states)
+            concat_args = ([conv_output] + list(states_in_robot_frame.values()) +
+                           list(states_in_local_frame.values()) + padded_actions)
+        else:
+            concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
 
         if self.hparams['stdev']:
             stdevs = input_dict[add_predicted('stdev')]
