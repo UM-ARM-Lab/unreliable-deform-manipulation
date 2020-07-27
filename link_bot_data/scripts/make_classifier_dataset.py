@@ -30,8 +30,9 @@ def main():
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
-    parser.add_argument('--max-examples-per-record', type=int, default=32, help="examples per file")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
+    parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataste')
+    parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataste')
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
     args = parser.parse_args()
@@ -65,6 +66,8 @@ def main():
     classifier_dataset_hparams['labeling_params'] = labeling_params
     classifier_dataset_hparams['state_keys'] = fwd_models.state_keys
     classifier_dataset_hparams['action_keys'] = fwd_models.action_keys
+    classifier_dataset_hparams['start-at'] = args.start_at
+    classifier_dataset_hparams['stop-at'] = args.stop_at
     json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     val_split = int(args.total_take * DEFAULT_VAL_SPLIT) if args.total_take is not None else None
@@ -84,7 +87,7 @@ def main():
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params):
+        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, args.start_at, args.stop_at):
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
                 features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}

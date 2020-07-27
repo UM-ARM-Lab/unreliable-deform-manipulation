@@ -11,8 +11,7 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature, data_directory, \
-    dict_of_float_tensors_to_bytes_feature
+from link_bot_data.link_bot_dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -42,8 +41,8 @@ def collect_trajectory(scenario: ExperimentScenario,
                                                                   service_provider=service_provider,
                                                                   robot_name=scenario.robot_name())
 
-    feature = dict_of_float_tensors_to_bytes_feature(environment)
-    feature['traj_idx'] = float_tensor_to_bytes_feature(traj_idx)
+    feature = environment
+    feature['traj_idx'] = traj_idx
 
     # Visualization
     scenario.plot_environment_rviz(environment)
@@ -86,32 +85,29 @@ def collect_trajectory(scenario: ExperimentScenario,
             scenario.plot_action_rviz(state, action)
         scenario.plot_time_idx_rviz(time_idx)
 
-    feature.update(dict_of_float_tensors_to_bytes_feature(states))
-    feature.update(dict_of_float_tensors_to_bytes_feature(actions))
-    feature['time_idx'] = float_tensor_to_bytes_feature(time_indices)
+    feature.update(states)
+    feature.update(actions)
+    feature['time_idx'] = time_indices
 
     if verbose:
         print(Fore.GREEN + "Trajectory {} Complete".format(traj_idx) + Fore.RESET)
 
-    example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
-    example = example_proto.SerializeToString()
-    return example
+    return feature
 
 
 def generate_trajs(service_provider,
                    scenario: ExperimentScenario,
                    params: Dict,
                    args,
-                   full_output_directory,
+                   full_output_directory: pathlib.Path,
                    env_rng: np.random.RandomState,
                    action_rng: np.random.RandomState,
                    ):
-    examples = np.ndarray([params['trajs_per_file']], dtype=object)
-    last_record_t = perf_counter()
+    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
     for traj_idx in range(args.trajs):
         # Randomize the environment
-        if not params['no_objects'] and traj_idx > 0 and traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
+        if not params['no_objects'] and traj_idx % params["randomize_environment_every_n_trajectories"] == 0:
             scenario.randomize_environment(env_rng, objects_params=params, data_collection_params=params)
 
         # Generate a new trajectory
@@ -121,25 +117,14 @@ def generate_trajs(service_provider,
                                      traj_idx=traj_idx,
                                      action_rng=action_rng,
                                      verbose=args.verbose)
-        current_record_traj_idx = traj_idx % params['trajs_per_file']
-        examples[current_record_traj_idx] = example
 
         # Save the data
-        if current_record_traj_idx == params['trajs_per_file'] - 1:
-            # Construct the dataset where each trajectory has been serialized into one big string
-            # since TFRecords don't really support hierarchical data structures
-            serialized_dataset = tf.data.Dataset.from_tensor_slices((examples))
-
-            end_traj_idx = traj_idx + args.start_idx_offset
-            start_traj_idx = end_traj_idx - params['trajs_per_file'] + 1
-            full_filename = os.path.join(full_output_directory,
-                                         "traj_{}_to_{}.tfrecords".format(start_traj_idx, end_traj_idx))
-            writer = tf.data.experimental.TFRecordWriter(full_filename, compression_type='ZLIB')
-            writer.write(serialized_dataset)
-            now = perf_counter()
-            dt_record = now - last_record_t
-            print("saved {} ({:5.1f}s)".format(full_filename, dt_record))
-            last_record_t = now
+        features = dict_of_float_tensors_to_bytes_feature(example)
+        example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+        example_str = example_proto.SerializeToString()
+        full_filename = full_output_directory / f"example_{traj_idx:09d}.tfrecords"
+        with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+            writer.write(example_str)
 
         if not args.verbose:
             print(".", end='')
@@ -150,22 +135,18 @@ def generate(service_provider, params: Dict, args):
     rospy.init_node('collect_dynamics_data')
     scenario = get_scenario(args.scenario)
 
-    assert args.trajs % params['trajs_per_file'] == 0, f"num trajs must be multiple of {params['trajs_per_file']}"
-
     full_output_directory = data_directory(args.outdir, args.trajs)
     # print("USING OUTDIR EXACTLY")
     # full_output_directory = pathlib.Path(args.outdir)
-    # full_output_directory.mkdir(exist_ok=True)
 
-    if not os.path.isdir(full_output_directory) and args.verbose:
-        print(Fore.YELLOW + "Creating output directory: {}".format(full_output_directory) + Fore.RESET)
-        os.mkdir(full_output_directory)
+    full_output_directory.mkdir(exist_ok=True)
+    print(Fore.GREEN + full_output_directory + Fore.RESET)
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)
-    print(Fore.CYAN + "Using seed: {}".format(args.seed) + Fore.RESET)
+    print(Fore.CYAN + f"Using seed: {args.seed}" + Fore.RESET)
 
-    with open(pathlib.Path(full_output_directory) / 'hparams.json', 'w') as of:
+    with (full_output_directory / 'hparams.json').open('w') as of:
         options = {
             'seed': args.seed,
             'n_trajs': args.trajs,
@@ -183,7 +164,7 @@ def generate(service_provider, params: Dict, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=params['max_step_size'])
-
+    scenario.on_data_collection_start()
     generate_trajs(service_provider=service_provider,
                    scenario=scenario,
                    params=params,

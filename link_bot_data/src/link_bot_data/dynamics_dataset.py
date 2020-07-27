@@ -73,17 +73,19 @@ class DynamicsDataset(BaseDataset):
 
     def split_into_sequences(self, example, desired_sequence_length):
         # return a dict where every element has different sequences split across the 0th dimension
-        for start_t in range(0, self.sequence_length - desired_sequence_length + 1):
+        for start_t in range(0, self.sequence_length - desired_sequence_length + 1, desired_sequence_length):
             out_example = {}
             for k in self.constant_feature_names:
                 out_example[k] = example[k]
 
             for k in self.state_keys:
                 v = example[k][start_t:start_t + desired_sequence_length]
+                assert v.shape[0] == desired_sequence_length
                 out_example[k] = v
 
             for k in self.action_keys:
                 v = example[k][start_t:start_t + desired_sequence_length - 1]
+                assert v.shape[0] == (desired_sequence_length - 1)
                 out_example[k] = v
 
             yield out_example
