@@ -1,5 +1,6 @@
 from typing import Dict, Optional, List
 
+import actionlib
 import numpy as np
 from time import sleep
 from tf import transformations
@@ -12,6 +13,7 @@ import ompl.control as oc
 import rospy
 from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
+from moveit_msgs.msg import MoveGroupAction, MoveGroupGoal, MotionPlanRequest, Constraints, JointConstraint, MoveItErrorCodes
 from matplotlib import colors
 from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center
 from link_bot_data.link_bot_dataset_utils import add_predicted
@@ -24,7 +26,9 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
     SetRopeState, SetRopeStateRequest, SetDualGripperPoints, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest, SetBoolRequest, SetBool, GetJointState, GetJointStateRequest
+    GetDualGripperPointsRequest, GetJointState, GetJointStateRequest
+import peter_msgs
+import std_srvs
 from std_srvs.srv import Empty, EmptyRequest
 
 
@@ -110,15 +114,25 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         super().__init__()
         self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
-        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
+        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", peter_msgs.srv.SetBool)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
         self.goto_home = rospy.ServiceProxy("goto_home", Empty)
         self.joint_states_srv = rospy.ServiceProxy("joint_states", GetJointState)
+        self.reset_srv = rospy.ServiceProxy("gazebo/reset_simulation", Empty)
+        self.ignore_overstretching_srv = rospy.ServiceProxy("set_ignore_overstretching", std_srvs.srv.SetBool)
 
         self.max_action_attempts = 500
 
+        self.robot_reset_rng = np.random.RandomState(0)
+
+        self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
+
+    def hard_reset(self):
+        self.reset_srv(EmptyRequest())
+
+    def on_data_collection_start(self):
         self.object_reset_poses = {
             # 'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             # 'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
@@ -144,7 +158,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             "car_pulley",
             "car_engine2",
         ]
-        # self.start_object_poses = self.get_object_poses(self.obstacles)
+        self.start_object_poses = self.get_object_poses(self.obstacles)
 
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
@@ -159,7 +173,28 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_rope_state_srv(reset)
 
     def reset_robot(self, data_collection_params: Dict):
-        self.goto_home(EmptyRequest())
+        positions = np.array(data_collection_params['reset_robot']['position'])
+        names = data_collection_params['reset_robot']['name']
+
+        goal_config_constraint = Constraints()
+        for name, position in zip(names, positions):
+            joint_constraint = JointConstraint()
+            joint_constraint.joint_name = name
+            joint_constraint.position = position
+            goal_config_constraint.joint_constraints.append(joint_constraint)
+
+        req = MotionPlanRequest()
+        req.group_name = 'both_arms'
+        req.goal_constraints.append(goal_config_constraint)
+
+        goal = MoveGroupGoal()
+        goal.request = req
+        self.move_group_client.send_goal(goal)
+        self.move_group_client.wait_for_result()
+        result = self.move_group_client.get_result()
+        if result.error_code.val != MoveItErrorCodes.SUCCESS:
+            rospy.logwarn(f"Failed to reset robot. Running hard reset.")
+            self.hard_reset()
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
@@ -271,7 +306,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req.seconds = 6
         self.world_control_srv(req)
 
-    def noisy_object_poses(self, env_rng: np.random.RandomState, obstacles: List):
+    def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         object_poses = {}
         for obj, pose in self.start_object_poses.items():
             noisy_position = [pose.pose.position.x + env_rng.uniform(-0.05, 0.05),
@@ -281,12 +316,29 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
         return object_poses
 
+    def random_new_object_poses(self, env_rng: np.random.RandomState, obstacles: List):
+        random_object_poses = {
+            'box1': self.random_object_pose(env_rng, objects_params),
+            'box2': self.random_object_pose(env_rng, objects_params),
+            'box3': self.random_object_pose(env_rng, objects_params),
+            'box4': self.random_object_pose(env_rng, objects_params),
+            'box5': self.random_object_pose(env_rng, objects_params),
+            'hook1': self.random_object_pose(env_rng, objects_params),
+            'hook2': self.random_object_pose(env_rng, objects_params),
+        }
+        return random_object_poses
+
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # # move the objects out of the way
         self.set_object_poses(self.object_reset_poses)
 
+        # start ignoring the rope overstretching
+        ignore = std_srvs.srv.SetBoolRequest()
+        ignore.data = True
+        self.ignore_overstretching_srv(ignore)
+
         # Let go of rope
-        release = SetBoolRequest()
+        release = peter_msgs.srv.SetBoolRequest()
         release.data = False
         self.grasping_rope_srv(release)
 
@@ -294,31 +346,29 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.reset_rope(data_collection_params)
         self.settle()
 
-        # move robot to home
+        # reet robot
         self.reset_robot(data_collection_params)
 
+        # # replace the objects in a new random configuration
+
+        # add noise to the objects locations
+        random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
+        random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
+
+        self.set_object_poses(random_object_poses)
+
         # re-grasp rope
-        grasp = SetBoolRequest()
+        grasp = peter_msgs.srv.SetBoolRequest()
         grasp.data = True
         self.grasping_rope_srv(grasp)
 
-        # # replace the objects in a new random configuration
-        # random_object_poses = {
-        #     'box1': self.random_object_pose(env_rng, objects_params),
-        #     'box2': self.random_object_pose(env_rng, objects_params),
-        #     'box3': self.random_object_pose(env_rng, objects_params),
-        #     'box4': self.random_object_pose(env_rng, objects_params),
-        #     'box5': self.random_object_pose(env_rng, objects_params),
-        #     'hook1': self.random_object_pose(env_rng, objects_params),
-        #     'hook2': self.random_object_pose(env_rng, objects_params),
-        # }
-
-        # add noise to the objects locations
-        random_object_poses = self.noisy_object_poses(env_rng, self.obstacles)
-        self.set_object_poses(random_object_poses)
-
-        # wait a second so that the rope can drap on the objects AND the planning scene monitor can update...
+        # wait a second so that the rope can drap on the objects
         self.settle()
+
+        # stop ignoring the rope overstretching
+        dont_ignore = std_srvs.srv.SetBoolRequest()
+        dont_ignore.data = False
+        self.ignore_overstretching_srv(dont_ignore)
 
         if 'gripper1_action_sample_extent' in data_collection_params:
             gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
@@ -603,9 +653,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper2_position': target_gripper2_position,
         }
 
-    def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        return self.sample_midpoint_goal(environment, rng, planner_params)
-
     @ staticmethod
     def sample_gripper_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
@@ -671,7 +718,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def distance_to_any_point_goal(state: Dict, goal: Dict):
         rope_points = np.reshape(state['link_bot'], [-1, 3])
         # well ok not _any_ node, but ones near the middle
-        n_from_ends = 5
+        n_from_ends = 7
         distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) -
                                    rope_points, axis=1)[n_from_ends:-n_from_ends]
         min_distance = np.min(distances)
@@ -712,15 +759,48 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return is_close
 
     def distance_to_goal(self, state, goal):
-        return self.distance_to_midpoint_goal(state, goal)
+        if 'type' not in goal or goal['type'] == 'midpoint':
+            return self.distance_to_midpoint_goal(state, goal)
+        elif goal['type'] == 'any_point':
+            return self.distance_to_any_point_goal(state, goal)
+        elif goal['type'] == 'grippers':
+            return self.distance_to_gripper_goal(state, goal)
+        elif goal['type'] == 'grippers_and_point':
+            return self.distance_grippers_and_any_point_goal(state, goal)
+        else:
+            raise NotImplementedError()
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
-        return RopeMidpointGoalRegion(si=si,
-                                      scenario=self,
-                                      rng=rng,
-                                      threshold=params['goal_threshold'],
-                                      goal=goal,
-                                      plot=plot)
+        if 'type' not in goal or goal['type'] == 'midpoint':
+            return RopeMidpointGoalRegion(si=si,
+                                          scenario=self,
+                                          rng=rng,
+                                          threshold=params['goal_threshold'],
+                                          goal=goal,
+                                          plot=plot)
+        elif goal['type'] == 'any_point':
+            return RopeAnyPointGoalRegion(si=si,
+                                          scenario=self,
+                                          rng=rng,
+                                          threshold=params['goal_threshold'],
+                                          goal=goal,
+                                          plot=plot)
+        elif goal['type'] == 'grippers':
+            return DualGripperGoalRegion(si=si,
+                                         scenario=self,
+                                         rng=rng,
+                                         threshold=params['goal_threshold'],
+                                         goal=goal,
+                                         plot=plot)
+        elif goal['type'] == 'grippers_and_point':
+            return RopeAndGrippersGoalRegion(si=si,
+                                             scenario=self,
+                                             rng=rng,
+                                             threshold=params['goal_threshold'],
+                                             goal=goal,
+                                             plot=plot)
+        else:
+            raise NotImplementedError()
 
     def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
         state_space = ob.CompoundStateSpace()
@@ -1603,7 +1683,7 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
     def isSatisfied(self, state: ob.CompoundState, distance):
         state_np = self.scenario.ompl_state_to_numpy(state)
         rope_points = np.reshape(state_np['link_bot'], [-1, 3])
-        n_from_ends = 5
+        n_from_ends = 7
         near_center_rope_points = rope_points[n_from_ends:-n_from_ends]
 
         gripper1_extent = np.reshape(self.goal['gripper1_box'], [3, 2])
