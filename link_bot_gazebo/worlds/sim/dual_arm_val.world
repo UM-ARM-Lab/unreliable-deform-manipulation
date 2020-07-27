@@ -84,7 +84,12 @@
         </include>
 
         <include>
-            <pose>0 1 0 -1.0 0 0</pose>
+            <pose>0 1 -0.45 0 0 0</pose>
+            <uri>model://car_coolant_tank</uri>
+        </include>
+
+        <include>
+            <pose>0 1 0 -1.2 0 0</pose>
             <uri>model://car_hood</uri>
         </include>
 

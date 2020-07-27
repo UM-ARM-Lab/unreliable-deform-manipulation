@@ -55,12 +55,12 @@
         </model>
 
         <include>
-            <pose>0 0.83 -0.416 0 0 1.570796</pose>
+            <pose>0 0.83 -0.46356 0 0 1.570796</pose>
             <uri>model://car_platform</uri>
         </include>
 
         <include>
-            <pose>0 0.367 -0.502 0 0 3.1415</pose>
+            <pose>0 0.367 -0.618 0 0 3.1415</pose>
             <uri>model://car_front</uri>
         </include>
 
@@ -70,7 +70,7 @@
         </include>
 
         <include>
-            <pose>-0.40 0.902 -0.2 0 0 0</pose>
+            <pose>-0.40 0.902 -0.303 0 0 0</pose>
             <uri>model://car_alternator</uri>
         </include>
 
@@ -85,12 +85,12 @@
         </include>
 
         <include>
-            <pose>0.177 0.82 -0.219 0 0 0</pose>
+            <pose>0.177 0.82 -0.284 0 0 0</pose>
             <uri>model://car_coolant_tank</uri>
         </include>
 
         <include>
-            <pose>-0.493 0.638 -0.189 0 0 0</pose>
+            <pose>-0.493 0.638 -0.265 0 0 0</pose>
             <uri>model://car_pulley</uri>
         </include>
 
