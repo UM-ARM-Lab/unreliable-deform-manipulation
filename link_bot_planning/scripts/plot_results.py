@@ -117,6 +117,15 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     steps = datum['steps']
 
     if len(steps) == 0:
+        q = datum['planning_queries'][0]
+        start = q['start']
+        goal = q['goal']
+        environment = q['environment']
+        anim = RvizAnimationController(n_time_steps=1)
+        scenario.plot_state_rviz(start, label='actual', color='#ff0000aa')
+        scenario.plot_goal(goal, goal_threshold)
+        scenario.plot_environment_rviz(environment)
+        anim.step()
         return
 
     goal = datum['goal']
