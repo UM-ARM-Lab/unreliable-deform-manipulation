@@ -328,7 +328,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         if 'scene' not in data_collection_params:
             rospy.logwarn("No scene specified... I assume you want tabletop.")
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
-        if data_collection_params['scene'] == 'tabletop':
+        elif data_collection_params['scene'] == 'tabletop':
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'car2':
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
