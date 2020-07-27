@@ -352,13 +352,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         # # replace the objects in a new random configuration
 
         # add noise to the objects locations
+        if 'scene' not in data_collection_params:
+            rospy.logwarn("No scene specified... I assume you want tabletop.")
+            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
         if data_collection_params['scene'] == 'tabletop':
             random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
         elif data_collection_params['scene'] == 'car':
             random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
         else:
-            rospy.logwarn("No scene specified... I assume you want tabletop.")
-            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
+            raise NotImplementedError()
 
         self.set_object_poses(random_object_poses)
 

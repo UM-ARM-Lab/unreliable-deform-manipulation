@@ -122,6 +122,7 @@ def if_filter_with_status(datum, filter_by_status):
     #     status = step['planning_result']['status']
     #     if status == 'MyPlannerStatus.NotProgressing':
     #         return True
+    print(datum['trial_status'])
     if datum['trial_status'] == 'TrialStatus.Timeout':
         return True
 
