@@ -160,28 +160,31 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_rope_state_srv(reset)
 
     def reset_robot(self, data_collection_params: Dict):
-        positions = np.array(data_collection_params['reset_robot']['position'])
-        names = data_collection_params['reset_robot']['name']
+        if data_collection_params['scene'] == 'tabletop':
+            self.goto_home(EmptyRequest())
+        elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
+            positions = np.array(data_collection_params['reset_robot']['position'])
+            names = data_collection_params['reset_robot']['name']
 
-        goal_config_constraint = Constraints()
-        for name, position in zip(names, positions):
-            joint_constraint = JointConstraint()
-            joint_constraint.joint_name = name
-            joint_constraint.position = position
-            goal_config_constraint.joint_constraints.append(joint_constraint)
+            goal_config_constraint = Constraints()
+            for name, position in zip(names, positions):
+                joint_constraint = JointConstraint()
+                joint_constraint.joint_name = name
+                joint_constraint.position = position
+                goal_config_constraint.joint_constraints.append(joint_constraint)
 
-        req = MotionPlanRequest()
-        req.group_name = 'both_arms'
-        req.goal_constraints.append(goal_config_constraint)
+            req = MotionPlanRequest()
+            req.group_name = 'both_arms'
+            req.goal_constraints.append(goal_config_constraint)
 
-        goal = MoveGroupGoal()
-        goal.request = req
-        self.move_group_client.send_goal(goal)
-        self.move_group_client.wait_for_result()
-        result = self.move_group_client.get_result()
-        if result.error_code.val != MoveItErrorCodes.SUCCESS:
-            rospy.logwarn(f"Failed to reset robot. Running hard reset.")
-            self.hard_reset()
+            goal = MoveGroupGoal()
+            goal.request = req
+            self.move_group_client.send_goal(goal)
+            self.move_group_client.wait_for_result()
+            result = self.move_group_client.get_result()
+            if result.error_code.val != MoveItErrorCodes.SUCCESS:
+                rospy.logwarn(f"Failed to reset robot. Running hard reset.")
+                self.hard_reset()
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
