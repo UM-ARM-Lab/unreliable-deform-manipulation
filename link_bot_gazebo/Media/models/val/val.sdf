@@ -1,6 +1,12 @@
 <sdf version='1.6'>
   <model name='hdt_michigan'>
     <allow_auto_disable>true</allow_auto_disable>
+  <joint name="base" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="val_root"/>
+    <child link="base"/>
+  </joint>
+
     <link name='val_root'>
       <kinematic>true</kinematic>
       <pose frame=''>0 0 0 0 -0 0</pose>
@@ -16,6 +22,14 @@
           <izz>0.00249135</izz>
         </inertia>
       </inertial>
+      <collision name='husky'>
+        <pose>0 -0.32 -0.2 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1 1 0.2</size>
+          </box>
+        </geometry>
+      </collision>
       <collision name='val_root_fixed_joint_lump__pedestal_link_collision'>
         <pose frame=''>0 0 0 -1.5708 0 0</pose>
         <geometry>
@@ -32,6 +46,20 @@
           </mesh>
         </geometry>
       </collision>
+      <visual name='husky_visual'>
+        <pose>0 -0.32 -0.2 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>1 1 0.2</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>UM/Blue</name>
+            <uri>file://media/materials/scripts/armlab.material</uri>
+          </script>
+        </material>
+      </visual>
       <visual name='val_root_fixed_joint_lump__pedestal_link_visual'>
         <pose frame=''>0 0 0 -1.5708 0 0</pose>
         <geometry>
