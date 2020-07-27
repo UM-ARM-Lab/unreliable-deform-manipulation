@@ -87,7 +87,7 @@ def main():
         full_output_directory = args.out_dir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, args.start_at, args.stop_at):
+        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params):
             for batch_idx in range(out_example['traj_idx'].shape[0]):
                 out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
                 features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}

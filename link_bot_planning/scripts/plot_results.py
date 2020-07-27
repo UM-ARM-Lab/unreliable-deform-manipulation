@@ -47,28 +47,8 @@ def main():
             metrics_str = metrics_file.read()
         datum = json.loads(metrics_str.decode("utf-8"))
 
-        for step in datum['steps']:
-            status = step['planning_result']['status']
-            if status == 'MyPlannerStatus.NotProgressing':
-                print("recovery")
-
         if if_filter_with_status(datum, args.filter_by_status):
             plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
-
-        # print(f"{trial_idx} ", end='', flush=True)
-        # for step_idx, step in enumerate(steps):
-        #     if step['type'] == 'executed_plan':
-        #         print(f".", end='')
-        #         planner_status = step['planning_result']['status']
-        #         if args.filter_by_status:
-        #             if planner_status in args.filter_by_status:
-        #                 plot_plan(args, scenario, step, metadata, fallback_labeing_params)
-        #         else:
-        #             plot_plan(args, scenario, step, metadata, fallback_labeing_params)
-        #     elif step['type'] == 'executed_recovery':
-        #         print(f"*", end='')
-        #         plot_recovery(args, scenario, step, metadata)
-        # print()
 
         print(f"Trial {trial_idx} complete with status {datum['trial_status']}")
 
@@ -135,6 +115,10 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeing_params)
 
     steps = datum['steps']
+
+    if len(steps) == 0:
+        return
+
     goal = datum['goal']
     first_step = steps[0]
     environment = numpify(first_step['planning_query']['environment'])

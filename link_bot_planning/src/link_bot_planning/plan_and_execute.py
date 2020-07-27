@@ -193,6 +193,7 @@ class PlanAndExecute:
 
         attempt_idx = 0
         steps_data = []
+        planning_queries = []
         while True:
             # get start states
             start_state = self.planner.scenario.get_state()
@@ -202,6 +203,7 @@ class PlanAndExecute:
             environment = self.get_environment()
 
             planning_query = PlanningQuery(goal=goal, environment=environment, start=start_state)
+            planning_queries.append(planning_query)
 
             planning_result = self.plan(planning_query)
 
@@ -218,6 +220,7 @@ class PlanAndExecute:
                     print(
                         Fore.BLUE + f"Trial {self.trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
                     trial_data_dict = {
+                        'planning_queries': planning_queries,
                         'total_time': time_since_start,
                         'trial_status': trial_status,
                         'trial_idx': self.trial_idx,
@@ -270,6 +273,7 @@ class PlanAndExecute:
                     trial_status = TrialStatus.Timeout
                     print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
                 trial_data_dict = {
+                    'planning_queries': planning_queries,
                     'total_time': time_since_start,
                     'trial_status': trial_status,
                     'trial_idx': self.trial_idx,
