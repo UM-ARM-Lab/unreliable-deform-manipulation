@@ -132,7 +132,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def hard_reset(self):
         self.reset_srv(EmptyRequest())
 
-    def on_data_collection_start(self):
+    def randomization_initialization(self):
         self.object_reset_poses = {
             'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),

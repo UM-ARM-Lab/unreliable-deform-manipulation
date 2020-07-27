@@ -164,7 +164,7 @@ def generate(service_provider, params: Dict, args):
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=args.real_time_rate,
                                max_step_size=params['max_step_size'])
-    scenario.on_data_collection_start()
+    scenario.randomization_initialization()
     generate_trajs(service_provider=service_provider,
                    scenario=scenario,
                    params=params,

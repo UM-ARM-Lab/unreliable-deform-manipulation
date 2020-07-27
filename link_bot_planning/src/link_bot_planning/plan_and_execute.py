@@ -100,6 +100,7 @@ class PlanAndExecute:
     def run(self):
         self.trial_idx = 0
         attempt_idx = 0
+        self.planner.scenario.randomization_initialization()
         while True:
             done = self.run_and_check_valid()
             if done:
