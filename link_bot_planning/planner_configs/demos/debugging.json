@@ -58,13 +58,13 @@
   "!classifier_model_dir": "cl_trials/car-new-combined/July_26_17-48-49_9f50958dab/best_checkpoint",
   "!classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.1,
+  "goal_threshold": 0.08,
   "fixed_goal": {
     "type": "any_point",
     "point": [
-      -0.36,
-      0.85,
-      -0.35
+      0.48,
+      0.70,
+      -0.32
     ]
   },
   "real_time_rate": 0.0,

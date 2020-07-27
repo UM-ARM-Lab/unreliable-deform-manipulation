@@ -102,7 +102,7 @@ class MyPlanner:
         self.cleanup_before_plan()
 
         # just for debugging
-        self.cc = CollisionCheckerClassifier(pathlib.Path("cl_trials/cc_baseline/cc"), 0.01, self.scenario)
+        self.cc = CollisionCheckerClassifier(pathlib.Path("cl_trials/cc_baseline/cc"), 0.0, self.scenario)
         self.cc_but_accept_count = 0
 
     def cleanup_before_plan(self):

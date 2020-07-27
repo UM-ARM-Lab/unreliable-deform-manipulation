@@ -2,7 +2,8 @@
 import argparse
 import rospy
 from gazebo_msgs.msg import LinkStates
-from peter_msgs.srv import WorldControl, WorldControlRequest
+from peter_msgs.srv import WorldControl, WorldControlRequest, GetJointState, GetJointStateRequest
+from std_srvs.srv import Empty, EmptyRequest
 from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest, SetLinkState, SetLinkStateRequest
 import rosbag
 
@@ -16,6 +17,8 @@ def main():
     print("wating for service")
     world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
     set_srv = rospy.ServiceProxy("gazebo/set_link_state", SetLinkState)
+    joints_srv = rospy.ServiceProxy("joint_states", GetJointState)
+    config_home_srv = rospy.ServiceProxy("configure_home", Empty)
     set_srv.wait_for_service()
 
     bag = rosbag.Bag(args.bagfile)
@@ -38,6 +41,18 @@ def main():
     step = WorldControlRequest()
     step.steps = 1
     world_control_srv(step)
+
+    print("setting home position")
+
+    # get the joint states and set the home position on the parameter server
+    joints_res = joints_srv(GetJointStateRequest())
+    left_arm_home = joints_res.joint_state.position[2:2+7]
+    rospy.set_param("left_arm_home", left_arm_home)
+    right_arm_home = joints_res.joint_state.position[2:2+7]
+    rospy.set_param("right_arm_home", right_arm_home)
+    torso_home = joints_res.joint_state.position[0:2]
+    rospy.set_param("torso_home", torso_home)
+    config_home_srv(EmptyRequest())
 
     print("done")
 
