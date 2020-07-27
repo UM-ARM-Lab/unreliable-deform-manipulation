@@ -29,6 +29,10 @@
                         <length>0.06</length>
                     </cylinder>
                 </geometry>
+                <material>
+                    <ambient>0.2 0.2 0.2 1.0</ambient>
+                    <diffuse>0.2 0.2 0.2 1.0</diffuse>
+                </material>
             </visual>
             <collision name="collision">
                 <geometry>
