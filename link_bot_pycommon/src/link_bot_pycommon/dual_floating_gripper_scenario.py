@@ -134,13 +134,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def on_data_collection_start(self):
         self.object_reset_poses = {
-            # 'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            # 'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
+            'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
             "car_hood": (np.ones(3)*10, np.array([0, 0, 0, 1])),
             "car_alternator": (np.ones(3)*10, np.array([0, 0, 0, 1])),
             "car_tube_and_tank": (np.ones(3)*10, np.array([0, 0, 0, 1])),
@@ -352,8 +352,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         # # replace the objects in a new random configuration
 
         # add noise to the objects locations
-        random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
-        random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
+        if data_collection_params['scene'] == 'tabletop':
+            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
+        elif data_collection_params['scene'] == 'car':
+            random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
+        else:
+            rospy.logwarn("No scene specified... I assume you want tabletop.")
+            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
 
         self.set_object_poses(random_object_poses)
 
