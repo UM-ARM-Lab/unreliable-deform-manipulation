@@ -682,7 +682,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 return goal
 
     def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        if 'type' not in goal or goal['type'] == 'midpoint':
+        if planner_params['goal_type'] == 'midoint':
             return self.sample_midpoint_goal(environment, rng, planner_params)
         else:
             raise NotImplementedError()

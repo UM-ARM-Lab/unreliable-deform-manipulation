@@ -54,6 +54,7 @@
   "classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
   "goal_threshold": 0.05,
+  "goal_type": "midpoint",
   "fixed_goal": null,
   "real_time_rate": 0.0,
   "table_config": {
