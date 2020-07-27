@@ -681,6 +681,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             if not collision1 and not collision2:
                 return goal
 
+    def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        if 'type' not in goal or goal['type'] == 'midpoint':
+            return self.sample_midpoint_goal(environment, rng, planner_params)
+        else:
+            raise NotImplementedError()
+
     @ staticmethod
     def distance_to_gripper_goal(state: Dict, goal: Dict):
         gripper1 = state['gripper1']
