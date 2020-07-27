@@ -140,7 +140,7 @@ def generate(service_provider, params: Dict, args):
     # full_output_directory = pathlib.Path(args.outdir)
 
     full_output_directory.mkdir(exist_ok=True)
-    print(Fore.GREEN + full_output_directory + Fore.RESET)
+    print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
     if args.seed is None:
         args.seed = np.random.randint(0, 10000)

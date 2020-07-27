@@ -13,9 +13,10 @@ import ompl.control as oc
 import rospy
 from link_bot_data.visualization import rviz_arrow
 from geometry_msgs.msg import Point
+from jsk_recognition_msgs.msg import BoundingBox
 from moveit_msgs.msg import MoveGroupAction, MoveGroupGoal, MotionPlanRequest, Constraints, JointConstraint, MoveItErrorCodes
 from matplotlib import colors
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from link_bot_pycommon import link_bot_sdf_utils
@@ -122,6 +123,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.joint_states_srv = rospy.ServiceProxy("joint_states", GetJointState)
         self.reset_srv = rospy.ServiceProxy("gazebo/reset_simulation", Empty)
         self.ignore_overstretching_srv = rospy.ServiceProxy("set_ignore_overstretching", std_srvs.srv.SetBool)
+        self.gripper1_bbox_pub = rospy.Publisher('gripper1_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.gripper2_bbox_pub = rospy.Publisher('gripper2_bbox_pub', BoundingBox, queue_size=10, latch=True)
 
         self.max_action_attempts = 500
 
@@ -133,22 +136,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.reset_srv(EmptyRequest())
 
     def randomization_initialization(self):
-        self.object_reset_poses = {
-            'box1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box3': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box4': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'box5': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'hook1': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            'hook2': (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_hood": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_alternator": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_tube_and_tank": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_coolant_tank": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_pulley": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-            "car_engine2": (np.ones(3)*10, np.array([0, 0, 0, 1])),
-        }
-
         # Hacking for car env randomization
         self.obstacles = [
             "car_hood",
@@ -316,26 +303,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
         return object_poses
 
-    def random_new_object_poses(self, env_rng: np.random.RandomState, obstacles: List, objects_params):
-        random_object_poses = {
-            'box1': self.random_object_pose(env_rng, objects_params),
-            'box2': self.random_object_pose(env_rng, objects_params),
-            'box3': self.random_object_pose(env_rng, objects_params),
-            'box4': self.random_object_pose(env_rng, objects_params),
-            'box5': self.random_object_pose(env_rng, objects_params),
-            'hook1': self.random_object_pose(env_rng, objects_params),
-            'hook2': self.random_object_pose(env_rng, objects_params),
-        }
+    def random_new_object_poses(self, env_rng: np.random.RandomState, objects_params: Dict):
+        random_object_poses = {k: self.random_object_pose(env_rng, objects_params) for k in objects_params['objects']}
         return random_object_poses
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # # move the objects out of the way
-        self.set_object_poses(self.object_reset_poses)
-
-        # start ignoring the rope overstretching
-        ignore = std_srvs.srv.SetBoolRequest()
-        ignore.data = True
-        self.ignore_overstretching_srv(ignore)
+        object_reset_poses = {k: (np.ones(3)*10, np.array([0, 0, 0, 1])) for k in data_collection_params['objects']}
+        self.set_object_poses(object_reset_poses)
 
         # Let go of rope
         release = peter_msgs.srv.SetBoolRequest()
@@ -349,19 +324,18 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         # reet robot
         self.reset_robot(data_collection_params)
 
-        # # replace the objects in a new random configuration
-
-        # add noise to the objects locations
+        # replace the objects in a new random configuration
         if 'scene' not in data_collection_params:
             rospy.logwarn("No scene specified... I assume you want tabletop.")
-            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles, objects_params)
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         if data_collection_params['scene'] == 'tabletop':
-            random_object_poses = self.random_new_object_poses(env_rng, self.obstacles)
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+        elif data_collection_params['scene'] == 'car2':
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'car':
             random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
         else:
             raise NotImplementedError()
-
         self.set_object_poses(random_object_poses)
 
         # re-grasp rope
@@ -372,20 +346,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         # wait a second so that the rope can drap on the objects
         self.settle()
 
-        # stop ignoring the rope overstretching
-        dont_ignore = std_srvs.srv.SetBoolRequest()
-        dont_ignore.data = False
-        self.ignore_overstretching_srv(dont_ignore)
-
         if 'gripper1_action_sample_extent' in data_collection_params:
             gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
         else:
             gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
+        gripper1_bbox_msg.header.frame_id = 'world'
+        self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
 
         if 'gripper2_action_sample_extent' in data_collection_params:
             gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
         else:
             gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        gripper2_bbox_msg = extent_array_to_bbox(gripper1_extent)
+        gripper2_bbox_msg.header.frame_id = 'world'
+        self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
 
         gripper1_position = env_rng.uniform(gripper1_extent[:, 0], gripper1_extent[:, 1])
         gripper2_position = env_rng.uniform(gripper2_extent[:, 0], gripper2_extent[:, 1])

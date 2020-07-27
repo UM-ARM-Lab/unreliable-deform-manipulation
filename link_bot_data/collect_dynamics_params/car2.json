@@ -1,14 +1,14 @@
 {
-  "scene": "car",
+  "scene": "car2",
   "left_gripper_reset_position": [
     -0.2,
-    1.1,
-    0.7
+    0.1,
+    0.0
   ],
   "right_gripper_reset_position": [
     0.2,
-    1.1,
-    0.7
+    0.1,
+    0.0
   ],
   "reset_robot": {
     "name": [
@@ -31,52 +31,68 @@
     ],
     "position": [
       0.0,
-      -0.5,
-      0.0,
+      -0.3,
+      0.3,
       0,
-      0.0,
-      0.0,
+      -0.4,
+      0.3,
+      1.5707,
+      -1.2,
       0,
-      0.0,
-      0,
-      0.0,
+      0.3,
       0,
       0,
-      0.0,
-      0,
-      0.0,
+      0.3,
+      1.5707,
+      -1.2,
       0
     ]
   },
   "extent": [
     -0.8,
     0.8,
-    0.1,
+    0.2,
     1.3,
     -0.5,
-    1.0
+    0.6
   ],
   "gripper1_action_sample_extent": [
-    -0.8,
-    0.8,
+    -0.75,
+    0.75,
     0.25,
     1.3,
     -0.5,
-    0.75
+    0.3
   ],
   "gripper2_action_sample_extent": [
-    -0.8,
-    0.8,
+    -0.75,
+    0.75,
     0.25,
     1.3,
     -0.5,
-    0.75
+    0.3
+  ],
+  "objects_extent": [
+    -0.70,
+    0.70,
+    0.45,
+    1.0,
+    -0.46,
+    -0.44
   ],
   "res": 0.02,
   "max_step_size": 0.002,
   "steps_per_traj": 20,
   "trajs_per_file": 1,
   "no_objects": false,
+  "objects": [
+    "box2",
+    "hook1",
+    "hook2",
+    "car_alternator",
+    "car_engine2",
+    "car_pulley"
+  ],
   "randomize_environment_every_n_trajectories": 8,
   "repeat_delta_gripper_motion_probability": 0.8,
   "include_joint_states": false,

@@ -16,7 +16,7 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size
+from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_env_size, extent_to_bbox
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl
@@ -32,6 +32,7 @@ class Base3DScenario(ExperimentScenario):
         self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
+        self.obs_bbox_pub = rospy.Publisher('obs_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("label_viz", LabelStatus, queue_size=10, latch=True)
@@ -87,15 +88,8 @@ class Base3DScenario(ExperimentScenario):
         env_msg = environment_to_occupancy_msg(data)
         self.env_viz_pub.publish(env_msg)
 
-        depth, width, height = extent_to_env_size(data['extent'])
-        bbox_msg = BoundingBox()
-        bbox_msg.header.frame_id = 'occupancy'
-        bbox_msg.pose.position.x = width / 2
-        bbox_msg.pose.position.y = depth / 2
-        bbox_msg.pose.position.z = height / 2
-        bbox_msg.dimensions.x = width
-        bbox_msg.dimensions.y = depth
-        bbox_msg.dimensions.z = height
+        bbox_msg = extent_to_bbox(data['extent'])
+        bbox_msg.header.frame_id = 'world'
         self.env_bbox_pub.publish(bbox_msg)
 
     def send_occupancy_tf(self, environment: Dict):
@@ -282,6 +276,11 @@ class Base3DScenario(ExperimentScenario):
     def random_object_pose(self, env_rng: np.random.RandomState, objects_params: Dict):
         extent = objects_params['objects_extent']
         extent = np.array(extent).reshape(3, 2)
+
+        bbox_msg = extent_to_bbox(objects_params['objects_extent'])
+        bbox_msg.header.frame_id = 'world'
+        self.obs_bbox_pub.publish(bbox_msg)
+
         position = env_rng.uniform(extent[:, 0], extent[:, 1])
         yaw = env_rng.uniform(-np.pi, np.pi)
         orientation = transformations.quaternion_from_euler(0, 0, yaw)
