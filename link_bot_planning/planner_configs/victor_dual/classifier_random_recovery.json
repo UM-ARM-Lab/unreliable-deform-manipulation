@@ -56,6 +56,7 @@
   "accept_threshold": 0.5,
   "goal_threshold": 0.05,
   "goal_type": "midpoint",
+  "scene": "tabletop",
   "fixed_goal": null,
   "real_time_rate": 0.0,
   "table_config": {

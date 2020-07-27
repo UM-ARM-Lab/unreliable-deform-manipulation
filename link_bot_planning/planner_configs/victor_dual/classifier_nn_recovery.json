@@ -58,6 +58,7 @@
   "goal_type": "midpoint",
   "fixed_goal": null,
   "real_time_rate": 0.0,
+  "scene": "tabletop",
   "table_config": {
     "nickname": [
       "Classifier + Learned Recovery"

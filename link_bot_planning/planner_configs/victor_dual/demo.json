@@ -1,4 +1,5 @@
 {
+  "scene": "tabletop",
   "total_timeout": 1200,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,

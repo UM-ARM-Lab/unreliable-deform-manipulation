@@ -56,6 +56,7 @@
   "goal_threshold": 0.05,
   "goal_type": "midpoint",
   "fixed_goal": null,
+  "scene": "tabletop",
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
