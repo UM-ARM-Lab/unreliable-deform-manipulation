@@ -1,8 +1,8 @@
 {
-  "total_timeout": 300,
+  "total_timeout": 600,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 180
+    "timeout": 600
   },
   "left_gripper_reset_position": [
     1.1,
@@ -15,8 +15,8 @@
     1.0
   ],
   "extent": [
-    -0.75,
-    0.75,
+    -0.7,
+    0.7,
     0.30,
     1.2,
     -0.2,
@@ -56,23 +56,12 @@
   "classifier_model_dir": "cl_trials/car-new-combined/July_26_17-48-49_9f50958dab/best_checkpoint",
   "!classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.1,
+  "goal_threshold": 0.10,
   "fixed_goal": {
-    "type": "grippers_and_point",
-    "gripper1": [
-      -0.35,
-      0.95,
-      0.15
-    ],
-    "gripper2": [
-      0.35,
-      0.95,
-      0.15
-    ],
     "point": [
-      0.0,
-      0.95,
-      0.15
+      -0.55,
+      0.9,
+      -0.1
     ]
   },
   "real_time_rate": 0.0,

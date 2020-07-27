@@ -1,4 +1,5 @@
 import sys
+import pathlib
 from enum import Enum
 import time
 from time import sleep
@@ -15,6 +16,7 @@ from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
 from dataclasses_json import dataclass_json
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_planning.ompl_viz import planner_data_to_json
 from moonshine.moonshine_utils import listify
@@ -99,6 +101,10 @@ class MyPlanner:
 
         self.cleanup_before_plan()
 
+        # just for debugging
+        self.cc = CollisionCheckerClassifier(pathlib.Path("cl_trials/cc_baseline/cc"), 0.01, self.scenario)
+        self.cc_but_accept_count = 0
+
     def cleanup_before_plan(self):
         self.ptc = None
         self.n_total_action = None
@@ -108,6 +114,9 @@ class MyPlanner:
         self.start_state = None
         self.closest_state_to_goal = None
         self.min_dist_to_goal = 10000
+
+        # just for debugging
+        self.cc_but_accept_count = 0
 
     def is_valid(self, state):
         return self.state_space.satisfiesBounds(state)
@@ -173,9 +182,15 @@ class MyPlanner:
         classifier_probabilities = self.classifier_model.check_constraint(environment=self.environment,
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
+        not_in_collision = self.cc.check_constraint(environment=self.environment,
+                                                    states_sequence=all_states,
+                                                    actions=all_actions)
         final_classifier_probability = classifier_probabilities[-1]
-        # print(final_classifier_probability)
-        # sleep(0.4)
+        if not not_in_collision and final_classifier_probability > 0.5:
+            self.cc_but_accept_count += 1
+            self.scenario.plot_state_rviz(final_predicted_state, color='y',
+                                          label='accepted in collision', idx=self.cc_but_accept_count)
+
         if self.verbose >= 2:
             self.scenario.plot_accept_probability(final_classifier_probability)
         if final_classifier_probability > self.params['accept_threshold']:
