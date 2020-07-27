@@ -62,6 +62,7 @@ private:
   // A task specific thing, but many robots could implement this.
   // here this just sets a flag so we don't teleport the rope to match the grippers
   ros::ServiceServer grasping_rope_server_;
+  ros::ServiceServer ignore_overstretching_server_;
 
   // Rope-overstretching-detection
   std::string const left_flange_name_{ "hdt_michigan::drive50" };
@@ -82,6 +83,7 @@ private:
   ignition::math::Pose3d left_flange_to_gripper1_;
   ignition::math::Pose3d right_flange_to_gripper2_;
   bool grasping_rope_{ true };
+  bool ignore_overstretching_{ false };
 };
 
 }  // namespace gazebo

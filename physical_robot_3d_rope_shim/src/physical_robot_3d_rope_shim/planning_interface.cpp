@@ -830,7 +830,7 @@ void PlanningInterface::JiggleOutOfCollision(ps::PlanningScenePtr planning_scene
 
   auto const first_contact = result.contacts.cbegin()->first;
   std::cerr << "Collision at current state between " << first_contact.first << " and " << first_contact.second
-            << ". wiggle wiggle wiggle!";
+            << ". wiggle wiggle wiggle!\n";
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // https://github.com/ros-planning/moveit/blob/master/moveit_ros/planning/planning_request_adapter_plugins/src/fix_start_state_collision.cpp

@@ -4,6 +4,7 @@
 #include <peter_msgs/SetBool.h>
 #include <ros/subscribe_options.h>
 #include <std_msgs/Empty.h>
+#include <std_srvs/SetBool.h>
 
 #include <algorithm>
 #include <functional>
@@ -201,6 +202,15 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
         create_service_options_private(peter_msgs::SetBool, "set_grasping_rope", grasping_rope_bind);
     grasping_rope_server_ = ros_node_.advertiseService(grasping_rope_so);
 
+    auto ignore_overstretching_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+      (void)res;
+      ignore_overstretching_ = req.data;
+      return true;
+    };
+    auto ignore_overstretching_so =
+        create_service_options_private(std_srvs::SetBool, "set_ignore_overstretching", ignore_overstretching_bind);
+    ignore_overstretching_server_ = ros_node_.advertiseService(ignore_overstretching_so);
+
     auto joint_state_bind = [this](peter_msgs::GetJointStateRequest &req, peter_msgs::GetJointStateResponse &res) {
       (void)req;
       res.joint_state = GetJointStates();
@@ -308,6 +318,10 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
 
     // Check if the rope has become overstretched
     auto const rewind_needed = [this] {
+      if (ignore_overstretching_)
+      {
+        return false;
+      }
       auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
       // ROS_WARN_STREAM(gripper1_->WorldPose().Pos().Z() << " "
       // << gripper1_rope_link_->WorldPose().Pos().Z() << " "
