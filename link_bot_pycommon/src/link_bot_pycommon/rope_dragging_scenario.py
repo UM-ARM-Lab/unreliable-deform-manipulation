@@ -176,21 +176,22 @@ class RopeDraggingScenario(Base3DScenario):
 
     def val_execute_action(self, action: Dict):
         target_gripper1_point = ros_numpy.msgify(Point, action['gripper_position'])
-        target_gripper1_point.z = max(target_gripper1_point.z, -0.38)
-        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
-        target_gripper2_point = grippers_res.gripper2
+        target_gripper1_point.z = -0.06
+        target_gripper2_point = ros_numpy.msgify(Point, np.array([0.35, 0.2, 0.05]))
 
         req = DualGripperTrajectoryRequest()
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
-        print(target_gripper1_point, target_gripper2_point)
         _ = self.action_srv(req)
 
     def execute_action(self, action: Dict):
-        if rospy.get_param("use_val", False):
-            rospy.logwarn("TESTING WITH VAL")
-            self.val_execute_action(action)
-            return
+        # if rospy.get_param("use_val", False):
+        #     rospy.logwarn("TESTING WITH VAL")
+        #     self.val_execute_action(action)
+        #     return
+
+        # rospy.logwarn("WITH VAL")
+        # self.val_execute_action(action)
 
         req = Position3DActionRequest()
         req.position.x = action['gripper_position'][0]
@@ -452,6 +453,9 @@ class RopeDraggingScenario(Base3DScenario):
         return {
             'gripper_delta': gripper_delta,
         }
+
+    def randomization_initialization(self):
+        pass
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # If we reset the sim we'd get less interesting/diverse obstacle configurations

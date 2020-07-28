@@ -1,0 +1,55 @@
+{
+  "total_timeout": 180,
+  "termination_criteria": {
+    "attempted_extensions_threshold": 32,
+    "timeout": 180
+  },
+  "recovery": {
+    "use_recovery": true,
+    "recovery_model_dir": "rcv_trials/dragging/July_20_13-56-54_53dfceb5b0/"
+  },
+  "extent": [
+    -0.72,
+    0.72,
+    0.35,
+    0.90,
+    -0.15,
+    0.05
+  ],
+  "goal_extent": [],
+  "objects_extent": [],
+  "fwd_model_dir": [
+    "dy_trials/dragging_no_obs_0/best_checkpoint",
+    "dy_trials/dragging_no_obs_1/best_checkpoint",
+    "dy_trials/dragging_no_obs_2/best_checkpoint",
+    "dy_trials/dragging_no_obs_3/best_checkpoint",
+    "dy_trials/dragging_no_obs_4/best_checkpoint",
+    "dy_trials/dragging_no_obs_5/best_checkpoint",
+    "dy_trials/dragging_no_obs_6/best_checkpoint",
+    "dy_trials/dragging_no_obs_7/best_checkpoint"
+  ],
+  "classifier_model_dir": "cl_trials/dragging_balance/July_11_17-08-01_eccab5e838/best_checkpoint",
+  "accept_threshold": 0.5,
+  "goal_threshold": 0.09,
+  "fixed_goal": {
+    "tail": [
+      0.295,
+      0.555,
+      -0.09
+    ]
+  },
+  "real_time_rate": 0.0,
+  "table_config": {
+    "nickname": [
+      "Classifier",
+      "+Recovery"
+    ],
+    "classifier": [
+      "Learned"
+    ],
+    "dynamics": [
+      "Ensemble",
+      "Unconstrained"
+    ]
+  }
+}

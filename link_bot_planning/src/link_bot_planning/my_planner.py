@@ -119,7 +119,8 @@ class MyPlanner:
         self.cc_but_accept_count = 0
 
     def is_valid(self, state):
-        return self.state_space.satisfiesBounds(state)
+        valid = self.state_space.satisfiesBounds(state)
+        return valid
 
     def motions_valid(self, motions):
         print(".", end='', flush=True)
@@ -226,7 +227,8 @@ class MyPlanner:
                 MyPlanner.propagate.g = random_color[1]
                 MyPlanner.propagate.b = random_color[2]
 
-            if final_classifier_probability > 0.5:
+            statisfies_bounds = self.state_space.satisfiesBounds(state_out)
+            if final_classifier_probability > 0.5 and statisfies_bounds:
                 self.scenario.plot_tree_state(np_final_state, color=classifier_probability_color)
             self.scenario.plot_current_tree_state(
                 np_final_state, horizon=self.classifier_model.horizon, color=classifier_probability_color)

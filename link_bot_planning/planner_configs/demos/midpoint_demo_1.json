@@ -1,42 +1,43 @@
 {
-  "total_timeout": 600,
+  "scene": "car-floor",
+  "total_timeout": 300,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
-    "timeout": 600
+    "timeout": 180
   },
   "left_gripper_reset_position": [
-    1.1,
-    0.15,
-    1.0
+    -0.2,
+    0.1,
+    0.0
   ],
   "right_gripper_reset_position": [
-    1.1,
-    -0.15,
-    1.0
+    0.2,
+    0.1,
+    0.0
   ],
   "extent": [
-    -0.75,
-    0.75,
-    0.30,
-    1.2,
-    -0.2,
-    0.65
+    -0.8,
+    0.8,
+    0.2,
+    1.3,
+    -0.5,
+    0.6
   ],
   "goal_extent": [
-    0.6,
-    1.1,
-    -0.4,
-    0.4,
-    0.6,
-    0.85
+    -0.70,
+    0.70,
+    0.45,
+    1.0,
+    -0.46,
+    -0.44
   ],
   "objects_extent": [
-    0.6,
-    1.0,
-    -0.45,
+    -0.70,
+    0.70,
     0.45,
-    0.625,
-    0.6251
+    1.0,
+    -0.46,
+    -0.44
   ],
   "recovery": {
     "use_recovery": true,
@@ -53,15 +54,17 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/car-new-combined/July_26_17-48-49_9f50958dab/best_checkpoint",
+  "classifier_model_dir": "cl_trials/car-floor/July_27_11-30-10_6ad4e01269/best_checkpoint",
+  "!classifier_model_dir": "cl_trials/car-new-combined/July_26_17-48-49_9f50958dab/best_checkpoint",
   "!classifier_model_dir": "cl_trials/cc_baseline/cc",
   "accept_threshold": 0.5,
-  "goal_threshold": 0.10,
+  "goal_threshold": 0.08,
   "fixed_goal": {
+    "type": "any_point",
     "point": [
-      0.16,
-      0.74,
-      0.0
+      -0.38,
+      0.6,
+      -0.32
     ]
   },
   "real_time_rate": 0.0,

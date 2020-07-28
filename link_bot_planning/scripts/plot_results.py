@@ -16,7 +16,7 @@ from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_np_arrays
+from moonshine.moonshine_utils import numpify
 
 
 def main():

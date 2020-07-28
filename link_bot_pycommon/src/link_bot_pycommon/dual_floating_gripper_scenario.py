@@ -130,12 +130,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.robot_reset_rng = np.random.RandomState(0)
 
-        self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
-
     def hard_reset(self):
         self.reset_srv(EmptyRequest())
 
     def randomization_initialization(self):
+        self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
+
         # Hacking for car env randomization
         self.obstacles = [
             "car_hood",

@@ -83,19 +83,19 @@ class PlanAndExecute:
         self.trial_idx = 0
         self.n_failures = 0
 
-        # Debguging
-        self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
-        depth, width, height = extent_to_env_size(planner_params['goal_extent'])
-        cx, cy, cz = extent_to_center(planner_params['goal_extent'])
-        bbox_msg = BoundingBox()
-        bbox_msg.header.frame_id = 'world'
-        bbox_msg.pose.position.x = cx
-        bbox_msg.pose.position.y = cy
-        bbox_msg.pose.position.z = cz
-        bbox_msg.dimensions.x = width
-        bbox_msg.dimensions.y = depth
-        bbox_msg.dimensions.z = height
-        self.goal_bbox_pub.publish(bbox_msg)
+        # # Debugging
+        # self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
+        # depth, width, height = extent_to_env_size(planner_params['goal_extent'])
+        # cx, cy, cz = extent_to_center(planner_params['goal_extent'])
+        # bbox_msg = BoundingBox()
+        # bbox_msg.header.frame_id = 'world'
+        # bbox_msg.pose.position.x = cx
+        # bbox_msg.pose.position.y = cy
+        # bbox_msg.pose.position.z = cz
+        # bbox_msg.dimensions.x = width
+        # bbox_msg.dimensions.y = depth
+        # bbox_msg.dimensions.z = height
+        # self.goal_bbox_pub.publish(bbox_msg)
 
     def run(self):
         self.trial_idx = 0
