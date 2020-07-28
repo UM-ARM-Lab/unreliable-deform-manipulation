@@ -328,9 +328,6 @@ void KinematicValPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr &g
         return false;
       }
       auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
-      // ROS_WARN_STREAM(gripper1_->WorldPose().Pos().Z() << " "
-      // << gripper1_rope_link_->WorldPose().Pos().Z() << " "
-      // << gripper1_dist << " ");
       auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
       return (gripper1_dist > max_dist_between_gripper_and_link_) ||
              (gripper2_dist > max_dist_between_gripper_and_link_);

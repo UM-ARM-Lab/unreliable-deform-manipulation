@@ -798,7 +798,7 @@
             </physics>
         </joint>
 
-        <link name='head'>
+        <link name='gripper1'>
             <pose frame=''>0.51 0 0 0 0 0</pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
@@ -853,7 +853,7 @@
             </sensor>
         </link>
         <joint name="head_joint" type="revolute">
-            <child>head</child>
+            <child>gripper1</child>
             <parent>rope_link_10</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
@@ -892,7 +892,7 @@
             <kD_rot_vel>0.0</kD_rot_vel>
             <max_torque>0.0</max_torque>
             <max_rot_vel>0.0</max_rot_vel>
-            <link>head</link>
+            <link>gripper1</link>
         </plugin>
     </model>
 </sdf>
