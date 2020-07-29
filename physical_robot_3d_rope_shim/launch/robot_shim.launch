@@ -26,7 +26,7 @@
 
     <node name="world_interaction" pkg="physical_robot_3d_rope_shim" type="world_interaction">
         <param name="get_planning_scene_topic"  value="/get_planning_scene"/>
-        <param name="minimize_rotation" value="true"/>
+        <param name="minimize_rotation" value="false"/>
     </node>
 
 </launch>
