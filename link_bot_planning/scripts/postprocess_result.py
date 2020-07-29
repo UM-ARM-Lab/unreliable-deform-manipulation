@@ -103,7 +103,7 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
         # interpolate the grippers
         start_state = predicted_states[start_t]
         end_state = predicted_states[end_t]
-        interpolated_actions = interpolate(start_state, end_state)
+        interpolated_actions = scenario.interpolate(start_state, end_state)
 
         # scenario.plot_state_rviz(start_state, idx=0, label='from', color='y')
         # scenario.plot_state_rviz(end_state, idx=1, label='to', color='m')
@@ -154,33 +154,6 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
     print(f"Still near goal? {still_reaches_goal}")
 
     return actions
-
-
-def interpolate(start_state, end_state, step_size=0.05):
-    gripper1_start = np.array(start_state['gripper1'])
-    gripper1_end = np.array(end_state['gripper1'])
-
-    gripper2_start = np.array(start_state['gripper2'])
-    gripper2_end = np.array(end_state['gripper2'])
-
-    gripper1_delta = gripper1_end - gripper1_start
-    gripper2_delta = gripper2_end - gripper2_start
-
-    gripper1_steps = np.round(np.linalg.norm(gripper1_delta) / step_size).astype(np.int64)
-    gripper2_steps = np.round(np.linalg.norm(gripper2_delta) / step_size).astype(np.int64)
-    steps = max(gripper1_steps, gripper2_steps)
-
-    interpolated_actions = []
-    for t in np.linspace(step_size, 1, steps):
-        gripper1_i = gripper1_start + gripper1_delta * t
-        gripper2_i = gripper2_start + gripper2_delta * t
-        action = {
-            'gripper1_position': gripper1_i,
-            'gripper2_position': gripper2_i,
-        }
-        interpolated_actions.append(action)
-
-    return interpolated_actions
 
 
 if __name__ == "__main__":

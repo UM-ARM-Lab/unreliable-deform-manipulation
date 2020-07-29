@@ -268,6 +268,25 @@ class RopeDraggingScenario(Base3DScenario):
         return action
 
     @staticmethod
+    def interpolate(start_state, end_state, step_size=0.05):
+        gripper_start = np.array(start_state['gripper'])
+        gripper_end = np.array(end_state['gripper'])
+
+        gripper_delta = gripper_end - gripper_start
+
+        steps = np.round(np.linalg.norm(gripper_delta) / step_size).astype(np.int64)
+
+        interpolated_actions = []
+        for t in np.linspace(step_size, 1, steps):
+            gripper_t = gripper_start + gripper_delta * t
+            action = {
+                'gripper_position': gripper_t,
+            }
+            interpolated_actions.append(action)
+
+        return interpolated_actions
+
+    @staticmethod
     def add_noise(action: Dict, noise_rng: np.random.RandomState):
         gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         return {
