@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import pathlib
 import numpy as np
 from colorama import Fore
@@ -54,6 +55,16 @@ def main():
         elif step['type'] == 'executed_recovery':
             actions = [step['recovery_action']]
             all_output_actions.extend(actions)
+
+    # viz the whole thing
+    start_state = steps[0]['planning_result']['path'][0]
+    final_states = fwd_model.propagate(environment, start_state, actions)
+    T = len(final_states)
+    for t, s_t in enumerate(final_states):
+        scenario.plot_state_rviz(s_t, idx=t, label='smoothed', color='#00ff0099')
+        if t < T - 1:
+            scenario.plot_action_rviz(s_t, actions[t], idx=t, color="#ffffff99", label='smoothed')
+        sleep(0.02)
 
     # Save the output actions
     outfilename = args.results_dir / f"{args.plan_idx}_smoothed.json"
@@ -131,11 +142,11 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
     # Plot the smoothed result
     final_states = fwd_model.propagate(environment, predicted_states[0], actions)
     T = len(predicted_states)
-    for t, s_t in enumerate(final_states):
-        scenario.plot_state_rviz(s_t, idx=t, label='smoothed', color='#00ff0099')
-        if t < T - 1:
-            scenario.plot_action_rviz(s_t, actions[t], idx=t, color="#ffffff99", label='smoothed')
-        sleep(0.02)
+    # for t, s_t in enumerate(final_states):
+    #     scenario.plot_state_rviz(s_t, idx=t, label='smoothed', color='#00ff0099')
+    #     if t < T - 1:
+    #         scenario.plot_action_rviz(s_t, actions[t], idx=t, color="#ffffff99", label='smoothed')
+    #     sleep(0.02)
 
     final_final_state = final_states[-1]
     goal_threshold = planner_params['goal_threshold']

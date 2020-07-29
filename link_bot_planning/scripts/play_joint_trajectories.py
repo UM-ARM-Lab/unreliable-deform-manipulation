@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import os
-import time
+from time import sleep, time
 import rospy
+import pathlib
 import argparse
 import actionlib
 import rosbag
@@ -15,7 +15,7 @@ def main():
     rospy.init_node('follow_joint_trajectory_client')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("bagfile")
+    parser.add_argument("bagfile", type=pathlib.Path)
     parser.add_argument("--no-video", action='store_true')
 
     args = parser.parse_args()
@@ -23,13 +23,16 @@ def main():
     record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
 
     start_msg = TriggerVideoRecordingRequest()
-    parent_dir = os.path.join(*os.path.split(args.bagfile)[:-1])
-    filename = os.path.join(parent_dir, "trajectory_playback-" + str(int(time.time())) + '.avi')
+    parent_dir = args.bagfile.parent
+    filename = f"trajectory_playback-{int(time())}.avi"
+    full_filename = (parent_dir / filename).absolute().as_posix()
     if not args.no_video:
         start_msg.record = True
-        start_msg.filename = filename
+        start_msg.filename = full_filename
         start_msg.timeout_in_sec = 600.0
         record(start_msg)
+
+    sleep(5.0)
 
     client = actionlib.SimpleActionClient('both_arms_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
     client.wait_for_server()
@@ -48,6 +51,8 @@ def main():
             return
 
     bag.close()
+
+    sleep(5.0)
 
     if not args.no_video:
         stop_msg = TriggerVideoRecordingRequest()

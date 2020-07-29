@@ -11,7 +11,7 @@ from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("actions", type=pathlib.Path, help='actiosn.json')
+    parser.add_argument("actions", type=pathlib.Path, help='actions json')
 
     args = parser.parse_args()
 

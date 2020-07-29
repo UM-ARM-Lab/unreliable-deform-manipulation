@@ -381,7 +381,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         req = DualGripperTrajectoryRequest()
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
-        _ = self.action_srv(req)
+        while True:
+            try:
+                _ = self.action_srv(req)
+                break
+            except Exception:
+                input("Did you forget to start the sim?")
+                pass
 
     @ staticmethod
     def put_state_in_robot_frame(state: Dict):

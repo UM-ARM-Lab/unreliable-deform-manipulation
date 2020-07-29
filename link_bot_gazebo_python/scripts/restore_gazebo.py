@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import rosservice
 import argparse
 import rospy
 from gazebo_msgs.msg import LinkStates
@@ -21,13 +22,13 @@ def main():
     config_home_srv = rospy.ServiceProxy("configure_home", Empty)
     set_srv.wait_for_service()
 
+    print("resetting gazebo from bag file")
+
     # run a few times to really make sure it happens
     for i in range(4):
         bag = rosbag.Bag(args.bagfile)
         _, msg, _ = next(bag.read_messages())
         bag.close()
-
-        print("read bagfile")
 
         n = len(msg.name)
         for i in range(n):
@@ -54,7 +55,8 @@ def main():
     rospy.set_param("right_arm_home", right_arm_home)
     torso_home = joints_res.joint_state.position[0:2]
     rospy.set_param("torso_home", torso_home)
-    config_home_srv(EmptyRequest())
+    if 'configure_home' in rosservice.get_service_list():
+        config_home_srv(EmptyRequest())
 
     print("done")
 
