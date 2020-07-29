@@ -25,7 +25,7 @@ from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_np_a
 def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
-    parser.add_argument("trial_idx", type=int, help='which plan to show')
+    parser.add_argument("--trial-idx", type=int, help='which plan to show', default=0)
 
     rospy.init_node("play_dragging_plan")
 
@@ -54,8 +54,8 @@ def main():
 
     for action in all_actions:
         target_gripper1_point = ros_numpy.msgify(Point, np.array(action['gripper_position']))
-        target_gripper1_point.z = -0.08
-        target_gripper2_point = ros_numpy.msgify(Point, np.array([0.45, 0.2, 0.05]))
+        target_gripper1_point.z = -0.39
+        target_gripper2_point = ros_numpy.msgify(Point, np.array([0.45, -0.2, 0.08]))
 
         req = DualGripperTrajectoryRequest()
         req.gripper1_points.append(target_gripper1_point)

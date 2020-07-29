@@ -9,9 +9,9 @@
     "recovery_model_dir": "rcv_trials/dragging/July_20_13-56-54_53dfceb5b0/"
   },
   "extent": [
-    -0.90,
-    0.85,
-    0.25,
+    -1.00,
+    1.00,
+    0.30,
     0.83,
     -0.5,
     -0.35
@@ -33,7 +33,7 @@
   "goal_threshold": 0.08,
   "fixed_goal": {
     "tail": [
-      0.295,
+      0.40,
       0.555,
       -0.44
     ]
