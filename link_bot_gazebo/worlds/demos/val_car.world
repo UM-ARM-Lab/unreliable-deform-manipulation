@@ -50,7 +50,7 @@
                 <robotName>hdt_michigan</robotName>
                 <frameId>val_root</frameId>
                 <updatePeriod>0</updatePeriod>
-                <scalePrimitivesFactor>1.1</scalePrimitivesFactor>
+                <scalePrimitivesFactor>0.95</scalePrimitivesFactor>
             </plugin>
         </model>
 

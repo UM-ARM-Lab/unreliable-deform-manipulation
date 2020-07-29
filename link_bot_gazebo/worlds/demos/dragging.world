@@ -36,9 +36,6 @@
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
 
         <model name="val_and_rope">
-            <include>
-                <uri>model://val</uri>
-            </include>
             <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
                 <topicName>gazebo/planning_scene</topicName>
                 <robotName>hdt_michigan</robotName>
@@ -77,48 +74,50 @@
                 <collision name="collision">
                     <geometry>
                         <box>
-                            <size>5 0.1 3</size>
+                            <size>0.1 5 3</size>
                         </box>
                     </geometry>
                 </collision>
                 <visual name="visual">
                     <geometry>
                         <box>
-                            <size>5 0.1 3</size>
+                            <size>0.1 5 3</size>
                         </box>
                     </geometry>
                 </visual>
             </link>
             <link name="right">
+                <kinematic>true</kinematic>
                 <pose>1 0 1.5 0 0 0</pose>
                 <collision name="collision">
                     <geometry>
                         <box>
-                            <size>5 0.1 3</size>
+                            <size>0.1 5 3</size>
                         </box>
                     </geometry>
                 </collision>
                 <visual name="visual">
                     <geometry>
                         <box>
-                            <size>5 0.1 3</size>
+                            <size>0.1 5 3</size>
                         </box>
                     </geometry>
                 </visual>
             </link>
             <link name="front">
+                <kinematic>true</kinematic>
                 <pose>0 1 1.5 0 0 0</pose>
                 <collision name="collision">
                     <geometry>
                         <box>
-                            <size>0.1 2.4 3</size>
+                            <size>2.4 0.1 3</size>
                         </box>
                     </geometry>
                 </collision>
                 <visual name="visual">
                     <geometry>
                         <box>
-                            <size>0.1 2.4 3</size>
+                            <size>2.4 0.1 3</size>
                         </box>
                     </geometry>
                 </visual>

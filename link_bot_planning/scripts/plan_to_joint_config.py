@@ -18,15 +18,6 @@ def main():
     client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
     client.wait_for_server()
 
-    grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool, )
-
-    # release the rope
-    release = SetBoolRequest()
-    release.data = False
-    grasping_rope_srv(release)
-
-    # move the rope out of the way
-
     with open(args.configs, "r") as configs_file:
         configs = json.load(configs_file)
 
@@ -54,16 +45,6 @@ def main():
         print("Error! code " + str(result.error_code.val))
     else:
         print("Success!")
-
-    # re-grasp rope
-    grasp = SetBoolRequest()
-    grasp.data = True
-    grasping_rope_srv(grasp)
-
-    req = WorldControlRequest()
-    req.seconds = 6
-    world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
-    world_control_srv(req)
 
 if __name__ == "__main__":
     main()
