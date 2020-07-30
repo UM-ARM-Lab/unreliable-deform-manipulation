@@ -179,7 +179,6 @@ class PlanAndExecute:
         while True:
             # get start states
             start_state = self.planner.scenario.get_state()
-            print(start_state)
 
             # get the environment, which here means anything which is assumed constant during planning
             # This includes the occupancy map but can also include things like the initial state of the tether
