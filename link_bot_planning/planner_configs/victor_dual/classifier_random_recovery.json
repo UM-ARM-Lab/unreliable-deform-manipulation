@@ -15,12 +15,12 @@
     "timeout": 180
   },
   "left_gripper_reset_position": [
-    1.1,
+    1.2,
     0.15,
     1.0
   ],
   "right_gripper_reset_position": [
-    1.1,
+    1.2,
     -0.15,
     1.0
   ],
@@ -62,7 +62,7 @@
     "dy_trials/no_victor_longer_6/best_checkpoint",
     "dy_trials/no_victor_longer_7/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-balance2/July_12_13-41-50_c3af2659e3/best_checkpoint",
+  "classifier_model_dir": "cl_trials/dual-robot-frame/July_29_17-38-37_7b8a49f6fe/best_checkpoint",
   "accept_threshold": 0.5,
   "goal_threshold": 0.05,
   "goal_type": "midpoint",
@@ -70,9 +70,10 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Random"
+      "Classifier + Random Recovery"
     ],
     "classifier": "Learned",
+    "recovery": "Random",
     "dynamics": [
       "Ensemble",
       "Unconstrained"

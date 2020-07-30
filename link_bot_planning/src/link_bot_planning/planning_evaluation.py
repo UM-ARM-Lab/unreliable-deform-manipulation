@@ -34,27 +34,24 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  planner: MyPlanner,
                  service_provider: BaseServices,
                  planner_config_name: str,
-                 n_trials: int,
+                 trials: List[int],
                  verbose: int,
                  planner_params: Dict,
                  comparison_item_idx: int,
-                 seed: int,
                  goal,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
                  ):
         super().__init__(planner,
-                         n_trials=n_trials,
+                         trials=trials,
                          verbose=verbose,
                          planner_params=planner_params,
                          service_provider=service_provider,
-                         no_execution=no_execution,
-                         seed=seed)
+                         no_execution=no_execution)
         self.record = record
         self.planner_config_name = planner_config_name
         self.outdir = outdir
-        self.seed = seed
 
         self.subfolder = "{}_{}".format(
             self.planner_config_name, comparison_item_idx)
@@ -64,10 +61,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.goal = goal
 
         metadata = {
-            "n_trials": self.n_trials,
+            "trials": self.trials,
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
-            "seed": self.seed,
             "horizon": self.planner.classifier_model.horizon,
         }
         with (self.root / 'metadata.json').open("w") as metadata_file:
@@ -82,11 +78,11 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def randomize_environment(self):
         super().randomize_environment()
 
-    def on_start_trial(self):
+    def on_start_trial(self, trial_idx: int):
         if self.record:
-            filename = self.root.absolute() / 'plan-{}.avi'.format(self.trial_idx)
+            filename = self.root.absolute() / 'plan-{}.avi'.format(trial_idx)
             # self.service_provider.start_record_trial(str(filename))
-            bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{self.trial_idx}.bag"
+            bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{trial_idx}.bag"
             print(Fore.YELLOW + str(bagname) + Fore.RESET)
             self.bag = rosbag.Bag(bagname, 'w')
 
@@ -103,16 +99,15 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         else:
             return super().get_goal(environment)
 
-    def on_trial_complete(self, trial_data: Dict):
+    def on_trial_complete(self, trial_data: Dict, trial_idx: int):
         extra_trial_data = {
             "planner_params": self.planner_params,
             "scenario": self.planner.scenario.simple_name(),
-            "seed": self.seed,
             'current_time': int(time()),
             'uuid': uuid.uuid4(),
         }
         trial_data.update(extra_trial_data)
-        data_filename = self.root / f'{self.trial_idx}_metrics.json.gz'
+        data_filename = self.root / f'{trial_idx}_metrics.json.gz'
         dummy_proof_write(trial_data, data_filename)
 
         if self.record:
@@ -123,11 +118,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
 
 def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory):
-    # start at the same seed every time to make the planning environments & plans the same (hopefully?)
-    # setting OMPL random seed should have no effect, because I use numpy's random in my sampler?
-    np.random.seed(args.seed)
-    tf.random.set_seed(args.seed)  # not sure if this has any effect
-
     # override some arguments
     if args.timeout is not None:
         rospy.loginfo(f"Overriding with timeout {args.timeout}")
@@ -137,26 +127,22 @@ def evaluate_planning_method(args, comparison_idx, planner_params, p_params_name
 
     # Start Services
     service_provider = gazebo_services.GazeboServices()
-
-    # look up the planner params
     planner, _ = get_planner(planner_params=planner_params,
-                             seed=args.seed,
                              verbose=args.verbose)
 
     service_provider.setup_env(verbose=args.verbose,
                                real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size)
 
-    print(Fore.GREEN + "Running {} Trials".format(args.n_trials) + Fore.RESET)
+    print(Fore.GREEN + f"Running Trials {args.trials}" + Fore.RESET)
 
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
         planner_config_name=planner_config_name,
-        n_trials=args.n_trials,
+        trials=args.trials,
         verbose=args.verbose,
         planner_params=planner_params,
-        seed=args.seed,
         outdir=common_output_directory,
         comparison_item_idx=comparison_idx,
         goal=planner_params['fixed_goal'],

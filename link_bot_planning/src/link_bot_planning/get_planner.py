@@ -9,7 +9,7 @@ from link_bot_pycommon.base_services import BaseServices
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def get_planner(planner_params: Dict, seed: int, verbose: int):
+def get_planner(planner_params: Dict, verbose: int):
     fwd_model_dirs = [pathlib.Path(model_dir) for model_dir in planner_params['fwd_model_dir']]
 
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dirs)
@@ -22,7 +22,6 @@ def get_planner(planner_params: Dict, seed: int, verbose: int):
                          classifier_model=classifier_model,
                          planner_params=planner_params,
                          scenario=scenario,
-                         seed=seed,
                          verbose=verbose)
     return planner, model_path_info
 
@@ -31,7 +30,6 @@ def get_planner_with_model(planner_class_str: str,
                            fwd_model: BaseDynamicsFunction,
                            classifier_model_dir: pathlib.Path,
                            planner_params: Dict,
-                           seed: int,
                            verbose: int):
     scenario = get_scenario(planner_params['scenario'])
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario)
@@ -45,7 +43,6 @@ def get_planner_with_model(planner_class_str: str,
                             classifier_model=classifier_model,
                             planner_params=planner_params,
                             scenario=scenario,
-                            seed=seed,
                             verbose=verbose,
                             )
     return planner

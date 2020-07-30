@@ -46,6 +46,7 @@ class PlanningQuery:
     goal: Dict
     environment: Dict
     start: Dict
+    seed: int
 
 
 @dataclass_json
@@ -65,7 +66,6 @@ class MyPlanner:
                  classifier_model: BaseConstraintChecker,
                  params: Dict,
                  scenario: ExperimentScenario,
-                 seed: int,
                  verbose: int,
                  ):
         self.verbose = verbose
@@ -75,18 +75,17 @@ class MyPlanner:
         self.params = params
         # TODO: consider making full env params h/w come from elsewhere. res should match the model though.
         self.si = ob.SpaceInformation(ob.StateSpace())
-        self.seed = seed
-        self.classifier_rng = np.random.RandomState(seed)
-        self.state_sampler_rng = np.random.RandomState(seed)
-        self.goal_sampler_rng = np.random.RandomState(seed)
-        self.control_sampler_rng = np.random.RandomState(seed)
+        self.classifier_rng = np.random.RandomState(0)
+        self.state_sampler_rng = np.random.RandomState(0)
+        self.goal_sampler_rng = np.random.RandomState(0)
+        self.control_sampler_rng = np.random.RandomState(0)
         self.scenario = scenario
         self.action_params = self.fwd_model.data_collection_params
 
         self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
                                                                state_sampler_rng=self.state_sampler_rng,
                                                                plot=self.verbose >= 2)
-        self.state_space.sanityChecks()
+        # self.state_space.sanityChecks()
         self.control_space = self.scenario.make_ompl_control_space(self.state_space,
                                                                    self.control_sampler_rng,
                                                                    action_params=self.action_params)
@@ -99,13 +98,13 @@ class MyPlanner:
         self.ss.setMotionsValidityChecker(oc.MotionsValidityCheckerFn(self.motions_valid))
         self.ss.setStateValidityChecker(ob.StateValidityCheckerFn(self.is_valid))
 
-        self.cleanup_before_plan()
+        self.cleanup_before_plan(0)
 
         # just for debugging
         self.cc = CollisionCheckerClassifier(pathlib.Path("cl_trials/cc_baseline/cc"), 0.0, self.scenario)
         self.cc_but_accept_count = 0
 
-    def cleanup_before_plan(self):
+    def cleanup_before_plan(self, seed):
         self.ptc = None
         self.n_total_action = None
         self.goal_region = None
@@ -114,6 +113,11 @@ class MyPlanner:
         self.start_state = None
         self.closest_state_to_goal = None
         self.min_dist_to_goal = 10000
+
+        self.classifier_rng.seed(seed)
+        self.state_sampler_rng.seed(seed)
+        self.goal_sampler_rng.seed(seed)
+        self.control_sampler_rng.seed(seed)
 
         # just for debugging
         self.cc_but_accept_count = 0
@@ -244,7 +248,7 @@ class MyPlanner:
     propagate.b = 0
 
     def plan(self, planning_query: PlanningQuery):
-        self.cleanup_before_plan()
+        self.cleanup_before_plan(planning_query.seed)
 
         self.environment = planning_query.environment
         self.goal_region = self.scenario.make_goal_region(self.si,

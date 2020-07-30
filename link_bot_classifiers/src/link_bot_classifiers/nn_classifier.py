@@ -34,7 +34,8 @@ class NNClassifier(MyKerasModel):
         self.scenario = scenario
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
-        self.raster_debug_pub = rospy.Publisher('classifier_raster_debug', OccupancyStamped, queue_size=10, latch=True)
+        self.raster_debug_pubs = [rospy.Publisher(
+            f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=True) for i in range(3)]
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
@@ -95,6 +96,7 @@ class NNClassifier(MyKerasModel):
         pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
         # # DEBUG
+        # b = 0
         # # plot the occupancy grid
         # time_steps = np.arange(time)
         # anim = RvizAnimationController(time_steps)
@@ -141,6 +143,15 @@ class NNClassifier(MyKerasModel):
                                                        c=self.local_env_c_channels,
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
+                # # DEBUG
+                # raster_dict = {
+                #     'env': tf.clip_by_value(state_component_voxel_grid[b], 0, 1),
+                #     'origin': local_env_origin_t[b].numpy(),
+                #     'res': input_dict['res'][b].numpy(),
+                # }
+                # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
+                # self.raster_debug_pubs[i].publish(raster_msg)
+                # # END  DEBUG
 
                 local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
             local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
@@ -148,13 +159,6 @@ class NNClassifier(MyKerasModel):
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
             # # DEBUG
-            # b = 0
-            # raster_dict = {
-            #     'env': tf.clip_by_value(tf.reduce_max(local_voxel_grid_t[b][:, :, :, 1:], axis=-1), 0, 1),
-            #     'origin': local_env_origin_t[b].numpy(),
-            #     'res': input_dict['res'][b].numpy(),
-            # }
-            # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
             # local_env_dict = {
             #     'env': local_env_t[b],
             #     'origin': local_env_origin_t[b].numpy(),
@@ -163,15 +167,13 @@ class NNClassifier(MyKerasModel):
             # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
             # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
             # self.debug_pub.publish(msg)
-            # self.raster_debug_pub.publish(raster_msg)
-            # # pred state
+            # pred state
 
             # debugging_s_t = {k: input_dict[add_predicted(k)][b, t] for k in self.state_keys}
             # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
-            # true state (not known to classifier!)
+            # true state(not known to classifier!)
             # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
             # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
-            # action
             # if t < time - 1:
             #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
             #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
@@ -226,7 +228,10 @@ class NNClassifier(MyKerasModel):
         all_but_last_states = {k: v[:, :-1] for k, v in states.items()}
         actions = self.scenario.put_action_local_frame(all_but_last_states, actions)
         padded_actions = [tf.pad(v, [[0, 0], [0, 1], [0, 0]]) for v in actions.values()]
-        if 'with_robot_frame' in self.hparams and self.hparams['with_robot_frame']:
+        if 'with_robot_frame' not in self.hparams:
+            print("no hparam 'with_robot_frame'. This must be an old model!")
+            concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
+        elif self.hparams['with_robot_frame']:
             states_in_robot_frame = self.scenario.put_state_in_robot_frame(states)
             concat_args = ([conv_output] + list(states_in_robot_frame.values()) +
                            list(states_in_local_frame.values()) + padded_actions)

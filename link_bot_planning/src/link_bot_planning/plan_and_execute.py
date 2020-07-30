@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import tensorflow as tf
 import time
 import pathlib
 import rospy
@@ -58,29 +59,28 @@ class PlanAndExecute:
 
     def __init__(self,
                  planner: MyPlanner,
-                 n_trials: int,
+                 trials: List[int],
                  verbose: int,
                  planner_params: Dict,
                  service_provider: BaseServices,
-                 no_execution: bool,
-                 seed: int):
+                 no_execution: bool):
         self.planner = planner
-        self.n_trials = n_trials
+        self.trials = trials
         self.planner_params = planner_params
         self.verbose = verbose
         self.service_provider = service_provider
         self.no_execution = no_execution
-        self.env_rng = np.random.RandomState(seed)
-        self.goal_rng = np.random.RandomState(seed)
+        self.env_rng = np.random.RandomState(0)
+        self.goal_rng = np.random.RandomState(0)
+        self.recovery_rng = np.random.RandomState(0)
         if self.planner_params['recovery']['use_recovery']:
             recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
             self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
                                                                             scenario=self.planner.scenario,
-                                                                            rng=np.random.RandomState(seed))
+                                                                            rng=self.recovery_rng)
         else:
             self.recovery_policy = None
 
-        self.trial_idx = 0
         self.n_failures = 0
 
         # # Debugging
@@ -98,39 +98,21 @@ class PlanAndExecute:
         # self.goal_bbox_pub.publish(bbox_msg)
 
     def run(self):
-        self.trial_idx = 0
-        attempt_idx = 0
         self.planner.scenario.randomization_initialization()
-        while True:
-            done = self.run_and_check_valid()
-            if done:
-                return
-            attempt_idx += 1
+        for trial_idx in self.trials:
+            self.env_rng.seed(trial_idx)
+            self.recovery_rng.seed(trial_idx)
+            self.goal_rng .seed(trial_idx)
+            # NOTE: ompl SetSeed can only be called once which is why we don't bother doing it here
+            # FIXME: we should not be relying on this...
+            np.random.seed(trial_idx)
+            tf.random.set_seed(trial_idx)
+
             self.randomize_environment()
 
-    def run_and_check_valid(self):
-        run_was_valid = self.plan_and_execute()
-        if run_was_valid:
-            # only count if it was valid
-            self.trial_idx += 1
-            if self.trial_idx >= self.n_trials:
-                self.on_complete()
-                return True
-        return False
+            self.plan_and_execute(trial_idx)
 
-    def setup_planning_query(self):
-        # get start states
-        start_state = self.planner.scenario.get_state()
-
-        # get the environment, which here means anything which is assumed constant during planning
-        # This includes the occupancy map but can also include things like the initial state of the tether
-        environment = self.get_environment()
-
-        # Get the goal (default is to randomly sample one)
-        goal = self.get_goal(environment)
-
-        planning_query = PlanningQuery(goal=goal, environment=environment, start_state=start_state)
-        return planning_query
+        self.on_complete()
 
     def plan(self, planning_query: Dict):
         ############
@@ -182,8 +164,8 @@ class PlanAndExecute:
                                               service_provider=self.service_provider,
                                               robot_name=self.planner.fwd_model.scenario.robot_name())
 
-    def plan_and_execute(self):
-        self.on_start_trial()
+    def plan_and_execute(self, trial_idx: int):
+        self.on_start_trial(trial_idx)
 
         start_time = time.perf_counter()
         total_timeout = self.planner_params['total_timeout']
@@ -197,12 +179,13 @@ class PlanAndExecute:
         while True:
             # get start states
             start_state = self.planner.scenario.get_state()
+            print(start_state)
 
             # get the environment, which here means anything which is assumed constant during planning
             # This includes the occupancy map but can also include things like the initial state of the tether
             environment = self.get_environment()
 
-            planning_query = PlanningQuery(goal=goal, environment=environment, start=start_state)
+            planning_query = PlanningQuery(goal=goal, environment=environment, start=start_state, seed=trial_idx)
             planning_queries.append(planning_query)
 
             planning_result = self.plan(planning_query)
@@ -211,25 +194,25 @@ class PlanAndExecute:
 
             if planning_result.status == MyPlannerStatus.Failure:
                 # this run won't count if we return false, the environment will be randomized, then we'll try again
-                return False
+                raise RuntimeError("planning failed -- is the start state out of bounds?")
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:
                     # Nothing else to do here, just give up
                     end_state = self.planner.scenario.get_state()
                     trial_status = TrialStatus.NotProgressingNoRecovery
                     print(
-                        Fore.BLUE + f"Trial {self.trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
+                        Fore.BLUE + f"Trial {trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
                     trial_data_dict = {
                         'planning_queries': planning_queries,
                         'total_time': time_since_start,
                         'trial_status': trial_status,
-                        'trial_idx': self.trial_idx,
+                        'trial_idx': trial_idx,
                         'end_state': end_state,
                         'goal': goal,
                         'steps': steps_data,
                     }
-                    self.on_trial_complete(trial_data_dict)
-                    return True
+                    self.on_trial_complete(trial_data_dict, trial_idx)
+                    return
                 else:
                     recovery_action = self.recovery_policy(environment=planning_query.environment,
                                                            state=planning_query.start)
@@ -268,24 +251,23 @@ class PlanAndExecute:
             if reached_goal or time_since_start > total_timeout:
                 if reached_goal:
                     trial_status = TrialStatus.Reached
-                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Goal reached!" + Fore.RESET)
+                    print(Fore.BLUE + f"Trial {trial_idx} Ended: Goal reached!" + Fore.RESET)
                 else:
                     trial_status = TrialStatus.Timeout
-                    print(Fore.BLUE + f"Trial {self.trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
+                    print(Fore.BLUE + f"Trial {trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
                 trial_data_dict = {
                     'planning_queries': planning_queries,
                     'total_time': time_since_start,
                     'trial_status': trial_status,
-                    'trial_idx': self.trial_idx,
+                    'trial_idx': trial_idx,
                     'goal': goal,
                     'steps': steps_data,
                     'end_state': end_state,
                 }
-                self.on_trial_complete(trial_data_dict)
-                break
-        return True
+                self.on_trial_complete(trial_data_dict, trial_idx)
+                return
 
-    def on_trial_complete(self, trial_data):
+    def on_trial_complete(self, trial_data, trial_idx: int):
         pass
 
     def get_goal(self, environment: Dict):
@@ -306,7 +288,7 @@ class PlanAndExecute:
     def on_before_execute(self):
         pass
 
-    def on_start_trial(self):
+    def on_start_trial(self, trial_idx: int):
         pass
 
     def on_execution_complete(self,

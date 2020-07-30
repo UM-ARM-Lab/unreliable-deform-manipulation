@@ -17,13 +17,11 @@ class NearestRRT(MyPlanner):
                  classifier_model: BaseConstraintChecker,
                  planner_params: Dict,
                  scenario: ExperimentScenario,
-                 seed: int,
                  verbose: int):
         super().__init__(fwd_model,
                          classifier_model,
                          planner_params,
                          scenario,
-                         seed,
                          verbose)
 
         self.rrt = oc.RRT(self.si)

@@ -69,7 +69,7 @@ def metrics_main(args):
     if not args.no_plot:
 
         execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 10))
-        execution_success_ax.set_xlabel("Success Threshold, Task Error")
+        execution_success_ax.set_xlabel("Task Error Threshold")
         execution_success_ax.set_ylabel("Success Rate")
         execution_success_ax.set_ylim([-0.1, 100.5])
 
@@ -90,7 +90,6 @@ def metrics_main(args):
     for color, subfolder in zip(colors, all_subfolders):
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
         N = len(metrics_filenames)
-        print(Fore.GREEN + f"{subfolder} has {N} examples" + Fore.RESET)
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata = json.load(metadata_file)
@@ -130,14 +129,21 @@ def metrics_main(args):
         ###############################################################################################
 
         n_for_metrics = len(final_execution_to_goal_errors)
-        print(legend_nickname, n_recovery)
+        final_execution_to_goal_errors = np.array(final_execution_to_goal_errors)
+        success_percentage = np.count_nonzero(final_execution_to_goal_errors < goal_threshold) / n_for_metrics * 100
+
+        print(Fore.GREEN + f"{legend_nickname}" + Fore.RESET)
+        print(f"{N} examples")
+        print(f"{n_recovery} recovery actions taken")
+        print(f"{success_percentage}% reached goal")
 
         if not args.no_plot:
             # Execution Success Plot
             execution_successes = []
             for threshold in errors_thresholds:
-                success_percentage = np.count_nonzero(final_execution_to_goal_errors < threshold) / n_for_metrics * 100
-                execution_successes.append(success_percentage)
+                success_percentage_at_threshold = np.count_nonzero(
+                    final_execution_to_goal_errors < threshold) / n_for_metrics * 100
+                execution_successes.append(success_percentage_at_threshold)
             execution_success_ax.plot(errors_thresholds, execution_successes,
                                       label=legend_nickname, linewidth=5, color=color)
 
