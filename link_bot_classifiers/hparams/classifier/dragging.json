@@ -9,7 +9,7 @@
   "action_keys": [
     "gripper_position"
   ],
-  "rope_image_k": 1500,
+  "rope_image_k": 2000,
   "rnn_size": 128,
   "fc_layer_sizes": [
     128

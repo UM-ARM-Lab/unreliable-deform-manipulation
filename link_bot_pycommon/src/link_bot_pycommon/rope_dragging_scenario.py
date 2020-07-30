@@ -441,6 +441,10 @@ class RopeDraggingScenario(Base3DScenario):
     def dynamics_metrics_function(dataset_element, predictions):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
+    @ staticmethod
+    def put_state_in_robot_frame(state: Dict):
+        return state
+
     @staticmethod
     def put_state_local_frame(state):
         rope = state['link_bot']
