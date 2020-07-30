@@ -23,7 +23,7 @@
         <arg name="use_sim_time" value="false"/>
         <arg name="use_val" value="$(arg use_val)"/>
         <arg name="use_victor" value="$(arg use_victor)"/>
-        <arg name="use_mocap_shims" value="true"/>
+        <arg name="use_mocap_shims" value="false"/>
     </include>
 
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
