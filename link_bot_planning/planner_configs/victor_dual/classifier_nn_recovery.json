@@ -50,7 +50,7 @@
   ],
   "recovery": {
     "use_recovery": true,
-    "recovery_model_dir": "rcv_trials/weighted_loss/July_19_02-44-36_7fbf55043c"
+    "recovery_model_dir": "rcv_trials/dual-robot-frame/July_30_00-21-34_1e8dc6ac36/best_checkpoint/"
   },
   "fwd_model_dir": [
     "dy_trials/no_victor_longer_0/best_checkpoint",
