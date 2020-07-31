@@ -406,6 +406,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
+        req.settling_time_seconds = 0.2
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         while True:
@@ -413,7 +414,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 _ = self.action_srv(req)
                 break
             except Exception:
-                input("Did you forget to start the sim?")
+                input("Did you forget to start the shim?")
                 pass
 
     @ staticmethod
