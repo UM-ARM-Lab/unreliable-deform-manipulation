@@ -84,6 +84,9 @@ def metrics_main(args):
     else:
         table_format = 'fancy_grid'
 
+    # For saving metrics since this script is kind of slow
+    table_outfile = open(first_results_dir / 'tables.txt', 'w')
+
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
     legend_names = []
@@ -132,10 +135,15 @@ def metrics_main(args):
         final_execution_to_goal_errors = np.array(final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(final_execution_to_goal_errors < goal_threshold) / n_for_metrics * 100
 
+        summary_data = {
+            'n_examples': N,
+            'n_recovery_actions': n_recovery,
+            'success_percentage': success_percentage
+        }
         print(Fore.GREEN + f"{legend_nickname}" + Fore.RESET)
-        print(f"{N} examples")
-        print(f"{n_recovery} recovery actions taken")
-        print(f"{success_percentage}% reached goal")
+        print(summary_data)
+        table_outfile.write(f"{legend_nickname}")
+        table_outfile.write(json.dumps(summary_data, indent=2))
 
         if not args.no_plot:
             # Execution Success Plot
@@ -160,7 +168,6 @@ def metrics_main(args):
 
         execution_success_ax.legend()
 
-    table_outfile = open(first_results_dir / 'tables.txt', 'w')
     for metric_name, table_data in aggregate_metrics.items():
         print(Style.BRIGHT + metric_name + Style.NORMAL)
         table = tabulate(table_data,

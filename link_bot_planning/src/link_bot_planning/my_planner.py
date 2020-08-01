@@ -193,8 +193,11 @@ class MyPlanner:
         final_classifier_probability = classifier_probabilities[-1]
         if not not_in_collision and final_classifier_probability > 0.5:
             self.cc_but_accept_count += 1
-            self.scenario.plot_state_rviz(final_predicted_state, color='y',
-                                          label='accepted in collision', idx=self.cc_but_accept_count)
+            if self.verbose >= 2:
+                self.scenario.plot_state_rviz(final_predicted_state,
+                                              color='y',
+                                              label='accepted in collision',
+                                              idx=self.cc_but_accept_count)
 
         if self.verbose >= 2:
             self.scenario.plot_accept_probability(final_classifier_probability)

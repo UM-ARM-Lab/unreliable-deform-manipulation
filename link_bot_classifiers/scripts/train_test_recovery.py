@@ -12,6 +12,7 @@ import tensorflow as tf
 import link_bot_classifiers
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_classifiers import recovery_policy_utils
 from link_bot_pycommon.pycommon import paths_to_json
 from shape_completion_training.metric import LossMetric
 from link_bot_classifiers.nn_recovery_policy import NNRecoveryModel
@@ -102,11 +103,12 @@ def eval_main(args, seed: int):
     ###############
     # Model
     ###############
-    _, params = filepath_tools.create_or_load_trial(trial_path=args.checkpoint.absolute(),
-                                                    trials_directory=pathlib.Path('trials'))
-    model_class = link_bot_classifiers.get_model(params['model_class'])
+    trial_path = args.checkpoint.parent.absolute()
+    trials_directory = pathlib.Path('recovery_trials').absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
     scenario = get_scenario(params['scenario'])
-    net = model_class(hparams=params, scenario=scenario)
+    net = NNRecoveryModel(hparams=params, scenario=scenario, batch_size=1)
 
     ###############
     # Dataset
@@ -117,13 +119,14 @@ def eval_main(args, seed: int):
     ###############
     # Evaluate
     ###############
-    test_tf_dataset = test_tf_dataset.batch(args.batch_size, drop_remainder=True)
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, args.batch_size, drop_remainder=True)
 
     runner = ModelRunner(model=net,
                          training=False,
-                         trial_path=args.checkpoint.absolute(),
-                         trials_directory=pathlib.Path('trials'),
-                         write_summary=False)
+                         params=params,
+                         restore_from_name=args.checkpoint.name,
+                         trial_path=trial_path,
+                         batch_metadata=test_dataset.batch_metadata)
     validation_metrics = runner.val_epoch(test_tf_dataset)
     for name, value in validation_metrics.items():
         print(f"{name}: {value:.3f}")

@@ -227,7 +227,7 @@ class NNRecoveryModel(MyKerasModel):
             'error': error
         }
 
-    # @tf.function
+    @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
 
