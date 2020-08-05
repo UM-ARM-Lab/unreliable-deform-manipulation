@@ -45,8 +45,5 @@ class BaseServices:
         stop_msg.record = False
         self.record(stop_msg)
 
-    # def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
-    #     raise NotImplementedError()
-
-    def reset_world(self, verbose, reset_robot: Optional = None):
+    def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         raise NotImplementedError()

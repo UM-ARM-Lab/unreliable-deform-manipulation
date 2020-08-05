@@ -1,7 +1,7 @@
-import rospy
+from typing import Optional
+
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.base_services import BaseServices
-from std_srvs.srv import Empty, EmptyRequest
 
 
 class GazeboServices(BaseServices):

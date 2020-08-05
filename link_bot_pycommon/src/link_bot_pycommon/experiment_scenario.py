@@ -1,8 +1,8 @@
-import multiprocessing
 from typing import Dict, Optional, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 
 import rospy
 from geometry_msgs.msg import Vector3
@@ -11,12 +11,13 @@ from link_bot_data.visualization import plot_extents
 from link_bot_pycommon.animation_player import Player
 from link_bot_pycommon.pycommon import trim_reconverging
 from moonshine.moonshine_utils import remove_batch, numpify, dict_of_sequences_to_sequence_of_dicts_tf
-from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
+from std_msgs.msg import Int64, Float32
 
 
 class ExperimentScenario:
     def __init__(self):
-        pass
+        self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
+        self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -479,6 +480,22 @@ class ExperimentScenario:
     @staticmethod
     def index_label_time(example: Dict, t: int):
         raise NotImplementedError()
+
+    def randomization_initialization(self):
+        raise NotImplementedError()
+
+    def randomize_environment(self, env_rng : np.random.RandomState, objects_params: Dict, data_collection_params: Dict):
+        raise NotImplementedError()
+
+    def plot_traj_idx_rviz(self, traj_idx):
+        msg = Float32()
+        msg.data = traj_idx
+        self.traj_idx_viz_pub.publish(msg)
+
+    def plot_time_idx_rviz(self, time_idx):
+        msg = Int64()
+        msg.data = time_idx
+        self.time_viz_pub.publish(msg)
 
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
