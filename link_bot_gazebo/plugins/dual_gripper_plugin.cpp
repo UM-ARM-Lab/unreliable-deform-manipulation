@@ -2,6 +2,7 @@
 
 #include <std_msgs/Empty.h>
 
+#include <link_bot_gazebo/gazebo_plugin_utils.h>
 #include <boost/range/combine.hpp>
 #include <functional>
 
@@ -16,6 +17,8 @@
 namespace gazebo
 {
 GZ_REGISTER_MODEL_PLUGIN(DualGripperPlugin)
+
+constexpr auto PLUGIN_NAME{ "DualGripperPlugin" };
 
 DualGripperPlugin::~DualGripperPlugin()
 {
@@ -32,26 +35,8 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   model_ = parent;
   world_ = parent->GetWorld();
 
-  gripper1_ = model_->GetLink("link_bot::gripper1");
-  gripper2_ = model_->GetLink("link_bot::gripper2");
-  if (!gripper1_)
-  {
-    gzerr << "No link gripper1 found\n";
-    gzerr << "Links in the model:\n";
-    for (const auto &l : model_->GetLinks())
-    {
-      gzerr << l->GetName() << "\n";
-    }
-  }
-  else if (!gripper2_)
-  {
-    gzerr << "No link gripper1 found\n";
-    gzerr << "Links in the model:\n";
-    for (const auto &l : model_->GetLinks())
-    {
-      gzerr << l->GetName() << "\n";
-    }
-  }
+  gripper1_ = GetLink(PLUGIN_NAME, model_, "gripper1");
+  gripper2_ = GetLink(PLUGIN_NAME, model_, "gripper2");
 
   // setup ROS stuff
   if (!ros::isInitialized())
@@ -181,3 +166,12 @@ void DualGripperPlugin::PrivateQueueThread()
 }
 
 }  // namespace gazebo
+
+/**
+    auto const rewind_needed = [this] {
+      auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
+      auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
+      return (gripper1_dist > max_dist_between_gripper_and_link_) ||
+             (gripper2_dist > max_dist_between_gripper_and_link_);
+    };
+**/

@@ -2110,6 +2110,7 @@
             <child>victor_left_arm_link_1</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0</initial_position>
                 <xyz>0.707107 0.707107 -0</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2133,6 +2134,7 @@
             <child>victor_left_arm_link_2</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0</initial_position>
                 <xyz>-0 0 -1</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2156,6 +2158,7 @@
             <child>victor_left_arm_link_3</child>
             <pose frame=''>0 0 0 0 -0 0</pose>
             <axis>
+                <initial_position>0</initial_position>
                 <xyz>0.707107 0.707107 -0</xyz>
                 <use_parent_model_frame>1</use_parent_model_frame>
                 <limit>
@@ -2940,12 +2943,44 @@
             </physics>
         </joint>
         <plugin name='kinematic_victor' filename='libkinematic_victor_plugin.so'>
-            <arm name="left">
-                <initial_positions> -1.39626, 0.5759586531581284, 1.9, -1.3089969389957472, 9.947598300641403e-14, 0.733038285837619, -0.2617993877991509</initial_positions>
-            </arm>
-            <arm name="right">
-                <initial_positions> -1.74533, -0.5759586531581287, -1.9, 1.3089969389957465, -1.9539925233402755e-14, -0.7330382858376183, 1.8325957145940466 </initial_positions>
-            </arm>
+            <joint_names>
+                victor_left_arm_joint_1
+                victor_left_arm_joint_2
+                victor_left_arm_joint_3
+                victor_left_arm_joint_4
+                victor_left_arm_joint_5
+                victor_left_arm_joint_6
+                victor_left_arm_joint_7
+                victor_left_gripper_fingerA_joint_2
+                victor_left_gripper_fingerA_joint_3
+                victor_left_gripper_fingerA_joint_4
+                victor_left_gripper_fingerB_joint_2
+                victor_left_gripper_fingerB_joint_3
+                victor_left_gripper_fingerB_joint_4
+                victor_left_gripper_fingerB_knuckle
+                victor_left_gripper_fingerC_joint_2
+                victor_left_gripper_fingerC_joint_3
+                victor_left_gripper_fingerC_joint_4
+                victor_left_gripper_fingerC_knuckle
+                victor_right_arm_joint_1
+                victor_right_arm_joint_2
+                victor_right_arm_joint_3
+                victor_right_arm_joint_4
+                victor_right_arm_joint_5
+                victor_right_arm_joint_6
+                victor_right_arm_joint_7
+                victor_right_gripper_fingerA_joint_2
+                victor_right_gripper_fingerA_joint_3
+                victor_right_gripper_fingerA_joint_4
+                victor_right_gripper_fingerB_joint_2
+                victor_right_gripper_fingerB_joint_3
+                victor_right_gripper_fingerB_joint_4
+                victor_right_gripper_fingerB_knuckle
+                victor_right_gripper_fingerC_joint_2
+                victor_right_gripper_fingerC_joint_3
+                victor_right_gripper_fingerC_joint_4
+                victor_right_gripper_fingerC_knuckle
+            </joint_names>
             <max_dist_between_gripper_and_link_scale_factor>1.1</max_dist_between_gripper_and_link_scale_factor>
         </plugin>
     </model>

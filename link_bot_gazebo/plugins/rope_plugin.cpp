@@ -2,6 +2,7 @@
 
 #include <std_srvs/EmptyRequest.h>
 
+#include <link_bot_gazebo/gazebo_plugin_utils.h>
 #include <boost/regex.hpp>
 
 #include <cstdio>
@@ -14,6 +15,8 @@
 
 namespace gazebo
 {
+auto constexpr PLUGIN_NAME{ "RopePlugin" };
+
 void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
   model_ = parent;
@@ -26,6 +29,15 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     ros::init(argc, argv, "rope_plugin", ros::init_options::NoSigintHandler);
   }
 
+  rope_link1_ = GetLink(PLUGIN_NAME, model_, "rope_link_1");
+  gripper1_ = GetLink(PLUGIN_NAME, model_, "gripper1");
+  gripper2_ = GetLink(PLUGIN_NAME, model_, "gripper2");
+  if (gripper1_ and rope_link1_)
+  {
+    rest_distance_between_gripper1_and_link_1_ =
+        (gripper1_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
+  }
+
   auto set_state_bind = [this](auto &&req, auto &&res) { return SetRopeState(req, res); };
   auto set_state_so = ros::AdvertiseServiceOptions::create<peter_msgs::SetRopeState>("set_rope_state", set_state_bind,
                                                                                      ros::VoidPtr(), &queue_);
@@ -34,19 +46,20 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
   auto get_state_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetRopeState>("get_rope_state", get_state_bind,
                                                                                      ros::VoidPtr(), &queue_);
 
+  auto overstretched_bind = [this](auto &&req, auto &&res) { return GetOverstretched(req, res); };
+  auto overstretched_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetBool>(
+      "rope_overstretched", overstretched_bind, ros::VoidPtr(), &queue_);
+
   set_state_service_ = ros_node_.advertiseService(set_state_so);
+  rope_overstretched_service_ = ros_node_.advertiseService(overstretched_so);
   get_state_service_ = ros_node_.advertiseService(get_state_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
   {
-    if (!sdf->HasElement("rope_length"))
+    if (sdf->HasElement("overstretching_factor"))
     {
-      printf("using default rope length=%f\n", length_);
-    }
-    else
-    {
-      length_ = sdf->GetElement("rope_length")->Get<double>();
+      overstretching_factor_ = sdf->GetElement("overstretching_factor")->Get<double>();
     }
 
     if (!sdf->HasElement("num_links"))
@@ -72,12 +85,10 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
       joint->SetPosition(1, req.joint_angles_axis2[i]);
     }
   }
-  auto const gripper1 = model_->GetLink("link_bot::gripper1");
-  auto const gripper2 = model_->GetLink("link_bot::gripper2");
-  if (gripper1 and gripper2)
+  if (gripper1_ and gripper2_)
   {
-    gripper1->SetWorldPose({ req.gripper1.x, req.gripper1.y, req.gripper1.z, 0, 0, 0 });
-    gripper2->SetWorldPose({ req.gripper2.x, req.gripper2.y, req.gripper2.z, 0, 0, 0 });
+    gripper1_->SetWorldPose({ req.gripper1.x, req.gripper1.y, req.gripper1.z, 0, 0, 0 });
+    gripper2_->SetWorldPose({ req.gripper2.x, req.gripper2.y, req.gripper2.z, 0, 0, 0 });
   }
   else
   {
@@ -109,7 +120,6 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
     boost::regex e(".*rope_link_\\d+");
     if (boost::regex_match(name, e))
     {
-      // ROS_INFO_STREAM("using link with name " << name);
       geometry_msgs::Point pt;
       pt.x = link->WorldPose().Pos().X();
       pt.y = link->WorldPose().Pos().Y();
@@ -147,6 +157,20 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
   previous_res = res;
   initialized = true;
 
+  return true;
+}
+
+bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res)
+{
+  (void)req;  // unused
+
+  // check the distance between the position of rope_link_1 and gripper_1
+  if (not gripper1_ or not rope_link1_)
+  {
+    return false;
+  }
+  auto const distance = (gripper1_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
+  res.data = distance > (rest_distance_between_gripper1_and_link_1_ * overstretching_factor_);
   return true;
 }
 

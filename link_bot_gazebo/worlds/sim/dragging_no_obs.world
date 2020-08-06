@@ -31,7 +31,7 @@
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <include>
             <pose>0 0 0.01 0 0 0</pose>
-            <uri>model://rope_dragging_2d</uri>
+            <uri>model://dragging_rope</uri>
         </include>
     </world>
 </sdf>

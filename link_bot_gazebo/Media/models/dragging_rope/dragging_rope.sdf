@@ -1,12 +1,12 @@
 
 <sdf version="1.6">
-    <model name="link_bot">
+    <model name="dragging_rope">
         <pose frame="">0 0 0.01 0 0 0</pose>
         
         <link name="rope_link_1">
-        <pose frame="">0.05 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.025 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -21,7 +21,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -60,9 +60,9 @@
         </link>
         
         <link name="rope_link_2">
-        <pose frame="">0.1 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.07500000000000001 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -77,7 +77,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -116,9 +116,9 @@
         </link>
         
         <link name="rope_link_3">
-        <pose frame="">0.15000000000000002 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.125 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -133,7 +133,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -172,9 +172,9 @@
         </link>
         
         <link name="rope_link_4">
-        <pose frame="">0.2 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.17500000000000002 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -189,7 +189,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -228,9 +228,9 @@
         </link>
         
         <link name="rope_link_5">
-        <pose frame="">0.25 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.225 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -245,7 +245,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -284,9 +284,9 @@
         </link>
         
         <link name="rope_link_6">
-        <pose frame="">0.30000000000000004 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.275 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -301,7 +301,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -340,9 +340,9 @@
         </link>
         
         <link name="rope_link_7">
-        <pose frame="">0.35000000000000003 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.32500000000000007 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -357,7 +357,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -396,9 +396,9 @@
         </link>
         
         <link name="rope_link_8">
-        <pose frame="">0.4 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.37500000000000006 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -413,7 +413,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -452,9 +452,9 @@
         </link>
         
         <link name="rope_link_9">
-        <pose frame="">0.45 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.42500000000000004 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -469,7 +469,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -508,9 +508,9 @@
         </link>
         
         <link name="rope_link_10">
-        <pose frame="">0.5 0 0 3.14159 -1.57079 3.14159</pose>
+        <pose frame="">0.47500000000000003 0 0 3.14159 -1.57079 3.14159</pose>
         <inertial>
-            <pose frame="">0.025 0 0 0 0 0</pose>
+            <pose frame="">0 0 0 0 0 0</pose>
             <mass>0.05</mass>
             <inertia>
                 <ixx>1.5416666666666668e-05</ixx>
@@ -525,7 +525,7 @@
             <pose frame="">0 0 0 0 0 0</pose>
             <geometry>
                 <box>
-                    <size>0.04000000000000001 0.04000000000000001 0.02</size>
+                    <size>0.04 0.04 0.045000000000000005</size>
                 </box>
             </geometry>
             <surface>
@@ -565,14 +565,14 @@
         
         
         <joint name="joint_1" type="revolute">
-            <child>rope_link_2</child>
-            <parent>rope_link_1</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_2</parent>
+            <child>rope_link_1</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -591,14 +591,14 @@
         </joint>
         
         <joint name="joint_2" type="revolute">
-            <child>rope_link_3</child>
-            <parent>rope_link_2</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_3</parent>
+            <child>rope_link_2</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -617,14 +617,14 @@
         </joint>
         
         <joint name="joint_3" type="revolute">
-            <child>rope_link_4</child>
-            <parent>rope_link_3</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_4</parent>
+            <child>rope_link_3</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -643,14 +643,14 @@
         </joint>
         
         <joint name="joint_4" type="revolute">
-            <child>rope_link_5</child>
-            <parent>rope_link_4</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_5</parent>
+            <child>rope_link_4</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -669,14 +669,14 @@
         </joint>
         
         <joint name="joint_5" type="revolute">
-            <child>rope_link_6</child>
-            <parent>rope_link_5</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_6</parent>
+            <child>rope_link_5</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -695,14 +695,14 @@
         </joint>
         
         <joint name="joint_6" type="revolute">
-            <child>rope_link_7</child>
-            <parent>rope_link_6</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_7</parent>
+            <child>rope_link_6</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -721,14 +721,14 @@
         </joint>
         
         <joint name="joint_7" type="revolute">
-            <child>rope_link_8</child>
-            <parent>rope_link_7</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_8</parent>
+            <child>rope_link_7</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -747,14 +747,14 @@
         </joint>
         
         <joint name="joint_8" type="revolute">
-            <child>rope_link_9</child>
-            <parent>rope_link_8</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_9</parent>
+            <child>rope_link_8</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -773,14 +773,14 @@
         </joint>
         
         <joint name="joint_9" type="revolute">
-            <child>rope_link_10</child>
-            <parent>rope_link_9</parent>
-            <pose>0 0 0.025 0 0 0</pose>
+            <parent>rope_link_10</parent>
+            <child>rope_link_9</child>
+            <pose>0 0 -0.025 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-2.8</lower>
-                    <upper>2.8</upper>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
                     <effort>10</effort>
                     <velocity>5</velocity>
                 </limit>
@@ -799,7 +799,7 @@
         </joint>
         
         <link name='head'>
-        <pose frame=''>0.525 0 0 0 0 0 </pose>
+        <pose frame=''>0 0 0 0 0 0 </pose>
         <inertial>
             <pose frame=''>0 0 0 0 0 0</pose>
             <mass>0.1</mass>
@@ -844,7 +844,7 @@
             </geometry>
             <material>
                 <script>
-                    <name>Gazebo/Red</name>
+                    <name>Gazebo/Blue</name>
                     <uri>file://media/materials/scripts/gazebo.material</uri>
                 </script>
             </material>
@@ -853,7 +853,7 @@
         </link>
         <joint name="head_joint" type="revolute">
             <child>head</child>
-            <parent>rope_link_10</parent>
+            <parent>rope_link_1</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -871,7 +871,7 @@
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links>10</num_links>
-            <rope_length>0.5</rope_length>
+            <overstretching_factor>1.3</overstretching_factor>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
             <object_name>gripper</object_name>

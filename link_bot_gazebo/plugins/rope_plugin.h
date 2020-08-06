@@ -1,8 +1,6 @@
 #pragma once
 
-#include <peter_msgs/ExecuteAction.h>
-#include <peter_msgs/GetObject.h>
-#include <peter_msgs/GetObjects.h>
+#include <peter_msgs/GetBool.h>
 #include <peter_msgs/GetRopeState.h>
 #include <peter_msgs/NamedPoints.h>
 #include <peter_msgs/SetRopeState.h>
@@ -33,25 +31,31 @@ public:
 
   ~RopePlugin() override;
 
-  bool GetObjectRope(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
-
   bool SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::SetRopeStateResponse &res);
 
   bool GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::GetRopeStateResponse &res);
+
+  bool GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res);
 
 private:
   void QueueThread();
 
   physics::ModelPtr model_;
+  physics::LinkPtr rope_link1_;
+  physics::LinkPtr gripper1_;
+  physics::LinkPtr gripper2_;
   event::ConnectionPtr updateConnection_;
   double length_{ 0.0 };
+  double rest_distance_between_gripper1_and_link_1_{ 0.0 };
   unsigned int num_links_{ 0U };
   ros::NodeHandle ros_node_;
   ros::ServiceServer set_state_service_;
+  ros::ServiceServer rope_overstretched_service_;
   ros::ServiceServer get_state_service_;
   ros::ServiceServer get_object_link_bot_service_;
   ros::Publisher register_object_pub_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
+  double overstretching_factor_{ 1.0 };
 };
 }  // namespace gazebo

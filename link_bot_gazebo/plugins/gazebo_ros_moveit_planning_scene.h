@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Copyright (C) 2012-2014 Open Source Robotics Foundation
  *
@@ -19,13 +20,11 @@
  * Author: Jonathan Bohren
  * Date: 15 May 2014
  */
-#ifndef GAZEBO_ROS_MOVEIT_PLANNING_SCENE_H
-#define GAZEBO_ROS_MOVEIT_PLANNING_SCENE_H
+#pragma once
 
 #include <atomic>
 #include <string>
 
-// Custom Callback Queue
 #include <geometry_msgs/Pose.h>
 #include <ros/callback_queue.h>
 #include <ros/subscribe_options.h>
@@ -46,120 +45,43 @@
 
 namespace gazebo
 {
-/// @addtogroup gazebo_dynamic_plugins Gazebo ROS Dynamic Plugins
-/// @{
-/** \defgroup GazeboRosMoveItPlanningScene Plugin XML Reference and Example
-
-  \brief Ros MoveIt Planning Scene Plugin.
-
-  This is a model plugin which broadcasts MoveIt PlanningScene messages so
-  that the planning scene stays up-to-date with the world simulation.  This is
-  useful if you want to "fake" perfect perception of the environment.
-
-  Example Usage:
-
-  \verbatim
-      <gazebo>
-        <plugin filename="libgazebo_ros_moveit_planning_scene.so" name="gazebo_ros_moveit_planning_scene">
-          <topicName>/planning_scene</topicName>
-          <sceneName>laboratory</sceneName>
-          <robotName>my_robot</robotName>
-          <updatePeriod>0.5</updatePeriod>
-        </plugin>
-      </gazebo>
-  \endverbatim
-
-  Design:
-
-  Note that while this is a _model_ plugin, its primary purpose is to advertize
-  information about the gazebo world. It's designed as a model plugin, however,
-  since that information is relevant to the context of a single robot's planner.
-  As such, this plugin should be loaded in the model representing the robot
-  performing the planning.
-
-  At some period specified by <updatePeriod>, the plugin will publish the
-  complete world state. If this period is 0, then periodic messages will not be
-  published.
-
-  You can manually re-synch the world state by calling the publish_planning_scene
-  service.
-\{
-*/
-
-/**
-           .
-
-*/
-
 class GazeboRosMoveItPlanningScene : public ModelPlugin
 {
-  /// \brief Destructor
 public:
   virtual ~GazeboRosMoveItPlanningScene();
 
-  // Documentation inherited
-protected:
   void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
 
-  /// \brief The custom callback queue thread function.
-private:
+  moveit_msgs::PlanningScene BuildMessage();
+
+  void PeriodicUpdate();
+
   void QueueThread();
 
-  /// \brief A pointer to the gazebo world.
-private:
   physics::WorldPtr world_;
-
-  /// \brief A pointer to the Model of the robot doing the planning
-private:
   physics::ModelPtr model_;
 
-  /// \brief A pointer to the ROS node.  A node will be instantiated if it does not exist.
-private:
   boost::scoped_ptr<ros::NodeHandle> rosnode_;
 
-private:
   ros::Publisher planning_scene_pub_;
 
-  /// \brief ROS topic name inputs
-private:
   std::string topic_name_;
-  /// \brief The MoveIt scene name
-private:
   std::string scene_name_;
-
-private:
   std::string frame_id_;
-
-private:
   std::string robot_name_;
-
-private:
   std::string model_name_;
-
-  /// \brief for setting ROS name space
-private:
   std::string robot_namespace_;
+  std::vector<std::string> excluded_model_names;
 
-  // Custom Callback Queue
-private:
+  // We need a separate queue and thread so we can handle messages and services when gazebo is paused
   ros::CallbackQueue queue_;
-  /// \brief Thead object for the running callback Thread.
-
-private:
   boost::thread callback_queue_thread_;
-  /// \brief Container for the planning scene.
-
   // Protects against multiple ROS callbacks or publishers accessing/changing data out of order
   std::mutex ros_mutex_;
-
-  moveit_msgs::PlanningScene BuildMessage();
-  void PeriodicUpdate();
 
   ros::Duration publish_period_;
   std::thread periodic_event_thread_;
   double scale_primitives_factor_{ 1.0 };
 };
-/** \} */
-/// @}
+
 }  // namespace gazebo
-#endif

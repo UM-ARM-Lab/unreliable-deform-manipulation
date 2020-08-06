@@ -1,13 +1,18 @@
 #include "kinematic_victor_plugin.h"
 
+#include <peter_msgs/GetBool.h>
 #include <peter_msgs/GetJointState.h>
 #include <peter_msgs/SetBool.h>
+#include <peter_msgs/SetDualGripperPoints.h>
 #include <ros/subscribe_options.h>
 #include <std_msgs/Empty.h>
+#include <std_srvs/SetBool.h>
+#include <boost/algorithm/string.hpp>
 
 #include <algorithm>
 #include <functional>
 
+#include <link_bot_gazebo/gazebo_plugin_utils.h>
 #include "enumerate.h"
 
 #define create_service_options(type, name, bind)                                                                       \
@@ -15,31 +20,6 @@
 
 #define create_service_options_private(type, name, bind)                                                               \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &private_queue_)
-
-#define CANARY                                                                                                         \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    std::cerr << "Reached " << __FILE__ << ":" << __LINE__ << std::endl;                                               \
-  } while (false);
-
-static std::istream &operator>>(std::istream &_in, std::vector<double> &_vec)
-{
-  // Remove any commas from the data
-  std::string content{ std::istreambuf_iterator<char>(_in), std::istreambuf_iterator<char>() };
-  content.erase(std::remove(content.begin(), content.end(), ','), content.end());
-
-  // FIXME: error handling
-  // Now parse the data using a typical list of doubles approch
-  std::stringstream ss(content);
-  _vec.clear();
-  double val;
-  while (ss >> val)
-  {
-    _vec.push_back(val);
-  }
-
-  return _in;
-}
 
 static ignition::math::Pose3d ToIgnition(geometry_msgs::Transform const &transform)
 {
@@ -50,6 +30,8 @@ static ignition::math::Pose3d ToIgnition(geometry_msgs::Transform const &transfo
 namespace gazebo
 {
 GZ_REGISTER_MODEL_PLUGIN(KinematicVictorPlugin)
+
+auto const PLUGIN_NAME{ "KinematicVictorPlugin" };
 
 KinematicVictorPlugin::KinematicVictorPlugin() : tf_listener_(tf_buffer_)
 {
@@ -78,55 +60,43 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
   // Handle initial_position tags because the SDFormat used does not at this version
   {
-    auto victor_and_rope_sdf = sdf->GetParent();
-    auto joint = victor_and_rope_sdf->GetElement("joint");
-    while (joint)
+    auto joint_element = sdf->GetParent()->GetElement("joint");
+    while (joint_element)
     {
-      if (joint->HasElement("axis"))
+      ROS_INFO_STREAM("Setting initial position for joint " << joint_element->GetAttribute("name")->GetAsString());
+      if (joint_element->HasElement("axis"))
       {
-        auto axis = joint->GetElement("axis");
+        auto axis = joint_element->GetElement("axis");
         if (axis->HasElement("initial_position"))
         {
           auto initial_position = axis->GetElement("initial_position")->Get<double>();
-          model_->GetJoint(joint->Get<std::string>("name"))->SetPosition(0, initial_position);
+          auto joint = GetJoint(PLUGIN_NAME, model_, joint_element->Get<std::string>("name"));
+          joint->SetPosition(0, initial_position);
         }
       }
-      if (joint->HasElement("axis2"))
+      if (joint_element->HasElement("axis2"))
       {
-        auto axis = joint->GetElement("axis2");
+        auto axis = joint_element->GetElement("axis2");
         if (axis->HasElement("initial_position"))
         {
           auto initial_position = axis->GetElement("initial_position")->Get<double>();
-          model_->GetJoint(joint->Get<std::string>("name"))->SetPosition(1, initial_position);
+          auto joint = GetJoint(PLUGIN_NAME, model_, joint_element->Get<std::string>("name"));
+          joint->SetPosition(1, initial_position);
         }
       }
-      joint = joint->GetNextElement("joint");
+      joint_element = joint_element->GetNextElement("joint");
     }
   }
   // Handle any Victor specific overrides set in the plugin
   {
-    auto arm = sdf->GetElement("arm");
-    while (arm)
+    if (sdf->HasElement("joint_names"))
     {
-      // FIXME: Have the joint name logic in the SDF rather than the CPP?
-      if (arm->HasElement("initial_positions"))
-      {
-        auto vals = arm->GetElement("initial_positions")->Get<std::vector<double>>();
-        if (vals.size() != 7)
-        {
-          gzwarn << "<initial_positions> is not of length 7, ignoring.\n";
-        }
-        else
-        {
-          auto const arm_prefix = "victor::victor_" + arm->Get<std::string>("name") + "_arm_joint_";
-          for (auto const &[idx, val] : enumerate(vals))
-          {
-            auto const joint_name = arm_prefix + std::to_string(idx + 1);
-            model_->GetJoint(joint_name)->SetPosition(0, val);
-          }
-        }
-      }
-      arm = arm->GetNextElement("arm");
+      auto joint_names_str = sdf->GetElement("joint_names")->Get<std::string>();
+      boost::split(joint_names_, joint_names_str, boost::is_any_of(" ,\n"));
+    }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED(PLUGIN_NAME, "Victor plugin SDF missing joint names");
     }
   }
 
@@ -134,8 +104,6 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   {
     left_flange_ = model_->GetLink(left_flange_name_);
     right_flange_ = model_->GetLink(right_flange_name_);
-    gripper1_ = model_->GetLink(gripper1_name_);
-    gripper2_ = model_->GetLink(gripper2_name_);
     if (!left_flange_)
     {
       ROS_ERROR_STREAM("Invalid link name for Victor left flange: " << left_flange_name_);
@@ -144,65 +112,6 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     {
       ROS_ERROR_STREAM("Invalid link name for Victor left flange: " << right_flange_name_);
     }
-    if (!gripper1_)
-    {
-      ROS_ERROR_STREAM("Invalid link name for rope gripper1: " << gripper1_name_);
-    }
-    if (!gripper2_)
-    {
-      ROS_ERROR_STREAM("Invalid link name for rope gripper2: " << gripper2_name_);
-    }
-
-    // Extract rope links connected to the floating grippers for use in FollowJointTrajectory
-    if (gripper1_)
-    {
-      auto const parent_links = gripper1_->GetParentJointsLinks();
-      ROS_WARN_COND(parent_links.size() != 1, "Victor plus rope kinematic structure is different than expected."
-                                              " Check this code for correctness");
-      gripper1_rope_link_ = parent_links[0];
-    }
-    if (gripper2_)
-    {
-      auto const parent_links = gripper2_->GetParentJointsLinks();
-      ROS_WARN_COND(parent_links.size() != 1, "Victor plus rope kinematic structure is different than expected."
-                                              " Check this code for correctness");
-      gripper2_rope_link_ = parent_links[0];
-    }
-    if (gripper1_rope_link_ && gripper2_rope_link_)
-    {
-      auto const dist_factor = sdf->Get<double>("max_dist_between_gripper_and_link_scale_factor", 1.1);
-      ROS_WARN_COND(!dist_factor.second, "max_dist_between_gripper_and_link_scale_factor not set in victor.sdf, "
-                                         "defaulting to 1.1");
-      double const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
-      double const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
-      max_dist_between_gripper_and_link_ = dist_factor.first * std::max(gripper1_dist, gripper2_dist);
-      ROS_WARN_STREAM_COND(max_dist_between_gripper_and_link_ < 1e-3, "max_dist_between_gripper_and_link_ is set to "
-                                                                          << max_dist_between_gripper_and_link_
-                                                                          << ". This appears abnormally low.");
-    }
-    else
-    {
-      max_dist_between_gripper_and_link_ = std::numeric_limits<double>::max();
-      ROS_WARN_STREAM("Errors getting correct links for overstretching detection. Setting max dist to "
-                      << max_dist_between_gripper_and_link_);
-    }
-
-    while (!tf_buffer_.canTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)))
-    {
-      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between " << left_flange_tf_name_ << " and "
-                                                                     << gripper1_tf_name_);
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(0.01s);
-    }
-    while (!tf_buffer_.canTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)))
-    {
-      ROS_INFO_STREAM_THROTTLE(1.0, "Waiting for transform between " << right_flange_tf_name_ << " and "
-                                                                     << gripper2_tf_name_);
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(0.01s);
-    }
-
-    TeleportGrippers();
   }
 
   // Setup ROS publishers, subscribers, and services, action servers
@@ -216,12 +125,26 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       if (grasping_rope_)
       {
         TeleportGrippers();
+        ignore_overstretching_ = false;
+      }
+      else
+      {
+        ignore_overstretching_ = true;
       }
       return true;
     };
     auto grasping_rope_so =
         create_service_options_private(peter_msgs::SetBool, "set_grasping_rope", grasping_rope_bind);
     grasping_rope_server_ = ros_node_.advertiseService(grasping_rope_so);
+
+    auto ignore_overstretching_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
+      (void)res;
+      ignore_overstretching_ = req.data;
+      return true;
+    };
+    auto ignore_overstretching_so =
+        create_service_options_private(std_srvs::SetBool, "set_ignore_overstretching", ignore_overstretching_bind);
+    ignore_overstretching_server_ = ros_node_.advertiseService(ignore_overstretching_so);
 
     auto joint_state_bind = [this](peter_msgs::GetJointStateRequest &req, peter_msgs::GetJointStateResponse &res) {
       (void)req;
@@ -231,6 +154,10 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     auto joint_state_so = create_service_options_private(peter_msgs::GetJointState, "joint_states", joint_state_bind);
     joint_state_server_ = ros_node_.advertiseService(joint_state_so);
     joint_states_pub_ = ros_node_.advertise<sensor_msgs::JointState>("joint_states", 1);
+
+    rope_overstretched_srv_ = ros_node_.serviceClient<peter_msgs::GetBool>("rope_overstretched");
+    set_dual_gripper_points_srv_ = ros_node_.serviceClient<peter_msgs::SetDualGripperPoints>("set_dual_gripper_points");
+
     left_arm_motion_status_pub_ =
         ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 1);
     right_arm_motion_status_pub_ =
@@ -254,20 +181,20 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
     ros_queue_thread_ = std::thread([this] { QueueThread(); });
     private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
+
+    // Publish the robot state at roughly 100 Hz
+    periodic_event_thread_ = std::thread([this] {
+      while (ros::ok())
+      {
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(0.01s);
+        std::lock_guard lock(ros_mutex_);
+        PeriodicUpdate();
+      }
+    });
+
+    ROS_INFO("kinematic_victor_plugin loaded.");
   }
-
-  // Publish the robot state at roughly 100 Hz
-  periodic_event_thread_ = std::thread([this] {
-    while (ros::ok())
-    {
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(0.01s);
-      std::lock_guard lock(ros_mutex_);
-      PeriodicUpdate();
-    }
-  });
-
-  ROS_INFO("kinematic_victor_plugin loaded.");
 }
 
 void KinematicVictorPlugin::PeriodicUpdate()
@@ -283,19 +210,14 @@ void KinematicVictorPlugin::PeriodicUpdate()
 
 sensor_msgs::JointState KinematicVictorPlugin::GetJointStates()
 {
-  // Remove the leading "victor::" from the joint names
-  auto const n_removed = std::strlen("victor::");
   sensor_msgs::JointState msg;
-  for (auto const &j : model_->GetJoints())
+  for (auto const joint_name : joint_names_)
   {
-    // FIXME: why is this not equal to physics::Joint::HINGE_JOINT??
-    if (j->GetType() == 576)
-    {  // revolute
-      msg.name.push_back(j->GetName().substr(n_removed));
-      msg.position.push_back(j->Position(0));
-      msg.velocity.push_back(j->GetVelocity(0));
-      msg.effort.push_back(j->GetForce(0));
-    }
+    auto j = GetJoint(PLUGIN_NAME, model_, joint_name);
+    msg.name.push_back(joint_name);
+    msg.position.push_back(j->Position(0));
+    msg.velocity.push_back(j->GetVelocity(0));
+    msg.effort.push_back(j->GetForce(0));
   }
   msg.header.stamp = ros::Time::now();
   return msg;
@@ -332,8 +254,8 @@ void KinematicVictorPlugin::PublishLeftArmMotionStatus()
   for (auto joint_idx{ 1u }; joint_idx <= 7u; ++joint_idx)
   {
     std::stringstream joint_name_ss;
-    joint_name_ss << "victor::victor_left_arm_joint_" << joint_idx;
-    auto joint = model_->GetJoint(joint_name_ss.str());
+    joint_name_ss << "victor_left_arm_joint_" << joint_idx;
+    auto joint = GetJoint(PLUGIN_NAME, model_, joint_name_ss.str());
     if (joint)
     {
       *joint_angles[joint_idx - 1] = joint->Position(0);
@@ -360,8 +282,8 @@ void KinematicVictorPlugin::PublishRightArmMotionStatus()
   for (auto joint_idx{ 1u }; joint_idx <= 7u; ++joint_idx)
   {
     std::stringstream joint_name_ss;
-    joint_name_ss << "victor::victor_right_arm_joint_" << joint_idx;
-    auto joint = model_->GetJoint(joint_name_ss.str());
+    joint_name_ss << "victor_right_arm_joint_" << joint_idx;
+    auto joint = GetJoint(PLUGIN_NAME, model_, joint_name_ss.str());
     if (joint)
     {
       *joint_angles[joint_idx - 1] = joint->Position(0);
@@ -387,8 +309,8 @@ void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interfa
   for (auto joint_idx{ 1u }; joint_idx <= 7u; ++joint_idx)
   {
     std::stringstream joint_name_ss;
-    joint_name_ss << "victor::victor_left_arm_joint_" << joint_idx;
-    auto joint = model_->GetJoint(joint_name_ss.str());
+    joint_name_ss << "victor_left_arm_joint_" << joint_idx;
+    auto joint = GetJoint(PLUGIN_NAME, model_, joint_name_ss.str());
     if (joint)
     {
       joint->SetPosition(0, joint_angles[joint_idx - 1]);
@@ -412,8 +334,8 @@ void KinematicVictorPlugin::OnRightArmMotionCommand(const victor_hardware_interf
   for (auto joint_idx{ 1u }; joint_idx <= 7u; ++joint_idx)
   {
     std::stringstream joint_name_ss;
-    joint_name_ss << "victor::victor_right_arm_joint_" << joint_idx;
-    auto joint = model_->GetJoint(joint_name_ss.str());
+    joint_name_ss << "victor_right_arm_joint_" << joint_idx;
+    auto joint = GetJoint(PLUGIN_NAME, model_, joint_name_ss.str());
     if (joint)
     {
       joint->SetPosition(0, joint_angles[joint_idx - 1]);
@@ -447,18 +369,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
       // Move Victor to the specified joint configuration
       for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
       {
-        auto joint = model_->GetJoint("victor::" + joint_name);
+        auto joint = GetJoint(PLUGIN_NAME, model_, joint_name);
         if (joint)
         {
           joint->SetPosition(0, point.positions[joint_idx]);
-        }
-        else
-        {
-          ROS_ERROR_STREAM("Invalid joint: "
-                           << "victor::" + joint_name);
-          result.error_code = control_msgs::FollowJointTrajectoryResult::INVALID_JOINTS;
-          follow_traj_server_->setAborted(result);
-          return;
         }
       }
 
@@ -469,14 +383,10 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
     }
 
     // Check if the rope has become overstretched
-    auto const rewind_needed = [this] {
-      auto const gripper1_dist = (gripper1_->WorldPose().Pos() - gripper1_rope_link_->WorldPose().Pos()).Length();
-      auto const gripper2_dist = (gripper2_->WorldPose().Pos() - gripper2_rope_link_->WorldPose().Pos()).Length();
-      return (gripper1_dist > max_dist_between_gripper_and_link_) ||
-             (gripper2_dist > max_dist_between_gripper_and_link_);
-    };
+    peter_msgs::GetBool rope_overstretched;
+    rope_overstretched_srv_.call(rope_overstretched);
 
-    if (rewind_needed())
+    if (not ignore_overstretching_ and rope_overstretched.response.data)
     {
       ROS_WARN_STREAM("Requested action overstretched the rope at point_idx " << point_idx << ", rewinding.");
 
@@ -487,7 +397,7 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
         // Move Victor to the specified joint configuration
         for (auto const &[joint_idx, joint_name] : enumerate(goal->trajectory.joint_names))
         {
-          auto joint = model_->GetJoint("victor::" + joint_name);
+          auto joint = GetJoint(PLUGIN_NAME, model_, joint_name);
           joint->SetPosition(0, rewind_point.positions[joint_idx]);
         }
 
@@ -495,14 +405,23 @@ void KinematicVictorPlugin::FollowJointTrajectory(const TrajServer::GoalConstPtr
         TeleportGrippers();
         world_->Step(steps);
 
-        if (!rewind_needed())
+        peter_msgs::GetBool rope_still_overstretched;
+        rope_overstretched_srv_.call(rope_still_overstretched);
+
+        if (not ignore_overstretching_ and rope_still_overstretched.response.data)
         {
           ROS_WARN_STREAM("Rewind stopped at rewind_idx " << rewind_idx - 1);
           break;
         }
       }
 
-      ROS_ERROR_COND(rewind_needed(), "Rewind unable to find unstretched state. Rewound to start of trajectory.");
+      peter_msgs::GetBool rope_final_still_overstretched;
+      rope_overstretched_srv_.call(rope_final_still_overstretched);
+      ROS_ERROR_COND(not ignore_overstretching_ and rope_final_still_overstretched.response.data, "Rewind unable to "
+                                                                                                  "find unstretched "
+                                                                                                  "state. Rewound "
+                                                                                                  "to start of "
+                                                                                                  "trajectory.");
       break;
     }
   }
@@ -516,42 +435,31 @@ void KinematicVictorPlugin::TeleportGrippers()
   {
     return;
   }
-  if (left_flange_ && right_flange_ && gripper1_ && gripper2_)
+  if (left_flange_ && right_flange_)
   {
-    // Gripper 1, left tool
+    try
     {
-      try
-      {
-        auto gripper1_rot = gripper1_->WorldPose().Rot();
-        auto const left_tool_offset =
-            ToIgnition(tf_buffer_.lookupTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)).transform);
-        auto gripper1_pose = left_tool_offset + left_flange_->WorldPose();
-        gripper1_pose.Rot() = gripper1_rot;
-        gripper1_->SetWorldPose(gripper1_pose);
-      }
-      catch (tf2::TransformException &ex)
-      {
-        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_ << " and " << gripper1_tf_name_
-                                                              << ex.what());
-      }
-    }
+      auto const left_tool_offset =
+          ToIgnition(tf_buffer_.lookupTransform(left_flange_tf_name_, gripper1_tf_name_, ros::Time(0)).transform);
+      auto gripper1_pose = left_tool_offset + left_flange_->WorldPose();
 
-    // Gripper 2, right tool
+      auto const right_tool_offset =
+          ToIgnition(tf_buffer_.lookupTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)).transform);
+      auto gripper2_pose = right_tool_offset + right_flange_->WorldPose();
+
+      // call service to teleport grippers
+      peter_msgs::SetDualGripperPoints set_dual_gripper_points;
+      set_dual_gripper_points.request.gripper1.x = gripper1_pose.Pos().X();
+      set_dual_gripper_points.request.gripper1.y = gripper1_pose.Pos().Y();
+      set_dual_gripper_points.request.gripper1.z = gripper1_pose.Pos().Z();
+      set_dual_gripper_points.request.gripper2.x = gripper2_pose.Pos().X();
+      set_dual_gripper_points.request.gripper2.y = gripper2_pose.Pos().Y();
+      set_dual_gripper_points.request.gripper2.z = gripper2_pose.Pos().Z();
+      set_dual_gripper_points_srv_.call(set_dual_gripper_points);
+    }
+    catch (tf2::TransformException &ex)
     {
-      try
-      {
-        auto gripper2_rot = gripper2_->WorldPose().Rot();
-        auto const right_tool_offset =
-            ToIgnition(tf_buffer_.lookupTransform(right_flange_tf_name_, gripper2_tf_name_, ros::Time(0)).transform);
-        auto gripper2_pose = right_tool_offset + right_flange_->WorldPose();
-        gripper2_pose.Rot() = gripper2_rot;
-        gripper2_->SetWorldPose(gripper2_pose);
-      }
-      catch (tf2::TransformException &ex)
-      {
-        ROS_WARN_STREAM("Failed to lookup transform between " << left_flange_tf_name_ << " and " << gripper1_tf_name_
-                                                              << ex.what());
-      }
+      ROS_WARN_STREAM("Failed to lookup transform when teleporting grippers" << ex.what());
     }
   }
   else

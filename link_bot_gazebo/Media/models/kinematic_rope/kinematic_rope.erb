@@ -6,7 +6,7 @@ link_length = length/n_links
 link_mass = mass/n_links
 joint_damping = 0.01 %>
 <sdf version="1.6">
-    <model name="link_bot">
+    <model name="kinematic_rope">
         <allow_auto_disable>true</allow_auto_disable>
         <pose frame="">0 0 0 0 0 0</pose>
         <% for i in 1..n_links %>
@@ -113,8 +113,10 @@ joint_damping = 0.01 %>
                     </cylinder>
                 </geometry>
                 <material>
-                    <ambient>0.8 0.04 0.02 1.0</ambient>
-                    <diffuse>0.9 0.08 0.09 1.0</diffuse>
+                    <script>
+                        <name>Gazebo/Red</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
                 </material>
             </visual>
             <self_collide>1</self_collide>
@@ -122,9 +124,9 @@ joint_damping = 0.01 %>
         <%end%>
         <% for i in 1..n_links-1 %>
         <joint name="joint_<%=i%>" type="universal">
-            <child>rope_link_<%=i+1%></child>
-            <parent>rope_link_<%=i%></parent>
-            <pose>0 0 <%=link_length/2%> 0 0 0 </pose>
+            <parent>rope_link_<%=i+1%></parent>
+            <child>rope_link_<%=i%></child>
+            <pose>0 0 <%=-link_length/2%> 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
                 <dynamics>
@@ -150,7 +152,7 @@ joint_damping = 0.01 %>
         </joint>
         <% end %>
         <link name='gripper1'>
-            <pose frame=''><%=n_links * link_length%> 0 0 0 0 0 </pose>
+            <pose frame=''>0 0 0 0 0 0 </pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <mass>0.1</mass>
@@ -194,8 +196,10 @@ joint_damping = 0.01 %>
                     </sphere>
                 </geometry>
                 <material>
-                    <ambient>0.8 0.04 0.02 1.0</ambient>
-                    <diffuse>0.9 0.08 0.09 1.0</diffuse>
+                    <script>
+                        <name>Gazebo/Blue</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
                 </material>
             </visual>
 
@@ -204,7 +208,7 @@ joint_damping = 0.01 %>
         </link>
         <joint name="gripper1_joint" type="universal">
             <child>gripper1</child>
-            <parent>rope_link_<%=n_links%></parent>
+            <parent>rope_link_1</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -228,7 +232,7 @@ joint_damping = 0.01 %>
             </physics>
         </joint>
         <link name='gripper2'>
-            <pose frame=''>0 0 0 0 0 0 </pose>
+            <pose frame=''><%=n_links * link_length%> 0 0 0 0 0 </pose>
             <inertial>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <mass>0.1</mass>
@@ -271,16 +275,18 @@ joint_damping = 0.01 %>
                     </sphere>
                 </geometry>
                 <material>
-                    <ambient>0.8 0.04 0.02 1.0</ambient>
-                    <diffuse>0.9 0.08 0.09 1.0</diffuse>
+                    <script>
+                        <name>Gazebo/Yellow</name>
+                        <uri>file://media/materials/scripts/gazebo.material</uri>
+                    </script>
                 </material>
             </visual>
             <self_collide>1</self_collide>
             <kinematic>true</kinematic>
         </link>
         <joint name="gripper2_joint" type="universal">
+            <parent>rope_link_<%=n_links%></parent>
             <child>gripper2</child>
-            <parent>rope_link_1</parent>
             <pose>0 0 0 0 0 0</pose>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -305,7 +311,7 @@ joint_damping = 0.01 %>
         </joint>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links><%=n_links%></num_links>
-            <rope_length><%=length%></rope_length>
+            <overstretching_factor>1.3</overstretching_factor>
         </plugin>
         <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
         </plugin>

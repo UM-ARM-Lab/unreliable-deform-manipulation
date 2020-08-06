@@ -23,8 +23,8 @@
 #include <algorithm>
 #include <mutex>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
-
 #include <gazebo/common/common.hh>
 
 #include "gazebo_ros_moveit_planning_scene.h"
@@ -118,6 +118,12 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     {
       this->scale_primitives_factor_ = _sdf->GetElement("scalePrimitivesFactor")->Get<double>();
     }
+
+    if (_sdf->HasElement("excludeModels"))
+    {
+      auto const excluded_models_str = _sdf->GetElement("excludeModels")->Get<std::string>();
+      boost::split(excluded_model_names, excluded_models_str, boost::is_any_of(" ,\n"));
+    }
   }
 
   // Make sure the ROS node for Gazebo has already been initialized
@@ -130,11 +136,12 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
 
   this->rosnode_.reset(new ros::NodeHandle(this->robot_namespace_));
 
+  // Publish the planning scene
+  planning_scene_pub_ = rosnode_->advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
+
   // Custom Callback Queue for services
   this->callback_queue_thread_ = boost::thread(boost::bind(&GazeboRosMoveItPlanningScene::QueueThread, this));
 
-  // Publish the planning scene
-  planning_scene_pub_ = rosnode_->advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
   periodic_event_thread_ = std::thread([this] {
     while (ros::ok())
     {
@@ -174,12 +181,15 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
       continue;
     }
 
-    // Skip the special little sphere I used for collision checking
-    if (model_name == "collision_sphere")
+    // Skip some models
+    if (std::find(excluded_model_names.cbegin(), excluded_model_names.cend(), model_name) !=
+        excluded_model_names.cend())
     {
+      ROS_DEBUG_STREAM("Skipping model " << model_name);
       continue;
     }
 
+    ROS_DEBUG_STREAM("Adding model " << model_name);
     // Iterate over all links in the model, and add collision objects from each one
     // This adds meshes and primitives to:
     //  object.meshes,
@@ -463,9 +473,6 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
   return planning_scene_msg;
 }
 
-// Custom Callback Queue
-////////////////////////////////////////////////////////////////////////////////
-// custom callback queue thread
 void GazeboRosMoveItPlanningScene::QueueThread()
 {
   static const double timeout = 0.01;
