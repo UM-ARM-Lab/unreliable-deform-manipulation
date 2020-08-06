@@ -30,8 +30,9 @@ class DataCollector:
         self.verbose = verbose
         self.scenario_name = scenario_name
         self.scenario = get_scenario(scenario_name)
-        rospy.init_node('collect_dynamics_data')
         self.scenario = get_scenario(scenario_name)
+
+        rospy.init_node('collect_dynamics_data')
 
         if seed is None:
             self.seed = np.random.randint(0, 10000)

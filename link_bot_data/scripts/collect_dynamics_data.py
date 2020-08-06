@@ -8,10 +8,9 @@ import pathlib
 import numpy as np
 
 from link_bot_data import base_collect_dynamics_data
-from link_bot_gazebo_python import gazebo_services
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.get_service_provider import get_service_provider
 from moonshine.gpu_config import limit_gpu_mem
-from victor import victor_services
 
 limit_gpu_mem(0.1)
 
@@ -21,7 +20,7 @@ def main():
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
-    parser.add_argument("scenario", choices=['dragging', 'dual'], help='scenario')
+    parser.add_argument("scenario", choices=['dragging', 'dual_floating', 'dual_arm'], help='scenario')
     parser.add_argument("collect_dynamics_params", type=pathlib.Path, help="json file with envrionment parameters")
     parser.add_argument("n_trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("nickname")
@@ -34,12 +33,7 @@ def main():
     with args.collect_dynamics_params.open("r") as f:
         collect_dynamics_params = json.load(f)
 
-    # TODO: make a function for this logic
-    # Start Services
-    if args.service_provider == 'victor':
-        service_provider = victor_services.VictorServices()
-    else:
-        service_provider = gazebo_services.GazeboServices()
+    service_provider = get_service_provider(args.service_provider)
 
     data_collector = base_collect_dynamics_data.DataCollector(scenario_name=args.scenario,
                                                               service_provider=service_provider,
@@ -48,7 +42,6 @@ def main():
                                                               verbose=args.verbose)
     files_dataset = data_collector.collect_data(n_trajs=args.n_trajs, nickname=args.nickname)
     files_dataset.split()
-
 
 
 if __name__ == '__main__':

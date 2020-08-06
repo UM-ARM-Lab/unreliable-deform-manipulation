@@ -1,0 +1,35 @@
+{
+  "seed": 0,
+  "nickname": "sim_dragging",
+  "scenario": "dragging",
+  "service_provider": "gazebo",
+  "collect_dynamics_1": {
+    "params": "collect_dynamics_params/dragging_no_obs.json",
+    "n_trajs": 512
+  },
+  "train_dynamics": {
+    "epochs": 10,
+    "batch_size": 16,
+    "forward_model_hparams": "hparams/unconstrained_dynamics/dragging_no_obs.json",
+    "n_ensemble": 4,
+    "evaluate": true
+  },
+  "collect_dynamics_2": {
+
+  },
+  "make_classifier_dataset": {
+
+  },
+  "train_classifier": {
+
+  },
+  "make_recovery_dataset": {
+
+  },
+  "train_recovery": {
+
+  },
+  "planning_evaluation": {
+
+  }
+}

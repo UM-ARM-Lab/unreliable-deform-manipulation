@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.base_services import BaseServices
 

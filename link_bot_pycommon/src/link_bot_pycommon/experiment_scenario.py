@@ -110,7 +110,7 @@ class ExperimentScenario:
     def publish_goal_marker(goal, size: float):
         raise NotImplementedError()
 
-    def sample_goal(self, environment: Dict, rng: np.random.RandomState):
+    def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         raise NotImplementedError()
 
     @staticmethod

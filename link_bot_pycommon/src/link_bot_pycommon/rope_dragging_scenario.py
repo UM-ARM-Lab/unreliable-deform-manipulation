@@ -1,31 +1,26 @@
 from typing import Dict, Optional
 
 import numpy as np
-import ros_numpy
-import tensorflow as tf
-from matplotlib import colors
 import ompl.base as ob
 import ompl.control as oc
-
 import rospy
-from geometry_msgs.msg import Pose, Point
-from link_bot_data.visualization import rviz_arrow
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_data.visualization import plot_arrow, update_arrow
-from link_bot_pycommon.ros_pycommon import make_movable_object_services
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, point_to_idx_3d_in_env
-from link_bot_pycommon.params import CollectDynamicsParams
-from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from moonshine.moonshine_utils import remove_batch, add_batch
-from mps_shape_completion_msgs.msg import OccupancyStamped
-from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, Position3DEnable, GetPosition3D, GetPosition3DRequest, WorldControlRequest
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest
+import tensorflow as tf
+from geometry_msgs.msg import Point
+from matplotlib import colors
 from std_srvs.srv import EmptyRequest, Empty
-from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import MarkerArray, Marker
+
+import ros_numpy
+from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.visualization import rviz_arrow
+from link_bot_pycommon.base_3d_scenario import Base3DScenario
+from link_bot_pycommon.collision_checking import inflate_tf_3d
+from link_bot_pycommon.link_bot_sdf_utils import point_to_idx_3d_in_env
+from link_bot_pycommon.ros_pycommon import make_movable_object_services
+from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest
+from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, \
+    GetPosition3D, GetPosition3DRequest, WorldControlRequest
 
 
 class RopeDraggingScenario(Base3DScenario):
@@ -33,7 +28,7 @@ class RopeDraggingScenario(Base3DScenario):
 
     def __init__(self):
         super().__init__()
-        object_name = 'link_bot'
+        object_name = 'dragging_rope'
         self.move_srv = rospy.ServiceProxy(f"{object_name}/move", Position3DAction)
         self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", GetPosition3D)
 
@@ -56,7 +51,7 @@ class RopeDraggingScenario(Base3DScenario):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)
 
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
+        rope_points = np.reshape(state['rope'], [-1, 3])
 
         msg = MarkerArray()
         lines = Marker()
@@ -107,7 +102,7 @@ class RopeDraggingScenario(Base3DScenario):
         spheres.color.b = b
         spheres.color.a = a
 
-        for i, (x, y, z) in enumerate(link_bot_points):
+        for i, (x, y, z) in enumerate(rope_points):
             point = Point()
             point.x = x
             point.y = y
@@ -297,13 +292,13 @@ class RopeDraggingScenario(Base3DScenario):
         gripper_extent = data_collection_params['gripper_action_sample_extent']
         return RopeDraggingScenario.is_out_of_bounds(gripper, gripper_extent)
 
-    @ staticmethod
+    @staticmethod
     def is_out_of_bounds(p, extent):
         x, y, z = p
         x_min, x_max, y_min, y_max, z_min, z_max = extent
         return x < x_min or x > x_max \
-            or y < y_min or y > y_max \
-            or z < z_min or z > z_max
+               or y < y_min or y > y_max \
+               or z < z_min or z > z_max
 
     def get_state_val(self):
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
@@ -311,7 +306,7 @@ class RopeDraggingScenario(Base3DScenario):
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
         rope_state_vector = []
-        assert(len(rope_res.positions) == RopeDraggingScenario.n_links)
+        assert (len(rope_res.positions) == RopeDraggingScenario.n_links)
         for p in rope_res.positions:
             rope_state_vector.append(p.x)
             rope_state_vector.append(p.y)
@@ -319,7 +314,7 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': ros_numpy.numpify(grippers_res.gripper1),
-            'link_bot': np.array(rope_state_vector, np.float32),
+            'rope': np.array(rope_state_vector, np.float32),
         }
 
     def get_state(self):
@@ -332,7 +327,7 @@ class RopeDraggingScenario(Base3DScenario):
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
         rope_state_vector = []
-        assert(len(rope_res.positions) == RopeDraggingScenario.n_links)
+        assert (len(rope_res.positions) == RopeDraggingScenario.n_links)
         for p in rope_res.positions:
             rope_state_vector.append(p.x)
             rope_state_vector.append(p.y)
@@ -340,14 +335,14 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': ros_numpy.numpify(gripper_res.pos),
-            'link_bot': np.array(rope_state_vector, np.float32),
+            'rope': np.array(rope_state_vector, np.float32),
         }
 
     @staticmethod
     def states_description() -> Dict:
         return {
             'gripper': 3,
-            'link_bot': RopeDraggingScenario.n_links * 3,
+            'rope': RopeDraggingScenario.n_links * 3,
         }
 
     @staticmethod
@@ -363,48 +358,47 @@ class RopeDraggingScenario(Base3DScenario):
             state: Dict[str, np.ndarray],
             goal: np.ndarray):
         """
-        Uses the first point in the link_bot subspace as the thing which we want to move to goal
+        Uses the first point in the rope subspace as the thing which we want to move to goal
         :param state: A dictionary of numpy arrays
         :param goal: Assumed to be a point in 3D
         :return:
         """
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
-        tail_point = link_bot_points[0]
+        rope_points = np.reshape(state['rope'], [-1, 3])
+        tail_point = rope_points[0]
         distance = np.linalg.norm(tail_point - goal['tail'])
         return distance
 
     @staticmethod
     def distance_to_goal_differentiable(state, goal):
-        link_bot_points = tf.reshape(state['link_bot'], [-1, 3])[:, :2]
-        tail_point = link_bot_points[0]
+        rope_points = tf.reshape(state['rope'], [-1, 3])[:, :2]
+        tail_point = rope_points[0]
         distance = tf.linalg.norm(tail_point - goal)
         return distance
 
     @staticmethod
     def distance(s1, s2):
-        link_bot_points1 = np.reshape(s1['link_bot'], [-1, 3])[:, :2]
-        tail_point1 = link_bot_points1[0]
-        link_bot_points2 = np.reshape(s2['link_bot'], [-1, 3])[:, :2]
-        tail_point2 = link_bot_points2[0]
+        rope_points1 = np.reshape(s1['rope'], [-1, 3])[:, :2]
+        tail_point1 = rope_points1[0]
+        rope_points2 = np.reshape(s2['rope'], [-1, 3])[:, :2]
+        tail_point2 = rope_points2[0]
         return np.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        link_bot_points1 = tf.reshape(s1['link_bot'], [-1, 3])
-        tail_point1 = link_bot_points1[0]
-        link_bot_points2 = tf.reshape(s2['link_bot'], [-1, 3])
-        tail_point2 = link_bot_points2[0]
+        rope_points1 = tf.reshape(s1['rope'], [-1, 3])
+        tail_point1 = rope_points1[0]
+        rope_points2 = tf.reshape(s2['rope'], [-1, 3])
+        tail_point2 = rope_points2[0]
         return tf.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def state_to_points_for_cc(state: Dict):
-        return state['link_bot'].reshape(-1, 3)
+        return state['rope'].reshape(-1, 3)
 
-    @staticmethod
-    def sample_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+    def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         # add more inflating to reduce the number of truly unacheivable gols
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=2*planner_params['goal_threshold'],
+                                     radius_m=2 * planner_params['goal_threshold'],
                                      res=environment['res'])
         goal_extent = planner_params['goal_extent']
 
@@ -422,16 +416,12 @@ class RopeDraggingScenario(Base3DScenario):
         return state['gripper']
 
     @staticmethod
-    def __repr__():
-        return "Rope Manipulation"
-
-    @staticmethod
     def simple_name():
-        return "link_bot"
+        return "rope dragging"
 
     @staticmethod
     def robot_name():
-        return "link_bot"
+        return "dragging_rope"
 
     @staticmethod
     def dynamics_loss_function(dataset_element, predictions):
@@ -441,13 +431,13 @@ class RopeDraggingScenario(Base3DScenario):
     def dynamics_metrics_function(dataset_element, predictions):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
-    @ staticmethod
+    @staticmethod
     def put_state_in_robot_frame(state: Dict):
         return state
 
     @staticmethod
     def put_state_local_frame(state):
-        rope = state['link_bot']
+        rope = state['rope']
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         points = tf.reshape(rope, rope_points_shape)
         center = state['gripper']
@@ -462,10 +452,10 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': gripper_local,
-            'link_bot': rope_local,
+            'rope': rope_local,
         }
 
-    @ staticmethod
+    @staticmethod
     def put_action_local_frame(state: Dict, action: Dict):
         target_gripper_position = action['gripper_position']
 
@@ -513,25 +503,25 @@ class RopeDraggingScenario(Base3DScenario):
         req.seconds = 0.2
         self.world_control_srv(req)
 
-    @ staticmethod
+    @staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
         return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
 
-    @ staticmethod
+    @staticmethod
     def index_predicted_state_time(state, t):
         return {
             'gripper': state[add_predicted('gripper')][:, t],
-            'link_bot': state[add_predicted('link_bot')][:, t],
+            'rope': state[add_predicted('rope')][:, t],
         }
 
-    @ staticmethod
+    @staticmethod
     def index_state_time(state, t):
         return {
             'gripper': state['gripper'][:, t],
-            'link_bot': state['link_bot'][:, t],
+            'rope': state['rope'][:, t],
         }
 
-    @ staticmethod
+    @staticmethod
     def index_action_time(action, t):
         action_t = {}
         for feature_name in ['gripper_position']:
@@ -541,14 +531,14 @@ class RopeDraggingScenario(Base3DScenario):
                 action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
 
-    @ staticmethod
+    @staticmethod
     def index_label_time(example: Dict, t: int):
         return example['is_close'][:, t]
 
     @staticmethod
     def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
-        actual_rope = np.array(actual["link_bot"])
-        predicted_rope = np.array(predicted["link_bot"])
+        actual_rope = np.array(actual["rope"])
+        predicted_rope = np.array(predicted["rope"])
         model_error = np.linalg.norm(actual_rope - predicted_rope)
         threshold = labeling_params['threshold']
         is_close = model_error < threshold
@@ -559,7 +549,7 @@ class RopeDraggingScenario(Base3DScenario):
         for i in range(3):
             state_out[0][i] = np.float64(state_np['gripper'][i])
         for i in range(RopeDraggingScenario.n_links * 3):
-            state_out[1][i] = np.float64(state_np['link_bot'][i])
+            state_out[1][i] = np.float64(state_np['rope'][i])
         state_out[2][0] = np.float64(state_np['stdev'][0])
         state_out[3][0] = np.float64(state_np['num_diverged'][0])
 
@@ -568,13 +558,13 @@ class RopeDraggingScenario(Base3DScenario):
         gripper = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
         rope = []
         for i in range(RopeDraggingScenario.n_links):
-            rope.append(ompl_state[1][3*i+0])
-            rope.append(ompl_state[1][3*i+1])
-            rope.append(ompl_state[1][3*i+2])
+            rope.append(ompl_state[1][3 * i + 0])
+            rope.append(ompl_state[1][3 * i + 1])
+            rope.append(ompl_state[1][3 * i + 2])
         rope = np.array(rope)
         return {
             'gripper': gripper,
-            'link_bot': rope,
+            'rope': rope,
             'stdev': np.array([ompl_state[2][0]]),
             'num_diverged': np.array([ompl_state[3][0]]),
         }
@@ -584,7 +574,7 @@ class RopeDraggingScenario(Base3DScenario):
         current_gripper_position = state_np['gripper']
 
         gripper_delta_position = np.array([np.cos(ompl_control[0][0]) * ompl_control[0][1],
-                                           np.sin(ompl_control[0][0])*ompl_control[0][1],
+                                           np.sin(ompl_control[0][0]) * ompl_control[0][1],
                                            0])
         target_gripper_position = current_gripper_position + gripper_delta_position
         return {
@@ -772,10 +762,10 @@ class RopeDraggingStateSampler(ob.RealVectorStateSampler):
         # by biasing towards regions of empty space. So here we just pick a random point
         # and duplicate it, as if all points on the rope were at this point
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
-        random_point_rope = np.concatenate([random_point]*RopeDraggingScenario.n_links)
+        random_point_rope = np.concatenate([random_point] * RopeDraggingScenario.n_links)
         state_np = {
             'gripper': random_point,
-            'link_bot': random_point_rope,
+            'rope': random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -821,11 +811,11 @@ class RopeDraggingGoalRegion(ob.GoalSampleableRegion):
 
         # don't bother trying to sample "legit" rope states, because this is only used to bias sampling towards the goal
         # so just prenteing every point on therope is at the goal should be sufficient
-        rope = np.concatenate([self.goal['tail']]*RopeDraggingScenario.n_links)
+        rope = np.concatenate([self.goal['tail']] * RopeDraggingScenario.n_links)
 
         goal_state_np = {
             'gripper': self.goal['tail'],
-            'link_bot': rope,
+            'rope': rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
