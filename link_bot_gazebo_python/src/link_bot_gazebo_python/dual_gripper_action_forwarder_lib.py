@@ -34,7 +34,7 @@ class DualGripperActionForwarder:
         self.out_srv = rospy.ServiceProxy('execute_dual_gripper_trajectory', DualGripperTrajectory)
         self.in_srv = rospy.Service('execute_dual_gripper_action', DualGripperTrajectory, self.in_srv_cb)
         self.get_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
-        self.step_size = 0.005
+        self.step_size = 0.03
 
         rospy.spin()
 

@@ -1,4 +1,6 @@
-def sphere(mass, radius):
+def sphere(args):
+    mass = args.mass
+    radius = args.radius
     return [
         2.0 / 3 * mass * radius ** 2,
         2.0 / 3 * mass * radius ** 2,

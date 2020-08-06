@@ -8,10 +8,9 @@ import rospy
 import tensorflow as tf
 from geometry_msgs.msg import Point
 from matplotlib import colors
-from std_srvs.srv import Empty, EmptyRequest
+from std_srvs.srv import Empty, EmptyRequest, SetBool, SetBoolRequest
 from visualization_msgs.msg import MarkerArray, Marker
 
-import peter_msgs
 import ros_numpy
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.link_bot_dataset_utils import add_predicted
@@ -110,7 +109,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         super().__init__()
         self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
-        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", peter_msgs.srv.SetBool)
+        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
@@ -121,6 +120,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.max_action_attempts = 500
 
         self.robot_reset_rng = np.random.RandomState(0)
+
+        self.move_group_client = None
 
     def hard_reset(self):
         self.reset_srv(EmptyRequest())
@@ -286,9 +287,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return interpolated_actions
 
+    @staticmethod
+    def robot_name():
+        return "kinematic_rope"
+
     def settle(self):
         req = WorldControlRequest()
-        req.seconds = 6
+        req.seconds = 5
         self.world_control_srv(req)
 
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
@@ -311,7 +316,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_object_poses(object_reset_poses)
 
         # Let go of rope
-        release = peter_msgs.srv.SetBoolRequest()
+        release = SetBoolRequest()
         release.data = False
         self.grasping_rope_srv(release)
 
@@ -337,11 +342,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.set_object_poses(random_object_poses)
 
         # re-grasp rope
-        grasp = peter_msgs.srv.SetBoolRequest()
+        grasp = SetBoolRequest()
         grasp.data = True
         self.grasping_rope_srv(grasp)
 
-        # wait a second so that the rope can drap on the objects
+        # wait a second so that the rope can drape on the objects
         self.settle()
 
         if 'gripper1_action_sample_extent' in data_collection_params:
@@ -374,7 +379,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
-        req.settling_time_seconds = 0.2
+        req.settling_time_seconds = 0.03
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
         while True:
@@ -976,7 +981,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         return control_space
 
-    def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
+    def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         if actually_at_goal:
             r = 0.4
             g = 0.8

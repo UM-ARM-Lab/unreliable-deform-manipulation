@@ -1,9 +1,7 @@
 import argparse
 import rospy
 import json
-from peter_msgs.srv import SetBool, SetBoolRequest
 from moveit_msgs.msg import MoveGroupAction, MoveGroupGoal, MotionPlanRequest, Constraints, JointConstraint, MoveItErrorCodes
-from peter_msgs.srv import WorldControl, WorldControlRequest
 import actionlib
 
 

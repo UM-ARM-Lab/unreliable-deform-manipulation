@@ -155,7 +155,10 @@ class DataCollector:
                 self.scenario.randomize_environment(self.env_rng, objects_params=self.params, data_collection_params=self.params)
 
             # Generate a new trajectory
+            from time import perf_counter
+            t0 = perf_counter()
             example = self.collect_trajectory(traj_idx=traj_idx, verbose=self.verbose)
+            print(f'traj {traj_idx}/{n_trajs}, {perf_counter()-t0:.4f}s')
 
             # Save the data
             features = dict_of_float_tensors_to_bytes_feature(example)
@@ -165,9 +168,5 @@ class DataCollector:
             files_dataset.add(full_filename)
             with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                 writer.write(example_str)
-
-            if not self.verbose:
-                print(".", end='')
-                sys.stdout.flush()
 
         return files_dataset

@@ -272,7 +272,7 @@ class MyPlanner:
         self.scenario.reset_planning_viz()
         self.scenario.plot_environment_rviz(planning_query.environment)
         self.scenario.plot_start_state(start_state)
-        self.scenario.plot_goal(planning_query.goal, self.params['goal_threshold'])
+        self.scenario.plot_goal_rviz(planning_query.goal, self.params['goal_threshold'])
 
         self.ss.clear()
         self.ss.setStartState(ompl_start_scoped)

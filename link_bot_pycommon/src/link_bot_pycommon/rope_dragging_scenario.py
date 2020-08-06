@@ -685,7 +685,7 @@ class RopeDraggingScenario(Base3DScenario):
     def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
         self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
 
-    def plot_goal(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
+    def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         goal_marker_msg = MarkerArray()
         tail_marker = Marker()
         tail_marker.scale.x = goal_threshold * 2

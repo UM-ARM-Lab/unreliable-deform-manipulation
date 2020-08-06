@@ -18,11 +18,8 @@
   "collect_dynamics_2": {
     "scenario": "dual"
   },
-  "make_classifier_dataset": {
-
-  },
-  "train_classifier": {
-
+  "learn_classifier": {
+    "labeling_params": "labeling_params/classifier/dual.json"
   },
   "make_recovery_dataset": {
 

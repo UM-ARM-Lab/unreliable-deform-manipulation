@@ -9,6 +9,7 @@ from typing import Dict
 import rospkg
 
 from link_bot_data.base_collect_dynamics_data import DataCollector
+from link_bot_data.classifier_dataset_utils import make_classifier_dataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_service_provider import get_service_provider
 from state_space_dynamics import train_test
@@ -68,10 +69,33 @@ class FullStackRunner:
         return trial_paths
 
     def collect_dynamics_data_2(self, seed: int):
-        pass
+        collect_dynamics_2 = self.full_stack_params['collect_dynamics_2']
+        scenario = collect_dynamics_2['scenario']
+        collect_dynamics_data_params_filename = pathlib.Path(collect_dynamics_2['params'])
+        link_bot_data_path = pathlib.Path(r.get_path('link_bot_data'))
+        full_collect_dynamics_data_params_filename = link_bot_data_path / collect_dynamics_data_params_filename
 
-    def make_classifier_dataset(self):
-        pass
+        with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
+            collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
+
+        data_collector = DataCollector(scenario_name=scenario,
+                                       service_provider=self.service_provider,
+                                       params=collect_dynamics_data_params,
+                                       seed=seed,
+                                       verbose=0)
+        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'], nickname=self.unique_nickname)
+        files_dataset.split()
+        return files_dataset.root_dir
+
+    def make_classifier_dataset(self, dynamics_dataset2, fwd_model_dirs):
+        learn_classifier_params = self.full_stack_params['learn_classifier']
+        labeling_params = pathlib.Path(learn_classifier_params['labeling_params'])
+        outdir = pathlib.Path('classifier_data') / self.unique_nickname
+        classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset2,
+                                                         fwd_model_dir=fwd_model_dirs,
+                                                         labeling_params=labeling_params,
+                                                         outdir=outdir)
+        return classifier_dataset_dir
 
     def learn_classifier(self):
         pass
@@ -97,8 +121,10 @@ def main():
 
     fsr = FullStackRunner(full_stack_params)
     seed = full_stack_params['seed']
-    dynamics_dataset_dir = fsr.collect_dynamics_data_1(seed)
-    fsr.learn_dynamics(seed, dynamics_dataset_dir)
+    dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
+    fwd_model_dirs = fsr.learn_dynamics(seed, dynamics_dataset_dir1)
+    dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
+    fsr.make_classifier_dataset(dynamics_dataset_dir2, fwd_model_dirs)
 
 
 if __name__ == '__main__':

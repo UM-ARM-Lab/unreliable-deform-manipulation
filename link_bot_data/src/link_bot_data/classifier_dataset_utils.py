@@ -1,13 +1,15 @@
-from typing import Dict
-
-import numpy as np
-import tensorflow as tf
+import json
+import pathlib
 from time import perf_counter
+from typing import Dict, List, Optional
+
+import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import gather_dict, add_batch, remove_batch, index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import gather_dict, index_dict_of_batched_vectors_tf
+from state_space_dynamics import model_utils
 from state_space_dynamics.model_utils import EnsembleDynamicsFunction
 
 
@@ -29,6 +31,64 @@ class PredictionActualExample:
         self.labeling_params = labeling_params
         self.actual_prediction_horizon = actual_prediction_horizon
         self.batch_size = batch_size
+
+
+def make_classifier_dataset(dataset_dir: pathlib.Path,
+                            fwd_model_dir: List[pathlib.Path],
+                            labeling_params: pathlib.Path,
+                            outdir: pathlib.Path,
+                            start_at: Optional[int] = None,
+                            stop_at: Optional[int] = None):
+    labeling_params = json.load(labeling_params.open("r"))
+    dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
+    fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
+
+    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
+
+    dataset = DynamicsDataset([dataset_dir])
+
+    new_hparams_filename = outdir / 'hparams.json'
+    classifier_dataset_hparams = dynamics_hparams
+    if len(fwd_model_dir) > 1:
+        using_ensemble = True
+        fwd_model_dir = [str(d) for d in fwd_model_dir]
+    else:
+        using_ensemble = False
+        fwd_model_dir = str(fwd_model_dir[0])
+    classifier_dataset_hparams['dataset_dir'] = str(dataset_dir)
+    classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
+    classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
+    classifier_dataset_hparams['using_ensemble'] = using_ensemble
+    classifier_dataset_hparams['labeling_params'] = labeling_params
+    classifier_dataset_hparams['state_keys'] = fwd_models.state_keys
+    classifier_dataset_hparams['action_keys'] = fwd_models.action_keys
+    classifier_dataset_hparams['start-at'] = start_at
+    classifier_dataset_hparams['stop-at'] = stop_at
+    json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+
+    t0 = perf_counter()
+    total_count = 0
+    for mode in ['train', 'val', 'test']:
+        tf_dataset = dataset.get_datasets(mode=mode)
+
+        full_output_directory = outdir / mode
+        full_output_directory.mkdir(parents=True, exist_ok=True)
+
+        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params):
+            for batch_idx in range(out_example['traj_idx'].shape[0]):
+                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+                features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
+
+                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+                example = example_proto.SerializeToString()
+                record_filename = "example_{:09d}.tfrecords".format(total_count)
+                full_filename = full_output_directory / record_filename
+                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+                    writer.write(example)
+                total_count += 1
+                print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
+
+    return outdir
 
 
 def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
@@ -136,11 +196,7 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
 
         def debug():
             # Visualize example
-            from link_bot_classifiers.visualization import visualize_classifier_example_3d
-            for batch_idx in range(prediction_actual.batch_size):
-                visualize_classifier_example_3d(scenario=scenario,
-                                                example=index_dict_of_batched_vectors_tf(out_example, batch_idx),
-                                                n_time_steps=classifier_horizon)
+            pass
 
         # debug()
 

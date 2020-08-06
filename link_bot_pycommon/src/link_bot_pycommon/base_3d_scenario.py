@@ -148,7 +148,7 @@ class Base3DScenario(ExperimentScenario):
                                    horizon: int):
         time_steps = np.arange(len(actual_states))
         self.plot_environment_rviz(environment)
-        self.plot_goal(goal, goal_threshold)
+        self.plot_goal_rviz(goal, goal_threshold)
 
         anim = RvizAnimationController(time_steps)
 
@@ -172,7 +172,7 @@ class Base3DScenario(ExperimentScenario):
             self.plot_is_close(is_close)
 
             actually_at_goal = self.distance_to_goal(s_t, goal) < goal_threshold
-            self.plot_goal(goal, goal_threshold, actually_at_goal)
+            self.plot_goal_rviz(goal, goal_threshold, actually_at_goal)
 
             if accept_probabilities and t > 0:
                 self.plot_accept_probability(accept_probabilities[t - 1])
@@ -234,10 +234,6 @@ class Base3DScenario(ExperimentScenario):
                     self.plot_action_rviz(planned_path[t - 1], actions[t - 1])
 
             anim.step()
-
-    @staticmethod
-    def robot_name():
-        return "link_bot"
 
     @staticmethod
     def get_environment_from_state_dict(start_states: Dict):

@@ -123,7 +123,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
         environment = q['environment']
         anim = RvizAnimationController(n_time_steps=1)
         scenario.plot_state_rviz(start, label='actual', color='#ff0000aa')
-        scenario.plot_goal(goal, goal_threshold)
+        scenario.plot_goal_rviz(goal, goal_threshold)
         scenario.plot_environment_rviz(environment)
         anim.step()
         return
@@ -189,7 +189,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
             scenario.plot_is_close(None)
 
         actually_at_goal = scenario.distance_to_goal(s_t, goal) < goal_threshold
-        scenario.plot_goal(goal, goal_threshold, actually_at_goal)
+        scenario.plot_goal_rviz(goal, goal_threshold, actually_at_goal)
         anim.step()
 
 

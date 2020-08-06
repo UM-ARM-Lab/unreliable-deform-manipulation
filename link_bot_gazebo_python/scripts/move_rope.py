@@ -2,7 +2,8 @@
 import rospy
 
 
-from peter_msgs.srv import WorldControl, WorldControlRequest, SetRopeState, SetRopeStateRequest, SetBoolRequest, SetBool
+from peter_msgs.srv import WorldControl, WorldControlRequest, SetRopeState, SetRopeStateRequest
+from std_srvs.srv import SetBoolRequest, SetBool
 
 if __name__ == "__main__":
     rospy.init_node("move_rope")
