@@ -1,7 +1,6 @@
 #include "kinematic_val_plugin.h"
 
 #include <peter_msgs/GetJointState.h>
-#include <peter_msgs/SetBool.h>
 #include <ros/subscribe_options.h>
 #include <std_msgs/Empty.h>
 #include <std_srvs/SetBool.h>
@@ -188,7 +187,7 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
   {
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
 
-    auto grasping_rope_bind = [this](peter_msgs::SetBoolRequest &req, peter_msgs::SetBoolResponse &res) {
+    auto grasping_rope_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {
       (void)res;
       grasping_rope_ = req.data;
       ROS_INFO_STREAM("grasping state set to " << static_cast<bool>(req.data));
@@ -203,8 +202,7 @@ void KinematicValPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
       }
       return true;
     };
-    auto grasping_rope_so =
-        create_service_options_private(peter_msgs::SetBool, "set_grasping_rope", grasping_rope_bind);
+    auto grasping_rope_so = create_service_options_private(std_srvs::SetBool, "set_grasping_rope", grasping_rope_bind);
     grasping_rope_server_ = ros_node_.advertiseService(grasping_rope_so);
 
     auto ignore_overstretching_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res) {

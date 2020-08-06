@@ -44,7 +44,6 @@ add_service_files(
         Position3DDeltaAction.srv
         Position3DEnable.srv
         Reconstruction.srv
-        SetBool.srv
         SetRopeState.srv
         SetDualGripperPoints.srv
         StateSpaceDescription.srv

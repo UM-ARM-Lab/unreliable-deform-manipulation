@@ -1,7 +1,6 @@
 #pragma once
 
 #include <peter_msgs/LabelStatus.h>
-#include <peter_msgs/SetBool.h>
 #include <peter_msgs/SetRopeState.h>
 #include <peter_msgs/WorldControl.h>
 #include <ros/ros.h>
@@ -9,6 +8,7 @@
 #include <rviz/rviz_export.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_srvs/SetBool.h>
 
 #include <QObject>
 #include <QWidget>

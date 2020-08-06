@@ -1,9 +1,5 @@
 #pragma once
 
-#include <peter_msgs/LabelStatus.h>
-#include <peter_msgs/SetBool.h>
-#include <peter_msgs/SetRopeState.h>
-#include <peter_msgs/WorldControl.h>
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #include <rviz/rviz_export.h>

@@ -2,9 +2,9 @@
 #include "physical_robot_3d_rope_shim/val_interface.hpp"
 #include "physical_robot_3d_rope_shim/victor_interface.hpp"
 
-#include <peter_msgs/SetBool.h>
 #include <peter_msgs/WorldControl.h>
 #include <std_msgs/String.h>
+#include <std_srvs/SetBool.h>
 #include <arc_utilities/ros_helpers.hpp>
 
 #include "assert.hpp"
@@ -23,7 +23,7 @@ DualGripperShim::DualGripperShim(ros::NodeHandle nh, ros::NodeHandle ph)
   , talker_(nh_.advertise<std_msgs::String>("polly", 10, false))
   , trajectory_client_(std::make_unique<TrajectoryClient>("both_arms_controller/follow_joint_trajectory", true))
   , traj_goal_time_tolerance_(ROSHelpers::GetParam(ph_, "traj_goal_time_tolerance", 0.05))
-  , set_grasping_rope_client_(nh_.serviceClient<peter_msgs::SetBool>("set_grasping_rope"))
+  , set_grasping_rope_client_(nh_.serviceClient<std_srvs::SetBool>("set_grasping_rope"))
   , world_control_client_(nh_.serviceClient<peter_msgs::WorldControl>("world_control"))
 {
   auto const robot_name = ROSHelpers::GetParam<std::string>(nh, "robot_name", "val");
@@ -47,7 +47,7 @@ void DualGripperShim::gotoHome()
 {
   ROS_INFO("Going home");
   // let go of the rope
-  peter_msgs::SetBool release_rope;
+  std_srvs::SetBool release_rope;
   release_rope.request.data = false;
   set_grasping_rope_client_.call(release_rope);
 
@@ -58,7 +58,7 @@ void DualGripperShim::gotoHome()
   followJointTrajectory(traj);
   ROS_INFO("Done attempting to move home");
 
-  peter_msgs::SetBool grasp_rope;
+  std_srvs::SetBool grasp_rope;
   grasp_rope.request.data = true;
   set_grasping_rope_client_.call(grasp_rope);
 

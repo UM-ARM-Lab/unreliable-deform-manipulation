@@ -7,7 +7,7 @@ namespace merrrt_visualization
 MerrrtWidget::MerrrtWidget(QWidget *parent)
   : rviz::Panel(parent)
   , set_rope_state_srv_(ros_node_.serviceClient<peter_msgs::SetRopeState>("set_rope_state"))
-  , grasping_rope_srv_(ros_node_.serviceClient<peter_msgs::SetBool>("set_grasping_rope"))
+  , grasping_rope_srv_(ros_node_.serviceClient<std_srvs::SetBool>("set_grasping_rope"))
   , world_control_srv_(ros_node_.serviceClient<peter_msgs::WorldControl>("world_control"))
 {
   ui.setupUi(this);
@@ -25,7 +25,7 @@ MerrrtWidget::MerrrtWidget(QWidget *parent)
 
 void MerrrtWidget::GraspRopeButtonClicked()
 {
-  peter_msgs::SetBool grasp;
+  std_srvs::SetBool grasp;
   grasp.request.data = true;
   grasping_rope_srv_.call(grasp);
 
@@ -34,7 +34,7 @@ void MerrrtWidget::GraspRopeButtonClicked()
 
 void MerrrtWidget::MoveRopeButtonClicked()
 {
-  peter_msgs::SetBool release_req;
+  std_srvs::SetBool release_req;
   release_req.request.data = false;
   grasping_rope_srv_.call(release_req);
 
