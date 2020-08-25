@@ -2,6 +2,7 @@ from typing import Dict
 
 import numpy as np
 import rospy
+from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty, EmptyRequest
 
 import ros_numpy
@@ -15,6 +16,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
     def __init__(self):
         super().__init__()
         self.joint_states_srv = rospy.ServiceProxy("joint_states", GetJointState)
+        self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
 
     def reset_robot(self, data_collection_params: Dict):
@@ -74,6 +76,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
             'link_bot': np.array(rope_state_vector, np.float32),
             'joint_positions': joints_res.joint_state.position,
+            'joint_names': joints_res.joint_state.name,
         }
 
     @staticmethod
@@ -84,3 +87,24 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             'link_bot': DualArmRopeScenario.n_links * 3,
             'joint_positions': 2 + 7 + 7
         }
+
+    def plot_state_rviz(self, state: Dict, label: str, **kwargs):
+        super().plot_state_rviz(state, label, **kwargs)
+        joint_msg = JointState()
+        joint_msg.header.stamp = rospy.Time.now()
+        joint_msg.position = state['joint_positions']
+        if isinstance(state['joint_names'][0], bytes):
+            joint_names = [n.decode("utf-8") for n in state['joint_names']]
+        elif isinstance(state['joint_names'][0], str):
+            joint_names = [str(n) for n in state['joint_names']]
+        else:
+            raise NotImplementedError(type(state['joint_names'][0]))
+        joint_msg.name = joint_names
+        self.joint_states_pub.publish(joint_msg)
+
+    def dynamics_dataset_metadata(self):
+        joints_res = self.joint_states_srv(GetJointStateRequest())
+        return {
+            'joint_names': joints_res.joint_state.name
+        }
+

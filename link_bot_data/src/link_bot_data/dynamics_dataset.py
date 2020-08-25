@@ -69,6 +69,10 @@ class DynamicsDataset(BaseDataset):
             else:
                 example_t[feature_name] = example[feature_name][:, t - 1]
 
+        scenario_metadata = self.hparams['scenario_metadata']
+        for k in scenario_metadata.keys():
+            example_t[k] = example[k]
+
         return example_t
 
     def split_into_sequences(self, example, desired_sequence_length):
@@ -108,4 +112,10 @@ class DynamicsDataset(BaseDataset):
         #     return example
 
         # dataset = dataset.map(_add_time)
+
+        scenario_metadata = self.hparams['scenario_metadata']
+        def _add_scenario_metadata(example: Dict):
+            example.update(scenario_metadata)
+            return example
+        dataset = dataset.map(_add_scenario_metadata)
         return dataset

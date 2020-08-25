@@ -1,28 +1,21 @@
 #!/usr/bin/env python
-import tensorflow as tf
-import time
 import pathlib
-import rospy
+import time
 from dataclasses import dataclass
-from typing import Dict, Optional, List
-
 from enum import Enum
+from typing import Dict, List
+
 import numpy as np
+import rospy
+import tensorflow as tf
 from colorama import Fore
-from ompl import base as ob
 from dataclasses_json import dataclass_json
 
-from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
-from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center
-from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_pycommon.base_services import BaseServices
-from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
-from moonshine.moonshine_utils import listify
-from link_bot_classifiers.random_recovery_policy import RandomRecoveryPolicy
 from link_bot_classifiers import recovery_policy_utils
+from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
+from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.ros_pycommon import get_occupancy_data
+from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 
 
 class TrialStatus(Enum):
@@ -102,7 +95,7 @@ class PlanAndExecute:
         for trial_idx in self.trials:
             self.env_rng.seed(trial_idx)
             self.recovery_rng.seed(trial_idx)
-            self.goal_rng .seed(trial_idx)
+            self.goal_rng.seed(trial_idx)
             # NOTE: ompl SetSeed can only be called once which is why we don't bother doing it here
             # FIXME: we should not be relying on this...
             np.random.seed(trial_idx)

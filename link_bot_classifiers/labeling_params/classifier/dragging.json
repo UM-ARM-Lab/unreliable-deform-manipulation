@@ -1,7 +1,6 @@
 {
   "threshold": 0.065,
-  "state_key": "link_bot",
-  "action_sequence_horizon": 2,
-  "n_action_samples": 32,
+  "state_key": "rope",
+  "classifier_horizon": 2,
   "start_step": 1
 }

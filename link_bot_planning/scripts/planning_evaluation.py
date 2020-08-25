@@ -1,25 +1,18 @@
 #!/usr/bin/env python
-import rospy
-import traceback
-import numpy as np
-import json
-import ompl.util as ou
-from colorama import Fore
 import argparse
+import json
 import pathlib
 
+import rospy
+
+from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from moonshine.gpu_config import limit_gpu_mem
-from link_bot_data.link_bot_dataset_utils import data_directory
-from link_bot_planning.planning_evaluation import evaluate_planning_method
 
 limit_gpu_mem(7.5)
 
 
 def main():
-    np.set_printoptions(precision=3, suppress=True, linewidth=250)
-    ou.setLogLevel(ou.LOG_ERROR)
-
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
@@ -33,27 +26,24 @@ def main():
 
     args = parser.parse_args()
 
-    root = pathlib.Path('results') / "{}-compare".format(args.nickname)
-    common_output_directory = data_directory(root)
-    common_output_directory = pathlib.Path(common_output_directory)
-    print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
-    if not common_output_directory.is_dir():
-        print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
-        common_output_directory.mkdir(parents=True)
-
     rospy.init_node("planning_evaluation")
 
-    planners_params = [(json.load(p_params_name.open("r")), p_params_name) for p_params_name in args.planners_params]
-    for comparison_idx, (planner_params, p_params_name) in enumerate(planners_params):
-        if args.skip_on_exception:
-            try:
-                evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
-            except Exception as e:
-                traceback.print_exc()
-                print(e)
-        else:
-            evaluate_planning_method(args, comparison_idx, planner_params, p_params_name, common_output_directory)
-        print(f"Results written to {common_output_directory}")
+    root = pathlib.Path('results') / f"{args.nickname}-compare"
+
+    planners_params = []
+    for planner_params_filename in args.planners_params:
+        with planner_params_filename.open('r') as planner_params_file:
+            planner_params = json.load(planner_params_file)
+        planners_params.append((planner_params_filename.stem, planner_params))
+
+    return planning_evaluation(root=root,
+                               planners_params=planners_params,
+                               trials=args.trials,
+                               skip_on_exception=args.skip_on_exception,
+                               verbose=args.verbose,
+                               timeout=args.timeout,
+                               no_execution=args.no_execution,
+                               record=args.record)
 
 
 if __name__ == '__main__':

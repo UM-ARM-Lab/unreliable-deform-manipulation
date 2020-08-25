@@ -6,8 +6,6 @@ import tensorflow as tf
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx, OccupancyData, batch_point_to_idx_tf, batch_point_to_idx_tf_3d
 from moonshine.gpu_config import limit_gpu_mem
 
-limit_gpu_mem(0.1)
-
 
 def batch_out_of_bounds_tf(environment: Dict,
                            xs: float,

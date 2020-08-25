@@ -1,8 +1,8 @@
 {
   "model_class": "rnn",
-  "scenario": "link_bot",
+  "scenario": "rope_dragging",
   "state_keys": [
-    "link_bot",
+    "rope",
     "gripper"
   ],
   "action_keys": [

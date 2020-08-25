@@ -2,7 +2,7 @@
   "model_class": "ImageCondDyn",
   "type": "obs",
   "state_keys": [
-    "link_bot",
+    "rope",
     "gripper"
   ],
   "action_keys": [

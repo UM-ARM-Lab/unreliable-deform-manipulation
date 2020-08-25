@@ -30,5 +30,5 @@
   "randomize_environment_every_n_trajectories": null,
   "repeat_delta_gripper_motion_probability": 0.8,
   "max_distance_gripper_can_move": 0.10,
-  "max_distance_between_grippers": 0.79
+  "max_distance_between_grippers": 0.75
 }

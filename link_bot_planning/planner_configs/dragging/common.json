@@ -1,0 +1,36 @@
+{
+  "total_timeout": 60,
+  "termination_criteria": {
+    "attempted_extensions_threshold": 32,
+    "timeout": 60
+  },
+  "extent": [
+    -1.2,
+    1.2,
+    -1.2,
+    1.2,
+    0,
+    0.04
+  ],
+  "goal_extent": [
+    -0.7,
+    0.7,
+    -0.7,
+    0.7,
+    0,
+    0.04
+  ],
+  "objects_extent": [
+    -1,
+    1,
+    -1,
+    1,
+    0,
+    0.04
+  ],
+  "accept_threshold": 0.5,
+  "movable_obstacles": {},
+  "goal_threshold": 0.05,
+  "fixed_goal": null,
+  "real_time_rate": 0.0
+}

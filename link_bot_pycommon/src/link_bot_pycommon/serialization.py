@@ -1,18 +1,20 @@
 import gzip
-import numpy as np
-import uuid
 import json
-
+import pathlib
+import uuid
 from enum import Enum
+
+import numpy as np
 import tensorflow as tf
-from dataclasses import dataclass
-from dataclasses_json import dataclass_json, DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin
 
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, pathlib.Path):
+            return obj.as_posix()
         elif isinstance(obj, DataClassJsonMixin):
             return obj.to_dict()
         elif np.isscalar(obj):
@@ -26,8 +28,8 @@ class MyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def my_dump(data, fp):
-    return json.dump(data, fp, cls=MyEncoder)
+def my_dump(data, fp, indent=None):
+    return json.dump(data, fp, cls=MyEncoder, indent=indent)
 
 
 def my_dumps(data):

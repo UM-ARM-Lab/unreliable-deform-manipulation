@@ -1,9 +1,9 @@
 {
   "with_robot_frame": true,
   "model_class": "rnn",
-  "scenario": "link_bot",
+  "scenario": "rope",
   "state_keys": [
-    "link_bot",
+    "rope",
     "gripper"
   ],
   "action_keys": [

@@ -1,13 +1,15 @@
 {
   "seed": 0,
   "nickname": "sim_dragging",
-  "scenario": "dragging",
   "service_provider": "gazebo",
   "collect_dynamics_1": {
+    "world_filename": "sim/dragging_no_obs.world",
+    "scenario": "dragging",
     "params": "collect_dynamics_params/dragging_no_obs.json",
     "n_trajs": 512
   },
-  "train_dynamics": {
+  "learn_dynamics": {
+    "scenario": "dragging",
     "epochs": 10,
     "batch_size": 16,
     "forward_model_hparams": "hparams/unconstrained_dynamics/dragging_no_obs.json",
@@ -15,21 +17,42 @@
     "evaluate": true
   },
   "collect_dynamics_2": {
-
+    "scenario": "dragging",
+    "params": "collect_dynamics_params/dragging_obs.json",
+    "n_trajs": 128
+  },
+  "learn_full_dynamics": {
+    "scenario": "dragging",
+    "epochs": 10,
+    "batch_size": 8,
+    "forward_model_hparams": "hparams/full_dynamics/dragging.json",
+    "n_ensemble": 1,
+    "evaluate": true
   },
   "make_classifier_dataset": {
-
+    "labeling_params": "labeling_params/classifier/dragging.json"
   },
-  "train_classifier": {
-
+  "learn_classifier": {
+    "epochs": 1,
+    "classifier_hparams": "hparams/classifier/dragging.json",
+    "batch_size": 2
   },
   "make_recovery_dataset": {
-
+    "batch_size": 2,
+    "labeling_params": "labeling_params/recovery/dragging.json"
   },
-  "train_recovery": {
-
+  "learn_recovery": {
+    "epochs": 1,
+    "batch_size": 2,
+    "recovery_hparams": "hparams/recovery/dragging.json"
   },
   "planning_evaluation": {
-
+    "n_trials": 1,
+    "planners_params_common": "planner_configs/dragging/common.json",
+    "methods": [
+      "classifier",
+      "no_classifier",
+      "full_dynamics"
+    ]
   }
 }

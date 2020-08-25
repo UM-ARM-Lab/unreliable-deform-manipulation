@@ -236,6 +236,9 @@ class ExperimentScenario:
         msg.data = time_idx
         self.time_viz_pub.publish(msg)
 
+    def dynamics_dataset_metadata(self):
+        return {}
+
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
     x_range = xyz_range['x']

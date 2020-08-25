@@ -5,14 +5,14 @@
   "collect_dynamics_1": {
     "scenario": "dual_floating",
     "params": "collect_dynamics_params/dual_no_obs.json",
-    "n_trajs": 512
+    "n_trajs": 5120
   },
   "train_dynamics": {
     "scenario": "dual_floating",
-    "epochs": 10,
-    "batch_size": 16,
+    "epochs": 300,
+    "batch_size": 64,
     "forward_model_hparams": "hparams/unconstrained_dynamics/no_victor_dual_no_obs.json",
-    "n_ensemble": 4,
+    "n_ensemble": 8,
     "evaluate": true
   },
   "collect_dynamics_2": {

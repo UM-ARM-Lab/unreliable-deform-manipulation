@@ -1,3 +1,4 @@
+from time import time
 from typing import Dict
 
 import rospy
@@ -14,14 +15,18 @@ class BaseServices:
     def __init__(self):
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
         self.world_control = rospy.ServiceProxy('world_control', WorldControl)
-        self.pause = rospy.ServiceProxy('gazebo/pause_physics', Empty)
-        self.unpause = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
         self.reset = rospy.ServiceProxy("reset", Empty)
         self.get_objects = rospy.ServiceProxy("objects", GetObjects)
         self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
         self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
         self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
+
+    def launch(self, params):
+        pass
+
+    def kill(self):
+        pass
 
     def move_objects(self, object_moves: Dict[str, Pose]):
         pass

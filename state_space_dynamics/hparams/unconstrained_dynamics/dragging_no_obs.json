@@ -3,7 +3,7 @@
   "sequence_length": 10,
   "state_keys": [
     "gripper",
-    "link_bot"
+    "rope"
   ],
   "action_keys": [
     "gripper_position"

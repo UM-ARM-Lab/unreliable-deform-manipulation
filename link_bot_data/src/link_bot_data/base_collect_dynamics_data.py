@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import json
 import pathlib
-import sys
 from typing import Dict, Optional
 
 import numpy as np
@@ -134,31 +133,32 @@ class DataCollector:
         full_output_directory.mkdir(exist_ok=True)
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
-        with (full_output_directory / 'hparams.json').open('w') as of:
-            options = {
-                'seed': self.seed,
-                'nickname': nickname,
-                'n_trajs': n_trajs,
-                'data_collection_params': self.params,
-                'states_description': self.scenario.states_description(),
-                'action_description': self.scenario.actions_description(),
-                'scenario': self.scenario_name,
-            }
-            json.dump(options, of, indent=2)
+        dataset_hparams = {
+            'seed': self.seed,
+            'nickname': nickname,
+            'n_trajs': n_trajs,
+            'data_collection_params': self.params,
+            'states_description': self.scenario.states_description(),
+            'action_description': self.scenario.actions_description(),
+            'scenario': self.scenario_name,
+        }
+        dataset_hparams['scenario_metadata'] = self.scenario.dynamics_dataset_metadata()
+        with (full_output_directory / 'hparams.json').open('w') as dataset_hparams_file:
+            json.dump(dataset_hparams, dataset_hparams_file, indent=2)
         record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
         self.scenario.randomization_initialization()
 
+        from time import perf_counter
+        t0 = perf_counter()
         for traj_idx in range(n_trajs):
             # Randomize the environment
             if not self.params['no_objects'] and traj_idx % self.params["randomize_environment_every_n_trajectories"] == 0:
                 self.scenario.randomize_environment(self.env_rng, objects_params=self.params, data_collection_params=self.params)
 
             # Generate a new trajectory
-            from time import perf_counter
-            t0 = perf_counter()
             example = self.collect_trajectory(traj_idx=traj_idx, verbose=self.verbose)
-            print(f'traj {traj_idx}/{n_trajs}, {perf_counter()-t0:.4f}s')
+            print(f'traj {traj_idx}/{n_trajs}, {perf_counter() - t0:.4f}s')
 
             # Save the data
             features = dict_of_float_tensors_to_bytes_feature(example)
@@ -168,5 +168,7 @@ class DataCollector:
             files_dataset.add(full_filename)
             with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                 writer.write(example_str)
+
+        print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         return files_dataset

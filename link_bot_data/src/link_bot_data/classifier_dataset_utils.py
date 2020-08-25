@@ -8,6 +8,7 @@ import tensorflow as tf
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.serialization import my_dump
 from moonshine.moonshine_utils import gather_dict, index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.model_utils import EnsembleDynamicsFunction
@@ -39,6 +40,11 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             outdir: pathlib.Path,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None):
+    # append "best_checkpoint" before loading
+    if not isinstance(fwd_model_dir, List):
+        fwd_model_dir = [fwd_model_dir]
+    fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
+
     labeling_params = json.load(labeling_params.open("r"))
     dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
@@ -49,22 +55,15 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
 
     new_hparams_filename = outdir / 'hparams.json'
     classifier_dataset_hparams = dynamics_hparams
-    if len(fwd_model_dir) > 1:
-        using_ensemble = True
-        fwd_model_dir = [str(d) for d in fwd_model_dir]
-    else:
-        using_ensemble = False
-        fwd_model_dir = str(fwd_model_dir[0])
-    classifier_dataset_hparams['dataset_dir'] = str(dataset_dir)
-    classifier_dataset_hparams['fwd_model_dir'] = fwd_model_dir
+
+    classifier_dataset_hparams['dataset_dir'] = dataset_dir.as_posix()
     classifier_dataset_hparams['fwd_model_hparams'] = fwd_models.hparams
-    classifier_dataset_hparams['using_ensemble'] = using_ensemble
     classifier_dataset_hparams['labeling_params'] = labeling_params
     classifier_dataset_hparams['state_keys'] = fwd_models.state_keys
     classifier_dataset_hparams['action_keys'] = fwd_models.action_keys
     classifier_dataset_hparams['start-at'] = start_at
     classifier_dataset_hparams['stop-at'] = stop_at
-    json.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+    my_dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     t0 = perf_counter()
     total_count = 0

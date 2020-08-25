@@ -1,33 +1,128 @@
-from typing import Dict
+import json
+import pathlib
+from time import perf_counter
+from typing import Optional, List
 
 import numpy as np
 import rospy
-from colorama import Fore
 import tensorflow as tf
-from time import perf_counter
-from link_bot_classifiers.nn_classifier import NNClassifierWrapper
-from link_bot_data.classifier_dataset_utils import \
-    batch_of_many_of_actions_sequences_to_dict
+from colorama import Fore
+
+from link_bot_classifiers import classifier_utils
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_pycommon import rviz_animation_controller
+from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import (add_batch, gather_dict,
-                                       index_dict_of_batched_vectors_tf,
-                                       remove_batch,
-                                       sequence_of_dicts_to_dict_of_tensors)
-from state_space_dynamics.model_utils import EnsembleDynamicsFunction
-from std_msgs.msg import Float32
+from link_bot_pycommon.serialization import my_dump
+from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf)
+from state_space_dynamics import model_utils
 
 
-def generate_recovery_examples(fwd_model: EnsembleDynamicsFunction,
-                               classifier_model: NNClassifierWrapper,
-                               tf_dataset: tf.data.Dataset,
-                               dataset: DynamicsDataset,
-                               labeling_params: Dict,
-                               batch_size: int,
-                               start_at: int,
-                               stop_at: int):
+def make_recovery_dataset(dataset_dir,
+                          fwd_model_dir,
+                          classifier_model_dir: pathlib.Path,
+                          labeling_params,
+                          outdir,
+                          batch_size: int,
+                          start_at: Optional[int] = None,
+                          stop_at: Optional[int] = None):
+    # append "best_checkpoint" before loading
+    classifier_model_dir = classifier_model_dir / 'best_checkpoint'
+    if not isinstance(fwd_model_dir, List):
+        fwd_model_dir = [fwd_model_dir]
+    fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
+
+    np.random.seed(0)
+    tf.random.set_seed(0)
+
+    labeling_params = json.load(labeling_params.open("r"))
+    dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
+    fwd_model, _ = model_utils.load_generic_model(fwd_model_dir)
+
+    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
+
+    dataset = DynamicsDataset([dataset_dir])
+
+    new_hparams_filename = outdir / 'hparams.json'
+    recovery_dataset_hparams = dynamics_hparams
+
+    scenario = fwd_model.scenario
+    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario)
+
+    recovery_dataset_hparams['dataset_dir'] = dataset_dir
+    recovery_dataset_hparams['fwd_model_dir'] = fwd_model_dir
+    recovery_dataset_hparams['classifier_model'] = classifier_model_dir
+    recovery_dataset_hparams['fwd_model_hparams'] = fwd_model.hparams
+    recovery_dataset_hparams['labeling_params'] = labeling_params
+    recovery_dataset_hparams['state_keys'] = fwd_model.state_keys
+    recovery_dataset_hparams['action_keys'] = fwd_model.action_keys
+    recovery_dataset_hparams['start-at'] = start_at
+    recovery_dataset_hparams['stop-at'] = stop_at
+    my_dump(recovery_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    for mode in ['train', 'val', 'test']:
+        tf_dataset_for_mode = dataset.get_datasets(mode=mode)
+
+        full_output_directory = outdir / mode
+        full_output_directory.mkdir(parents=True, exist_ok=True)
+
+        record_idx = 0
+        while True:
+            record_filename = "example_{:09d}.tfrecords".format(record_idx)
+            full_filename = full_output_directory / record_filename
+            if not full_filename.exists():
+                break
+            record_idx += 1
+
+        for out_example in generate_recovery_examples(tf_dataset_for_mode,
+                                                      fwd_model,
+                                                      classifier_model,
+                                                      dataset,
+                                                      labeling_params,
+                                                      batch_size,
+                                                      start_at,
+                                                      stop_at):
+            # FIXME: is there an extra time/batch dimension?
+            for batch_idx in range(out_example['traj_idx'].shape[0]):
+                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+
+                # # BEGIN DEBUG
+                # anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
+                # scenario.plot_environment_rviz(out_example_b)
+                # while not anim.done:
+                #     t = anim.t()
+                #     s_t = {k: out_example_b[k][t] for k in fwd_model.state_keys}
+                #     if t < labeling_params['action_sequence_horizon'] - 1:
+                #         a_t = {k: out_example_b[k][t] for k in fwd_model.action_keys}
+                #         scenario.plot_action_rviz(s_t, a_t, label='observed')
+                #     scenario.plot_state_rviz(s_t, label='observed')
+                #     anim.step()
+                # # END DEBUG
+
+                features = {}
+                for k, v in out_example_b.items():
+                    features[k] = float_tensor_to_bytes_feature(v)
+
+                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+                example = example_proto.SerializeToString()
+                record_filename = "example_{:09d}.tfrecords".format(record_idx)
+                full_filename = full_output_directory / record_filename
+                print(f"writing {full_filename}")
+                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+                    writer.write(example)
+                record_idx += 1
+
+    return outdir
+
+def generate_recovery_examples(tf_dataset: tf.data.Dataset,
+                               fwd_model,
+                               classifier_model,
+                               dataset,
+                               labeling_params,
+                               batch_size,
+                               start_at,
+                               stop_at):
     action_sequence_horizon = labeling_params['action_sequence_horizon']
     tf_dataset = tf_dataset.batch(batch_size)
     action_rng = np.random.RandomState(0)
@@ -106,7 +201,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
 
         def _predict_and_classify(_actual_states, _random_actions_dict):
             # [t:t+1] to keep dim, as opposed to just [t]
-            start_states_tiled = {k: tf.tile(v[:, t:t+1, :], [n_action_samples, 1, 1])
+            start_states_tiled = {k: tf.tile(v[:, t:t + 1, :], [n_action_samples, 1, 1])
                                   for k, v in _actual_states.items()}
 
             # Predict
