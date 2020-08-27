@@ -70,13 +70,14 @@ def train_main(dataset_dirs: List[pathlib.Path],
     val_tf_dataset = val_dataset.get_datasets(mode='val')
 
     # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=512, seed=seed, reshuffle_each_iteration=True)
+    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=64, seed=seed, reshuffle_each_iteration=True)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
 
-    train_tf_dataset = train_tf_dataset.shuffle(
-        buffer_size=128, seed=seed, reshuffle_each_iteration=True)  # to mix up batches
+    # Shuffling adds significant overhead, nearly quadrupling the total training time.
+    # train_tf_dataset = train_tf_dataset.shuffle(
+    #     buffer_size=60, seed=seed, reshuffle_each_iteration=False)  # to mix up batches
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
