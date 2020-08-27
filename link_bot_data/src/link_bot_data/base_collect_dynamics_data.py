@@ -31,8 +31,6 @@ class DataCollector:
         self.scenario = get_scenario(scenario_name)
         self.scenario = get_scenario(scenario_name)
 
-        rospy.init_node('collect_dynamics_data')
-
         if seed is None:
             self.seed = np.random.randint(0, 10000)
         else:
@@ -87,6 +85,7 @@ class DataCollector:
         for time_idx in range(self.params['steps_per_traj']):
             # get current state and sample action
             state = self.scenario.get_state()
+            # TODO: sample the entire action sequence in advance?
             action = self.scenario.sample_action(environment=environment,
                                                  state=state,
                                                  data_collection_params=self.params,

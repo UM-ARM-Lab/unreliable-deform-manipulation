@@ -1,9 +1,7 @@
 import json
 import pathlib
-from typing import List, Dict
+from typing import List, Dict, Optional
 
-import numpy as np
-import rospy
 import tensorflow as tf
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
@@ -11,8 +9,6 @@ from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 
 DEFAULT_INFLATION_RADIUS = 0.02
-# DEFAULT_INFLATION_RADIUS = 0.03
-# rospy.logwarn_once("using inflated CC radius")
 
 
 def check_collision(scenario, environment, states_sequence, collision_check_object=True):
@@ -35,31 +31,38 @@ def check_collision(scenario, environment, states_sequence, collision_check_obje
 
 class CollisionCheckerClassifier(BaseConstraintChecker):
 
-    def __init__(self, path: pathlib.Path, inflation_radius: float, scenario: ExperimentScenario):
-        super().__init__(scenario)
+    def __init__(self,
+                 paths: List[pathlib.Path],
+                 scenario: ExperimentScenario,
+                 inflation_radius: Optional[float] = DEFAULT_INFLATION_RADIUS,
+                 ):
+        super().__init__(paths, scenario)
+        assert len(paths) == 1
+        self.path = paths[0]
         self.inflation_radius = inflation_radius
-        hparams_file = path.parent / 'params.json'
-        self.model_hparams = json.load(hparams_file.open('r'))
-        self.local_h_rows = self.model_hparams['local_h_rows']
-        self.local_w_cols = self.model_hparams['local_w_cols']
-        self.local_c_channels = self.model_hparams['local_c_channels']
+        hparams_file = self.path.parent / 'params.json'
+        self.hparams = json.load(hparams_file.open('r'))
+        self.local_h_rows = self.hparams['local_h_rows']
+        self.local_w_cols = self.hparams['local_w_cols']
+        self.local_c_channels = self.hparams['local_c_channels']
         self.horizon = 2
         self.data_collection_params = {
-            'res': self.model_hparams['res']
+            'res': self.hparams['res']
         }
 
     def check_constraint_tf(self,
                             environment: Dict,
                             states_sequence: List[Dict],
-                            actions) -> tf.Tensor:
-        return check_collision(self.scenario, environment, states_sequence)
+                            actions):
+        return check_collision(self.scenario, environment, states_sequence), tf.ones([], dtype=tf.float32) * 1e-9
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
-                         actions: np.ndarray):
+                         actions: List[Dict]):
         assert len(states_sequence) == 2
-        return self.check_constraint_tf(environment, states_sequence, actions).numpy()
+        c, s = self.check_constraint_tf(environment, states_sequence, actions)
+        return c.numpy, s.numpy()
 
 
 model = CollisionCheckerClassifier

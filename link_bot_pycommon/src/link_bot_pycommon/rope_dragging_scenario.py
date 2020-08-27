@@ -11,6 +11,7 @@ from std_srvs.srv import EmptyRequest, Empty
 from visualization_msgs.msg import MarkerArray, Marker
 
 import ros_numpy
+from gazebo_msgs.srv import SetModelStateRequest
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
@@ -18,9 +19,10 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx_3d_in_env
 from link_bot_pycommon.ros_pycommon import make_movable_object_services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest
-from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, Position3DEnableRequest, \
-    GetPosition3D, GetPosition3DRequest, WorldControlRequest
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest, \
+    Position3DEnable, Position3DEnableRequest
+from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, GetPosition3D, \
+    GetPosition3DRequest
 
 
 class RopeDraggingScenario(Base3DScenario):
@@ -28,9 +30,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     def __init__(self):
         super().__init__()
-        object_name = 'dragging_rope'
-        self.move_srv = rospy.ServiceProxy(f"{object_name}/move", Position3DAction)
-        self.get_object_srv = rospy.ServiceProxy(f"{object_name}/get", GetPosition3D)
+        self.move_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/move", Position3DAction)
+        self.get_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/get", GetPosition3D)
+        self.gripper_enable_srv = rospy.ServiceProxy(f"{self.robot_name()}/enable", Position3DEnable)
 
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
@@ -197,7 +199,7 @@ class RopeDraggingScenario(Base3DScenario):
         else:
             req.timeout = action['timeout'][0]
 
-        _ = self.move_srv(req)
+        _ = self.move_gripper_srv(req)
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
@@ -249,6 +251,8 @@ class RopeDraggingScenario(Base3DScenario):
                 gripper_delta_position = np.array([dx, dy, 0])
 
             gripper_position = state['gripper'] + gripper_delta_position
+            rospy.logerr_once("FORCING Z POSITION TO BE 0")
+            gripper_position[2] = 0.02 # slightly off the ground
             action = {
                 'gripper_position': gripper_position,
                 'gripper_delta_position': gripper_delta_position,
@@ -322,7 +326,7 @@ class RopeDraggingScenario(Base3DScenario):
             rospy.logwarn("TESTING WITH VAL")
             return self.get_state_val()
 
-        gripper_res = self.get_object_srv(GetPosition3DRequest())
+        gripper_res = self.get_gripper_srv(GetPosition3DRequest())
 
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
@@ -471,37 +475,42 @@ class RopeDraggingScenario(Base3DScenario):
         pass
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
-        # If we reset the sim we'd get less interesting/diverse obstacle configurations
-        # but without resetting we can't have repeatable trials because the rope can get in the way differently
-        # depending on where it ended up from the previous trial
-        # self.reset_sim_srv(EmptyRequest())
+        # reset so the rope is straightened out
+        self.reset_sim_srv(EmptyRequest())
 
-        # set random positions for all the objects
-        for services in self.movable_object_services.values():
-            position, _ = self.random_object_pose(env_rng, objects_params)
-            set_msg = Position3DActionRequest()
-            set_msg.position = ros_numpy.msgify(Point, position)
-            services['set'](set_msg)
+        # disable the rope dragging controller
+        disable = Position3DEnableRequest()
+        disable.enable = False
+        self.gripper_enable_srv(disable)
 
-        req = WorldControlRequest()
-        req.seconds = 0.1
-        self.world_control_srv(req)
+        # lift the rope up out of the way with SetModelState
+        move_rope = SetModelStateRequest()
+        move_rope.model_state.model_name = self.robot_name()
+        move_rope.model_state.pose.position.x = 0
+        move_rope.model_state.pose.position.y = 0
+        move_rope.model_state.pose.position.z = 1
+        self.set_model_state_srv(move_rope)
 
-        for services in self.movable_object_services.values():
-            disable = Position3DEnableRequest()
-            disable.enable = False
-            services['enable'](disable)
+        # use SetModelState to move the objects to random configurations
+        random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+        self.set_object_poses(random_object_poses)
 
-        req = WorldControlRequest()
-        req.seconds = 0.2
-        self.world_control_srv(req)
+        # let things settle, the rope will drop.
+        self.settle()
 
-        for services in self.movable_object_services.values():
-            services['stop'](EmptyRequest())
+        # re-enable the rope dragging controller
+        enable = Position3DEnableRequest()
+        enable.enable = True
+        self.gripper_enable_srv(enable)
 
-        req = WorldControlRequest()
-        req.seconds = 0.2
-        self.world_control_srv(req)
+        # move to a random position, to improve diversity of "starting" configurations,
+        # and to also reduce the number of trials where the rope starts on top of an obstacle
+        random_position, _ = self.random_pose_in_extents(env_rng, data_collection_params['rope_start_extents'])
+        random_position[2] = 0.02
+        self.execute_action({
+            'gripper_position': random_position,
+            'timeout': [30],
+        })
 
     @staticmethod
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):

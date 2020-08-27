@@ -291,11 +291,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def robot_name():
         return "kinematic_rope"
 
-    def settle(self):
-        req = WorldControlRequest()
-        req.seconds = 5
-        self.world_control_srv(req)
-
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         object_poses = {}
         for obj, pose in self.start_object_poses.items():
@@ -305,10 +300,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
             object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
         return object_poses
-
-    def random_new_object_poses(self, env_rng: np.random.RandomState, objects_params: Dict):
-        random_object_poses = {k: self.random_object_pose(env_rng, objects_params) for k in objects_params['objects']}
-        return random_object_poses
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # # move the objects out of the way

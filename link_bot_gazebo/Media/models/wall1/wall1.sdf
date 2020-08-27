@@ -2,6 +2,7 @@
     <model name="wall1">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
+            <kinematic>1</kinematic>
             <pose>0 0 0.1 0 0 0 0</pose>
             <inertial>
                 <pose>0 0 -0.15 0 0 0</pose>

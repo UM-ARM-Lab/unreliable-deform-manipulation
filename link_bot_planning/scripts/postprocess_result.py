@@ -117,7 +117,7 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
             # propogate and check the classifier
             states = fwd_model.propagate(environment, interpolated_state, [interpolated_action])
             assert len(states) == 2
-            accept_probabilities = classifier.check_constraint(environment, states, [interpolated_action])
+            accept_probabilities, _ = classifier.check_constraint(environment, states, [interpolated_action])
             assert len(accept_probabilities) == 1
             accept_probability = accept_probabilities[0]
 

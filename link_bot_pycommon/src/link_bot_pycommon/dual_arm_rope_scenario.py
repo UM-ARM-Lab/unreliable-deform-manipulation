@@ -1,13 +1,15 @@
 from typing import Dict
 
+import actionlib
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState
-from std_srvs.srv import Empty, EmptyRequest
+from std_srvs.srv import Empty
 
 import ros_numpy
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
-from moveit_msgs.msg import Constraints, JointConstraint, MotionPlanRequest, MoveGroupGoal, MoveItErrorCodes
+from link_bot_pycommon.moveit_utils import make_moveit_action_goal
+from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
 from peter_msgs.srv import GetDualGripperPointsRequest, GetJointStateRequest, GetRopeStateRequest, GetJointState
 
 
@@ -21,25 +23,22 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
     def reset_robot(self, data_collection_params: Dict):
         if data_collection_params['scene'] == 'tabletop':
-            self.goto_home_srv(EmptyRequest())
+            moveit_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
+            moveit_client.wait_for_server()
+            joint_names = data_collection_params['home']['name']
+            joint_positions = data_collection_params['home']['position']
+            goal = make_moveit_action_goal(joint_names, joint_positions)
+            moveit_client.send_goal(goal)
+            moveit_client.wait_for_result()
+            result = moveit_client.get_result()
+            if result.error_code.val != MoveItErrorCodes.SUCCESS:
+                print("Error! code " + str(result.error_code.val))
+
         elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
             positions = np.array(data_collection_params['reset_robot']['position'])
             names = data_collection_params['reset_robot']['name']
 
-            goal_config_constraint = Constraints()
-
-            for name, position in zip(names, positions):
-                joint_constraint = JointConstraint()
-                joint_constraint.joint_name = name
-                joint_constraint.position = position
-                goal_config_constraint.joint_constraints.append(joint_constraint)
-
-            req = MotionPlanRequest()
-            req.group_name = 'both_arms'
-            req.goal_constraints.append(goal_config_constraint)
-
-            goal = MoveGroupGoal()
-            goal.request = req
+            goal = make_moveit_action_goal(names, positions)
             self.move_group_client.send_goal(goal)
             self.move_group_client.wait_for_result()
             result = self.move_group_client.get_result()
@@ -79,32 +78,34 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             'joint_names': joints_res.joint_state.name,
         }
 
-    @staticmethod
-    def states_description() -> Dict:
+    def states_description(self) -> Dict:
+        joints_res = self.joint_states_srv(GetJointStateRequest())
+        n_joints = len(joints_res.joint_state.position)
         return {
             'gripper1': 3,
             'gripper2': 3,
             'link_bot': DualArmRopeScenario.n_links * 3,
-            'joint_positions': 2 + 7 + 7
+            'joint_positions': n_joints
         }
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         super().plot_state_rviz(state, label, **kwargs)
-        joint_msg = JointState()
-        joint_msg.header.stamp = rospy.Time.now()
-        joint_msg.position = state['joint_positions']
-        if isinstance(state['joint_names'][0], bytes):
-            joint_names = [n.decode("utf-8") for n in state['joint_names']]
-        elif isinstance(state['joint_names'][0], str):
-            joint_names = [str(n) for n in state['joint_names']]
-        else:
-            raise NotImplementedError(type(state['joint_names'][0]))
-        joint_msg.name = joint_names
-        self.joint_states_pub.publish(joint_msg)
+        # TODO: remove this once we no longer need to use the old datasets
+        if 'joint_positions' in state:
+            joint_msg = JointState()
+            joint_msg.header.stamp = rospy.Time.now()
+            joint_msg.position = state['joint_positions']
+            if isinstance(state['joint_names'][0], bytes):
+                joint_names = [n.decode("utf-8") for n in state['joint_names']]
+            elif isinstance(state['joint_names'][0], str):
+                joint_names = [str(n) for n in state['joint_names']]
+            else:
+                raise NotImplementedError(type(state['joint_names'][0]))
+            joint_msg.name = joint_names
+            self.joint_states_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
         joints_res = self.joint_states_srv(GetJointStateRequest())
         return {
             'joint_names': joints_res.joint_state.name
         }
-

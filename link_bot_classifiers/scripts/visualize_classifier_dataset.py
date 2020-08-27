@@ -25,7 +25,7 @@ def main():
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
-    parser.add_argument('display_type', choices=['just_count', 'image', 'anim', '2d', '3d', 'sanity_check', 'stdev'])
+    parser.add_argument('display_type', choices=['just_count', '3d', 'stdev'])
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--save', action='store_true')

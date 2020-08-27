@@ -183,14 +183,14 @@ class FullDynamicsNN(MyKerasModel):
 
 class ObstacleNNWrapper(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(model_dir, batch_size, scenario)
+    def __init__(self, model_dirs: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(model_dirs, batch_size, scenario)
         self.net = FullDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         self.states_keys = self.net.states_keys
         # find a way to convert the old checkpoints. This is necessary to restore old models.
         self.ckpt = tf.train.Checkpoint(model=self.net, net=self.net)
         # TODO: use shape_completion_training stuff here? ModelRunner?
-        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
+        self.manager = tf.train.CheckpointManager(self.ckpt, model_dirs, max_to_keep=1)
         status = self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:
             print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)

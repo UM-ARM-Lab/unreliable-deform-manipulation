@@ -189,8 +189,7 @@ class ExperimentScenario:
         move_action_req.timeout = timeout
         movable_object_services['move'](move_action_req)
 
-    @staticmethod
-    def states_description() -> Dict:
+    def states_description(self) -> Dict:
         raise NotImplementedError()
 
     @staticmethod

@@ -184,7 +184,7 @@ class MyPlanner:
             # this goes after the break because action_i brings you TO state_i and we don't want that last action
             previous_action = previous_actions[previous_idx - 1]
             all_actions.insert(0, previous_action)
-        classifier_probabilities = self.classifier_model.check_constraint(environment=self.environment,
+        classifier_probabilities, _ = self.classifier_model.check_constraint(environment=self.environment,
                                                                           states_sequence=all_states,
                                                                           actions=all_actions)
         not_in_collision = self.cc.check_constraint(environment=self.environment,

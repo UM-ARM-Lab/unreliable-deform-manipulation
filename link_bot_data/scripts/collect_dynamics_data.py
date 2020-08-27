@@ -6,6 +6,7 @@ import json
 import pathlib
 
 import numpy as np
+import rospy
 
 from link_bot_data import base_collect_dynamics_data
 from link_bot_pycommon.args import my_formatter
@@ -29,6 +30,8 @@ def main():
     parser.add_argument('--verbose', '-v', action='count', default=0)
 
     args = parser.parse_args()
+
+    rospy.init_node('collect_dynamics_data')
 
     with args.collect_dynamics_params.open("r") as f:
         collect_dynamics_params = json.load(f)

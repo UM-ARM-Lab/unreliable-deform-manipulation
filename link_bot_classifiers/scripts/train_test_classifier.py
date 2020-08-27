@@ -31,6 +31,9 @@ def test_main(args):
 def eval_main(args):
     train_test_classifier.eval_main(**vars(args))
 
+def eval_ensemble_main(args):
+    train_test_classifier.eval_ensemble_main(**vars(args))
+
 
 def main():
     rospy.init_node("train_test_classifier")
@@ -74,6 +77,15 @@ def main():
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--only-errors', action='store_true')
     eval_parser.set_defaults(func=eval_main)
+
+    eval_ensemble_parser = subparsers.add_parser('eval_ensemble')
+    eval_ensemble_parser.add_argument('dataset_dir', type=pathlib.Path)
+    eval_ensemble_parser.add_argument('checkpoints', type=pathlib.Path, nargs='+')
+    eval_ensemble_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
+    eval_ensemble_parser.add_argument('--batch-size', type=int, default=1)
+    eval_ensemble_parser.add_argument('--verbose', '-v', action='count', default=0)
+    eval_ensemble_parser.add_argument('--only-errors', action='store_true')
+    eval_ensemble_parser.set_defaults(func=eval_ensemble_main)
 
     args = parser.parse_args()
 

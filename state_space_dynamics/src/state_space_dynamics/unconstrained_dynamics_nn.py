@@ -1,16 +1,14 @@
 import pathlib
-from typing import Dict, List
+from typing import Dict
 
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf, \
-    sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-from link_bot_pycommon.pycommon import make_dict_tf_float32
 
 
 class UnconstrainedDynamicsNN(MyKerasModel):
@@ -83,36 +81,9 @@ class UnconstrainedDynamicsNN(MyKerasModel):
 
 class UDNNWrapper(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(model_dir, batch_size, scenario)
-        self.net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(model=self.net)
-        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
+    @staticmethod
+    def get_net_class():
+        return UnconstrainedDynamicsNN
 
-        status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
-        if self.manager.latest_checkpoint:
-            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-            if self.manager.latest_checkpoint:
-                status.assert_existing_objects_matched()
-        else:
-            raise RuntimeError("Failed to restore!!!")
 
-        self.state_keys = self.net.state_keys
-        self.action_keys = self.net.action_keys
-
-    def propagate_from_example(self, example, training=False):
-        return self.net(example, training=training)
-
-    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
-        del environment  # unused
-        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
-        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
-        net_inputs = add_batch(net_inputs)
-        net_inputs = make_dict_tf_float32(net_inputs)
-        # the network returns a dictionary where each value is [T, n_state]
-        # which is what you'd want for training, but for planning and execution and everything else
-        # it is easier to deal with a list of states where each state is a dictionary
-        predictions = self.net(net_inputs, training=False)
-        predictions = remove_batch(predictions)
-        predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
-        return predictions
+model = UnconstrainedDynamicsNN

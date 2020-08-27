@@ -1,12 +1,11 @@
 from typing import Dict, List
 
 import numpy as np
-from matplotlib import cm
-from mps_shape_completion_msgs.msg import OccupancyStamped
-from peter_msgs.msg import LabelStatus
-from peter_msgs.srv import WorldControl
-
 import rospy
+from matplotlib import cm
+from std_msgs.msg import Float32
+from visualization_msgs.msg import MarkerArray, Marker
+
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from jsk_recognition_msgs.msg import BoundingBox
@@ -15,9 +14,10 @@ from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_bbox
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from std_msgs.msg import Float32
+from mps_shape_completion_msgs.msg import OccupancyStamped
+from peter_msgs.msg import LabelStatus
+from peter_msgs.srv import WorldControl, WorldControlRequest
 from tf import transformations
-from visualization_msgs.msg import MarkerArray, Marker
 
 
 class Base3DScenario(ExperimentScenario):
@@ -49,6 +49,11 @@ class Base3DScenario(ExperimentScenario):
 
         self.set_model_state_srv = rospy.ServiceProxy("gazebo/set_model_state", SetModelState)
         self.get_model_state_srv = rospy.ServiceProxy("gazebo/get_model_state", GetModelState)
+
+    def settle(self):
+        req = WorldControlRequest()
+        req.seconds = 5
+        self.world_control_srv(req)
 
     @staticmethod
     def random_pos(action_rng: np.random.RandomState, extent):
@@ -251,18 +256,24 @@ class Base3DScenario(ExperimentScenario):
             'extent': example['extent'],
         }
 
-    def random_object_pose(self, env_rng: np.random.RandomState, objects_params: Dict):
-        extent = objects_params['objects_extent']
+    def random_new_object_poses(self, env_rng: np.random.RandomState, objects_params: Dict):
+        random_object_poses = {k: self.random_object_pose(env_rng, objects_params) for k in objects_params['objects']}
+        return random_object_poses
+
+    def random_pose_in_extents(self, env_rng: np.random.RandomState, extent):
         extent = np.array(extent).reshape(3, 2)
-
-        bbox_msg = extent_to_bbox(objects_params['objects_extent'])
-        bbox_msg.header.frame_id = 'world'
-        self.obs_bbox_pub.publish(bbox_msg)
-
         position = env_rng.uniform(extent[:, 0], extent[:, 1])
         yaw = env_rng.uniform(-np.pi, np.pi)
         orientation = transformations.quaternion_from_euler(0, 0, yaw)
         return (position, orientation)
+
+    def random_object_pose(self, env_rng: np.random.RandomState, objects_params: Dict):
+        extent = objects_params['objects_extent']
+        bbox_msg = extent_to_bbox(extent)
+        bbox_msg.header.frame_id = 'world'
+        self.obs_bbox_pub.publish(bbox_msg)
+
+        return self.random_pose_in_extents(env_rng, extent)
 
     def set_object_poses(self, object_positions: Dict):
         for object_name, (position, orientation) in object_positions.items():

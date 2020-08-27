@@ -12,14 +12,15 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 class RigidTranslationModel(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(model_dir, batch_size, scenario)
+    def __init__(self, model_dirs: List[pathlib.Path], batch_size: int, scenario: ExperimentScenario):
+        super().__init__(model_dirs, batch_size, scenario)
+        assert len(model_dirs) == 1
         self.batch_size = batch_size
         b = self.hparams['B']
         self.B = tf.constant(np.array(b), dtype=tf.float32)
         self.states_keys = self.hparams['states_keys']
 
-    def propagate_from_example(self, dataset_element):
+    def propagate_from_example(self, dataset_element, training: bool = False):
         inputs, _ = dataset_element
         batch_states = {key: inputs[key] for key in self.states_keys}
         batch_states = dict_of_sequences_to_sequence_of_dicts(batch_states)
@@ -41,21 +42,19 @@ class RigidTranslationModel(BaseDynamicsFunction):
         predictions = {k: tf.stack(predictions[k], axis=0) for k in predictions.keys()}
         return predictions
 
-    def propagate_differentiable(self,
-                                 full_env: np.ndarray,
-                                 full_env_origin: np.ndarray,
-                                 res: float,
-                                 start_states: Dict,
-                                 actions: tf.Variable) -> List[Dict]:
-        """
-        :param full_env:        (H, W)
-        :param full_env_origin: (2)
-        :param res:             scalar
-        :param start_states:          each value in the dictionary should be of shape (batch, n_state)
-        :param actions:        (T, 2)
-        :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
-        """
-
+    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
+        del environment  # unused
+        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
+        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
+        net_inputs = add_batch(net_inputs)
+        net_inputs = make_dict_tf_float32(net_inputs)
+        # the network returns a dictionary where each value is [T, n_state]
+        # which is what you'd want for training, but for planning and execution and everything else
+        # it is easier to deal with a list of states where each state is a dictionary
+        predictions = self.net(net_inputs, training=False)
+        predictions = remove_batch(predictions)
+        predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
+        return predictions
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         s_t = {}
         for k, s_0_k in start_states.items():

@@ -1,31 +1,28 @@
 #!/usr/bin/env python
-import json
 import pathlib
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-import numpy as np
 import rospy
 import tensorflow as tf
 from colorama import Fore
-from moonshine.moonshine_utils import numpify, index_dict_of_batched_vectors_tf
-from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_predicted
+from tensorflow import keras
+from tensorflow_core.python.keras import layers
+
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, compute_extent_3d, extent_to_env_size, batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine import classifier_losses_and_metrics
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
 from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
+from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
-from tensorflow import keras
-from tensorflow_core.python.keras import layers
-from visualization_msgs.msg import Marker
 
 
 class NNClassifier(MyKerasModel):
@@ -268,26 +265,45 @@ class NNClassifier(MyKerasModel):
 
 class NNClassifierWrapper(BaseConstraintChecker):
 
-    def __init__(self, path: pathlib.Path, batch_size: int, scenario: Base3DScenario):
-        super().__init__(scenario)
-        model_hparams_file = path.parent / 'params.json'
-        if not model_hparams_file.exists():
-            model_hparams_file = path / 'hparams.json'
-            if not model_hparams_file.exists():
-                raise FileNotFoundError("no hparams file found!")
-        self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.dataset_labeling_params = self.model_hparams['classifier_dataset_hparams']['labeling_params']
-        self.data_collection_params = self.model_hparams['classifier_dataset_hparams']['data_collection_params']
-        self.horizon = self.dataset_labeling_params['classifier_horizon']
-        self.model = NNClassifier(hparams=self.model_hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(model=self.model)
-        self.manager = tf.train.CheckpointManager(self.ckpt, path, max_to_keep=1)
+    def __init__(self, paths: List[pathlib.Path], batch_size: int, scenario: ExperimentScenario):
+        super().__init__(paths, scenario)
+        # FIXME: Bad API design
+        assert isinstance(scenario, Base3DScenario)
+        representative_model_dir = paths[0]
+        _, self.hparams = load_trial(representative_model_dir.parent.absolute())
 
-        self.ckpt.restore(self.manager.latest_checkpoint)
-        if self.manager.latest_checkpoint:
-            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-        else:
-            raise RuntimeError("Failed to restore!!!")
+        self.dataset_labeling_params = self.hparams['classifier_dataset_hparams']['labeling_params']
+        self.data_collection_params = self.hparams['classifier_dataset_hparams']['data_collection_params']
+        self.horizon = self.dataset_labeling_params['classifier_horizon']
+
+        net_class_name = self.get_net_class()
+
+        self.nets = []
+        for model_dir in paths:
+            net = net_class_name(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+
+            ckpt = tf.train.Checkpoint(model=net)
+            manager = tf.train.CheckpointManager(ckpt, model_dir, max_to_keep=1)
+
+            status = ckpt.restore(manager.latest_checkpoint).expect_partial()
+            if manager.latest_checkpoint:
+                print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
+                if manager.latest_checkpoint:
+                    status.assert_existing_objects_matched()
+            else:
+                raise RuntimeError("Failed to restore!!!")
+
+            self.nets.append(net)
+
+            self.state_keys = net.state_keys
+            self.action_keys = net.action_keys
+
+    def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
+        predictions = [net(example, training=training) for net in self.nets]
+        predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
+        mean_predictions = {k : tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}
+        stdev_predictions = {k : tf.math.reduce_std(v, axis=0) for k, v in predictions_dict.items()}
+        return mean_predictions, stdev_predictions
 
     def check_constraint_batched_tf(self,
                                     environment: Dict,
@@ -302,19 +318,22 @@ class NNClassifierWrapper(BaseConstraintChecker):
         }
         net_inputs.update(make_dict_tf_float32(environment))
 
-        for action_key in self.model.action_keys:
+        for action_key in self.action_keys:
             net_inputs[action_key] = tf.cast(actions[action_key], tf.float32)
 
-        for state_key in self.model.state_keys:
+        for state_key in self.state_keys:
             planned_state_key = add_predicted(state_key)
             net_inputs[planned_state_key] = tf.cast(predictions[state_key], tf.float32)
 
-        if self.model.hparams['stdev']:
+        if self.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.cast(predictions['stdev'], tf.float32)
 
-        predictions = self.model(net_inputs, training=False)
-        accept_probabilities = tf.squeeze(predictions['probabilities'], axis=2)
-        return accept_probabilities
+        mean_predictions, stdev_predictions = self.check_constraint_from_example(net_inputs, training=False)
+        mean_probability = mean_predictions['probability']
+        stdev_probability = stdev_predictions['probability']
+        mean_probability = tf.squeeze(mean_probability, axis=2)
+        stdev_probability = tf.squeeze(stdev_probability, axis=2)
+        return mean_probability, stdev_probability
 
     def check_constraint_tf(self,
                             environment: Dict,
@@ -322,24 +341,31 @@ class NNClassifierWrapper(BaseConstraintChecker):
                             actions: List[Dict]):
         environment = add_batch(environment)
         states_sequence_dict = sequence_of_dicts_to_dict_of_tensors(states_sequence)
+        states_sequence_dict = add_batch(states_sequence_dict)
+        state_sequence_length = len(states_sequence)
         actions_dict = sequence_of_dicts_to_dict_of_tensors(actions)
-        accept_probabilities_batched = self.check_constraint_batched_tf(environment=environment,
-                                                                        predictions=add_batch(states_sequence_dict),
-                                                                        actions=add_batch(actions_dict),
-                                                                        batch_size=1,
-                                                                        state_sequence_length=len(states_sequence))
-        return remove_batch(accept_probabilities_batched)
+        actions_dict = add_batch(actions_dict)
+        mean_probabilities, stdev_probabilities = self.check_constraint_batched_tf(environment=environment,
+                                                                                   predictions=states_sequence_dict,
+                                                                                   actions=actions_dict,
+                                                                                   batch_size=1,
+                                                                                   state_sequence_length=state_sequence_length)
+        mean_probabilities = remove_batch(mean_probabilities)
+        stdev_probabilities = remove_batch(stdev_probabilities)
+        return mean_probabilities, stdev_probabilities
 
     def check_constraint(self,
                          environment: Dict,
                          states_sequence: List[Dict],
                          actions: List[Dict]):
         states_sequence = [make_dict_float32(s) for s in states_sequence]
-        accept_probabilities = self.check_constraint_tf(environment=environment,
-                                                        states_sequence=states_sequence,
-                                                        actions=actions)
-        accept_probabilities = accept_probabilities.numpy()
-        return accept_probabilities
+        mean_probabilities, stdev_probabilities = self.check_constraint_tf(environment=environment,
+                                                                           states_sequence=states_sequence,
+                                                                           actions=actions)
+        mean_probabilities = mean_probabilities.numpy()
+        stdev_probabilities = stdev_probabilities.numpy()
+        return mean_probabilities, stdev_probabilities
 
-
-model = NNClassifierWrapper
+    @staticmethod
+    def get_net_class():
+        return NNClassifier

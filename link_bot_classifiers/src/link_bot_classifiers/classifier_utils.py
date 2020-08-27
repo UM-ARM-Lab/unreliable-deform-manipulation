@@ -1,32 +1,29 @@
 import pathlib
+from typing import List, Optional
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier, DEFAULT_INFLATION_RADIUS
-from link_bot_classifiers.none_classifier import NoneClassifier
+from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
+from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.get_scenario import get_scenario
 from shape_completion_training.model.filepath_tools import load_trial
 
 
-def load_generic_model(model_dir: pathlib.Path, scenario: ExperimentScenario) -> [BaseConstraintChecker]:
-    """
-    Loads a model which exposes a unified model API (predict, dt, n_state, etc...)
-    :param model_dir: directory which specifies which model should loaded (TF assumes latest checkpoint)
-    :param scenario:
-    :return:
-    """
-    if isinstance(model_dir, str):
-        model_dir = pathlib.Path(model_dir)
-    if isinstance(model_dir, list):
-        assert len(model_dir) == 1
-        model_dir = model_dir[0]
-    _, hparams = load_trial(model_dir.parent.absolute())
-    model_type = hparams['model_class']
+def load_generic_model(model_dirs: List[pathlib.Path], scenario: Optional[ExperimentScenario] = None) -> BaseConstraintChecker:
+    # FIXME: remove batch_size=1 here? can I put it in base model?
+    # we use the first model and assume they all have the same hparams
+    representative_model_dir = model_dirs[0]
+    _, common_hparams = load_trial(representative_model_dir.parent.absolute())
+    if scenario is None:
+        scenario_name = common_hparams['scenario']
+        scenario = get_scenario(scenario_name)
+    model_type = common_hparams['model_class']
     if model_type == 'rnn':
-        return NNClassifierWrapper(model_dir, batch_size=1, scenario=scenario)
+        return NNClassifierWrapper(model_dirs, batch_size=1, scenario=scenario)
     elif model_type == 'collision':
-        return CollisionCheckerClassifier(model_dir, inflation_radius=DEFAULT_INFLATION_RADIUS, scenario=scenario)
+        return CollisionCheckerClassifier(model_dirs, scenario=scenario)
     elif model_type == 'none':
-        return NoneClassifier(scenario)
+        return NoneClassifier(model_dirs, scenario=scenario)
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

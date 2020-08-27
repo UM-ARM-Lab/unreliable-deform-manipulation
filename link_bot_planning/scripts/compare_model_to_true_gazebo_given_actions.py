@@ -86,7 +86,7 @@ def main():
     # Check classifier
     accept_probabilities = []
     for t in range(1, T):
-        accept_probability = classifier_model.check_constraint(full_env=full_env_data.data,
+        accept_probability, _ = classifier_model.check_constraint(full_env=full_env_data.data,
                                                                full_env_origin=full_env_data.origin,
                                                                res=full_env_data.resolution,
                                                                states_sequence=predicted_path[:t + 1],

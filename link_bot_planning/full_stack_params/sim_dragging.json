@@ -1,17 +1,17 @@
 {
-  "seed": 0,
+  "seed": 1,
   "nickname": "sim_dragging",
   "service_provider": "gazebo",
   "collect_dynamics_1": {
     "world_filename": "sim/dragging_no_obs.world",
     "scenario": "dragging",
     "params": "collect_dynamics_params/dragging_no_obs.json",
-    "n_trajs": 512
+    "n_trajs": 1024
   },
   "learn_dynamics": {
     "scenario": "dragging",
-    "epochs": 10,
-    "batch_size": 16,
+    "epochs": 100,
+    "batch_size": 32,
     "forward_model_hparams": "hparams/unconstrained_dynamics/dragging_no_obs.json",
     "n_ensemble": 4,
     "evaluate": true
@@ -19,7 +19,7 @@
   "collect_dynamics_2": {
     "scenario": "dragging",
     "params": "collect_dynamics_params/dragging_obs.json",
-    "n_trajs": 128
+    "n_trajs": 256
   },
   "learn_full_dynamics": {
     "scenario": "dragging",

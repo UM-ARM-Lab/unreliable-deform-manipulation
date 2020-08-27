@@ -11,7 +11,7 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.serialization import my_dump
 from moonshine.moonshine_utils import gather_dict, index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
-from state_space_dynamics.model_utils import EnsembleDynamicsFunction
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class PredictionActualExample:
@@ -90,7 +90,7 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
     return outdir
 
 
-def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
+def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
                                  dataset: DynamicsDataset,
                                  labeling_params: Dict):
@@ -116,8 +116,9 @@ def generate_classifier_examples(fwd_model: EnsembleDynamicsFunction,
             actual_states_from_start_t = {k: example[k][:, start_t:prediction_end_t] for k in fwd_model.state_keys}
             actions_from_start_t = {k: example[k][:, start_t:prediction_end_t - 1] for k in fwd_model.action_keys}
 
-            predictions_from_start_t = fwd_model.propagate_differentiable_batched(actual_states_from_start_t,
-                                                                                  actions_from_start_t)
+            predictions_from_start_t, _ = fwd_model.propagate_differentiable_batched(environment={},
+                                                                                     states=actual_states_from_start_t,
+                                                                                     actions=actions_from_start_t)
             prediction_actual = PredictionActualExample(example=example,
                                                         actions=actions_from_start_t,
                                                         actual_states=actual_states_from_start_t,
@@ -194,7 +195,7 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
         valid_out_example = gather_dict(out_example, valid_indices)
 
         def debug():
-            # Visualize example
+            # TODO: Visualize example
             pass
 
         # debug()

@@ -1,26 +1,18 @@
-import pathlib
-from typing import Dict, List
+from typing import Dict
 
-import numpy as np
 import rospy
 import tensorflow as tf
 import tensorflow.keras.layers as layers
-from colorama import Fore
 from tensorflow import keras
 
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import numpify, index_dict_of_batched_vectors_tf
-from moonshine.get_local_environment import get_local_env_and_origin_2d_tf
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.raster_3d import raster_3d
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, send_occupancy_tf, compute_extent_3d, extent_to_env_size, batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
-from mps_shape_completion_msgs.msg import OccupancyStamped
-from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.matrix_operations import batch_outer_product
-from moonshine.moonshine_utils import add_batch, remove_batch, dict_of_sequences_to_sequence_of_dicts_tf, sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
+from moonshine.raster_3d import raster_3d
+from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -251,40 +243,9 @@ class ImageCondDynamics(MyKerasModel):
 
 class ImageCondDynamicsWrapper(BaseDynamicsFunction):
 
-    def __init__(self, model_dir: pathlib.Path, batch_size: int, scenario: ExperimentScenario):
-        super().__init__(model_dir, batch_size, scenario)
-        self.net = ImageCondDynamics(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
-        self.ckpt = tf.train.Checkpoint(model=self.net)
-        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
-
-        status = self.ckpt.restore(self.manager.latest_checkpoint).expect_partial()
-        if self.manager.latest_checkpoint:
-            print(Fore.CYAN + "Restored from {}".format(self.manager.latest_checkpoint) + Fore.RESET)
-            if self.manager.latest_checkpoint:
-                status.assert_existing_objects_matched()
-        else:
-            raise RuntimeError("Failed to restore!!!")
-
-        self.state_keys = self.net.state_keys
-        self.action_keys = self.net.action_keys
-
-    def propagate_from_example(self, dataset_element, training=False):
-        return self.net(dataset_element, training=training)
-
-    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
-        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
-        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
-        net_inputs.update(environment)
-        net_inputs = add_batch(net_inputs)
-        net_inputs = make_dict_tf_float32(net_inputs)
-        net_inputs['batch_size'] = 1
-        net_inputs['sequence_length'] = 2
-
-        predictions = self.net(net_inputs, False)
-        predictions = remove_batch(predictions)
-        predictions = dict_of_sequences_to_sequence_of_dicts_tf(predictions)
-
-        return predictions
+    @staticmethod
+    def get_net_class():
+        return ImageCondDynamics
 
 
 model = ImageCondDynamics

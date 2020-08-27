@@ -28,6 +28,25 @@
     0,
     0.04
   ],
+  "objects": [
+    "moving_box1",
+    "moving_box2",
+    "moving_box3",
+    "moving_box4",
+    "moving_box5",
+    "moving_box6",
+    "moving_box7",
+    "moving_box8",
+    "moving_box9"
+  ],
+  "rope_start_extents": [
+    -0.5,
+    0.5,
+    -0.5,
+    0.5,
+    0,
+    0.001
+  ],
   "accept_threshold": 0.5,
   "movable_obstacles": {},
   "goal_threshold": 0.05,

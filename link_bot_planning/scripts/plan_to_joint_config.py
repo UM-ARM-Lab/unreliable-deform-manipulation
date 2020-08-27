@@ -1,8 +1,11 @@
 import argparse
-import rospy
 import json
-from moveit_msgs.msg import MoveGroupAction, MoveGroupGoal, MotionPlanRequest, Constraints, JointConstraint, MoveItErrorCodes
+
 import actionlib
+import rospy
+
+from link_bot_pycommon.moveit_utils import make_moveit_action_goal
+from moveit_msgs.msg import MoveGroupAction, MoveItErrorCodes
 
 
 def main():
@@ -23,19 +26,7 @@ def main():
     positions = config['position']
     names = config['name']
 
-    goal_config_constraint = Constraints()
-    for name, position in zip(names, positions):
-        joint_constraint = JointConstraint()
-        joint_constraint.joint_name = name
-        joint_constraint.position = position
-        goal_config_constraint.joint_constraints.append(joint_constraint)
-
-    req = MotionPlanRequest()
-    req.group_name = 'both_arms'
-    req.goal_constraints.append(goal_config_constraint)
-
-    goal = MoveGroupGoal()
-    goal.request = req
+    goal = make_moveit_action_goal(names, positions)
     client.send_goal(goal)
     client.wait_for_result()
     result = client.get_result()
@@ -43,6 +34,7 @@ def main():
         print("Error! code " + str(result.error_code.val))
     else:
         print("Success!")
+
 
 if __name__ == "__main__":
     main()
