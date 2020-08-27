@@ -564,12 +564,12 @@
         </link>
         
         
-        <joint name="joint_1" type="revolute">
+        <joint name="joint_1" type="revolute2">
             <parent>rope_link_2</parent>
             <child>rope_link_1</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -582,20 +582,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_2" type="revolute">
+        <joint name="joint_2" type="revolute2">
             <parent>rope_link_3</parent>
             <child>rope_link_2</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -608,20 +622,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_3" type="revolute">
+        <joint name="joint_3" type="revolute2">
             <parent>rope_link_4</parent>
             <child>rope_link_3</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -634,20 +662,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_4" type="revolute">
+        <joint name="joint_4" type="revolute2">
             <parent>rope_link_5</parent>
             <child>rope_link_4</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -660,20 +702,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_5" type="revolute">
+        <joint name="joint_5" type="revolute2">
             <parent>rope_link_6</parent>
             <child>rope_link_5</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -686,20 +742,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_6" type="revolute">
+        <joint name="joint_6" type="revolute2">
             <parent>rope_link_7</parent>
             <child>rope_link_6</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -712,20 +782,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_7" type="revolute">
+        <joint name="joint_7" type="revolute2">
             <parent>rope_link_8</parent>
             <child>rope_link_7</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -738,20 +822,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_8" type="revolute">
+        <joint name="joint_8" type="revolute2">
             <parent>rope_link_9</parent>
             <child>rope_link_8</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -764,20 +862,34 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>
         
-        <joint name="joint_9" type="revolute">
+        <joint name="joint_9" type="revolute2">
             <parent>rope_link_10</parent>
             <child>rope_link_9</child>
             <pose>0 0 -0.025 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>1 0 0</xyz>
                 <limit>
                     <lower>-1.0</lower>
                     <upper>1.0</upper>
@@ -790,10 +902,24 @@
                 </dynamics>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
+            <axis2>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1.0</lower>
+                    <upper>1.0</upper>
+                    <effort>10</effort>
+                    <velocity>5</velocity>
+                </limit>
+                <dynamics>
+                    <damping>0.0</damping>
+                    <friction>0</friction>
+                </dynamics>
+            </axis2>
             <physics>
                 <ode>
                     <cfm>0.0001</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
+                    <use_parent_model_frame>1</use_parent_model_frame>
                 </ode>
             </physics>
         </joint>

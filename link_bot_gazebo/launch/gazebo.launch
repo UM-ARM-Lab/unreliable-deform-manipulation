@@ -2,7 +2,7 @@
     <arg name="world"  />
     <arg name="verbose"     default="false"/>
     <arg name="gui"         default="true"/>
-    <arg name="pause"       default="false"/>
+    <arg name="pause"       default="true"/>
     <arg name="debug_gazebo"       default="false"/>
     <arg name="debug_moveit"       default="false"/>
     <arg name="use_victor"      default="false"/>

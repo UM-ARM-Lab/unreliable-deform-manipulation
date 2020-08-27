@@ -112,6 +112,13 @@ add_dependencies(gazebo_ros_tf_plugin ${catkin_EXPORTED_TARGETS})
 target_link_libraries(gazebo_ros_tf_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES})
 target_compile_options(gazebo_ros_tf_plugin PRIVATE ${FLAGS})
 
+add_library(rosparam_plugin plugins/rosparam_plugin.cpp)
+target_include_directories(rosparam_plugin PUBLIC include)
+target_include_directories(rosparam_plugin SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
+add_dependencies(rosparam_plugin ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rosparam_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES} stdc++fs)
+target_compile_options(rosparam_plugin PRIVATE ${FLAGS})
+
 add_library(arm_video_recorder_plugin plugins/arm_video_recorder_plugin.cpp)
 target_include_directories(arm_video_recorder_plugin PUBLIC include)
 target_include_directories(arm_video_recorder_plugin SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})

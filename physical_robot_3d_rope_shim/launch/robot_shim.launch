@@ -6,12 +6,6 @@
     <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
 
     <group if="$(arg use_victor)">
-        <rosparam subst_value="true" param="left_arm_home">
-            [-1.1462081323840563, 1.226658522254759, 2.496373975637866, -0.9015918195233449, -0.6934815434002939, 1.489008421851203, -0.1997030509448301]
-        </rosparam>
-        <rosparam subst_value="true" param="right_arm_home">
-            [-1.995304455498625, -1.217371294047899, -2.148658497914306, 0.9268130437662494, 0.46886492789985645, -1.2886398689514698, 2.035848925520293]
-        </rosparam>
         <!-- Load Victor's URDF, SRDF and other .yaml configuration files on the param server -->
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>

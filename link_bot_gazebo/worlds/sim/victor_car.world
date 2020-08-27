@@ -1,0 +1,83 @@
+<sdf version='1.6'>
+    <world name='default'>
+        <scene>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+            <sky>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
+        <gui>
+            <camera name='user_camera'>
+                <pose frame=''>2.89 -2.13 2.55 0 0.56 2.34</pose>
+            </camera>
+        </gui>
+
+        <physics name="ode" type="ode">
+            <ode>
+                <constraints>
+                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                </constraints>
+            </ode>
+            <max_step_size>0.002</max_step_size>
+            <real_time_update_rate>0</real_time_update_rate>
+        </physics>
+
+        <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
+        <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so">
+            <model_names>victor table</model_names>
+        </plugin>
+        <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
+
+        <include>
+            <uri>model://sun</uri>
+        </include>
+
+        <include>
+            <uri>model://my_ground_plane</uri>
+        </include>
+
+        <include>
+            <name>victor</name>
+            <uri>model://victor</uri>
+            <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
+                <topicName>gazebo/planning_scene</topicName>
+                <robotName>victor</robotName>
+                <frameId>victor_root</frameId>
+                <updatePeriod>0.1</updatePeriod>
+                <scalePrimitivesFactor>1.0</scalePrimitivesFactor>
+                <excludeModels>
+                    collision_sphere
+                    kinematic_rope
+                    debugging_camera
+                </excludeModels>
+            </plugin>
+        </include>
+
+        <include>
+            <pose>0.9 0.4 1.0 0 0 -1.57079632679</pose>
+            <uri>model://kinematic_rope</uri>
+        </include>
+
+        <include>
+            <pose>1 0 1 0 1 0</pose>
+            <uri>model://car_hood</uri>
+        </include>
+
+        <include>
+            <pose>0.8 -0.5 0.4 0 0 0</pose>
+            <uri>model://car_engine2</uri>
+        </include>
+
+        <include>
+            <pose>0.5 0.5 0.4 0 0 0</pose>
+            <uri>model://car_tube_and_tank</uri>
+        </include>
+
+        <include>
+            <uri>model://debugging_camera</uri>
+        </include>
+    </world>
+</sdf>
