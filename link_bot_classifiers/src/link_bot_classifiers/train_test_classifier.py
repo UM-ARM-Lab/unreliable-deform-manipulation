@@ -34,6 +34,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                seed: int,
                checkpoint: Optional[pathlib.Path] = None,
                take: Optional[int] = None,
+               ensemble_idx: Optional[int] = None,
                trials_directory: Optional[pathlib.Path] = None,
                **kwargs):
     ###############
@@ -58,6 +59,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
         trial_path = checkpoint.parent.absolute()
         checkpoint_name = checkpoint.name
     group_name = log if trial_path is None else None
+    if ensemble_idx is not None:
+        group_name = f"{group_name}_{ensemble_idx}"
     trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,
                                                         params=model_hparams,
                                                         trial_path=trial_path,
@@ -79,17 +82,11 @@ def train_main(dataset_dirs: List[pathlib.Path],
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=take)
     val_tf_dataset = val_dataset.get_datasets(mode='val', take=take)
 
-    # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=50, seed=seed, reshuffle_each_iteration=False)
-
     train_tf_dataset = balance(train_tf_dataset)
     val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
-
-    # to mix up batches
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=128, seed=seed, reshuffle_each_iteration=True)
 
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -299,7 +296,8 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
                        batch_size: int,
                        only_errors: bool,
                        **kwargs):
-    stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
+    dynamics_stdev_pub_ = rospy.Publisher("dynamics_stdev", Float32, queue_size=10)
+    classifier_stdev_pub_ = rospy.Publisher("classifier_stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
     traj_idx_pub_ = rospy.Publisher("traj_idx_viz", Float32, queue_size=10)
 
@@ -370,6 +368,12 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
             time_steps = np.arange(test_dataset.horizon)
             scenario.plot_environment_rviz(example)
             anim = RvizAnimationController(time_steps)
+
+            stdev_probabilities[b].numpy().squeeze()
+            classifier_stdev_msg = Float32()
+            classifier_stdev_msg.data = stdev_probabilities[b].numpy().squeeze()
+            classifier_stdev_pub_.publish(classifier_stdev_msg)
+
             while not anim.done:
                 t = anim.t()
                 actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
@@ -381,10 +385,10 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
                 scenario.plot_action_rviz(actual_t, action_t)
                 scenario.plot_is_close(label_t)
 
-                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
-                stdev_msg = Float32()
-                stdev_msg.data = stdev_t
-                stdev_pub_.publish(stdev_msg)
+                dynamics_stdev_t = example[add_predicted('stdev')][t, 0].numpy()
+                dynamics_stdev_msg = Float32()
+                dynamics_stdev_msg.data = dynamics_stdev_t
+                dynamics_stdev_pub_.publish(dynamics_stdev_msg)
 
                 if t > 0:
                     accept_probability_t = mean_predictions['probabilities'][b, t - 1, 0].numpy()

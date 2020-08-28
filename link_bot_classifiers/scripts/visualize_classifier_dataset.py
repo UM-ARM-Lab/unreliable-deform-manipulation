@@ -90,7 +90,7 @@ def visualize_dataset(args, classifier_dataset):
         is_close = example['is_close'].numpy().squeeze()
         count += is_close.shape[0]
 
-        n_close = np.count_nonzero(is_close)
+        n_close = np.count_nonzero(is_close[-1])
         n_far = is_close.shape[0] - n_close
         positive_count += n_close
         negative_count += n_far
