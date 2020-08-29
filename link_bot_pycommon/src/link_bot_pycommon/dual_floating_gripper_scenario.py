@@ -23,8 +23,8 @@ from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify
 from moveit_msgs.msg import MoveGroupAction
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, WorldControlRequest, \
-    SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, SetRopeState, \
+    SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
 from tf import transformations
 
@@ -522,24 +522,36 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def index_predicted_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            state_t[feature_name] = state[add_predicted(feature_name)][:, t]
+            if state[feature_name].ndim == 2:
+                state_t[feature_name] = state[add_predicted(feature_name)][t]
+            else:
+                state_t[feature_name] = state[add_predicted(feature_name)][:, t]
         return state_t
 
     @staticmethod
     def index_state_time(state, t):
         state_t = {}
         for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            state_t[feature_name] = state[feature_name][:, t]
+            if state[feature_name].ndim == 2:
+                state_t[feature_name] = state[feature_name][t]
+            else:
+                state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
     @staticmethod
     def index_action_time(action, t):
         action_t = {}
         for feature_name in ['gripper1_position', 'gripper2_position']:
-            if t < action[feature_name].shape[1]:
-                action_t[feature_name] = action[feature_name][:, t]
+            if action[feature_name].ndim == 2:
+                if t < action[feature_name].shape[0]:
+                    action_t[feature_name] = action[feature_name][t]
+                else:
+                    action_t[feature_name] = action[feature_name][t - 1]
             else:
-                action_t[feature_name] = action[feature_name][:, t - 1]
+                if t < action[feature_name].shape[1]:
+                    action_t[feature_name] = action[feature_name][:, t]
+                else:
+                    action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
 
     @staticmethod

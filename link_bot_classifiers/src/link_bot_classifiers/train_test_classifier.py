@@ -15,7 +15,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.pycommon import paths_to_json
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
 from moonshine.moonshine_utils import (add_batch,
                                        index_dict_of_batched_vectors_tf,
                                        remove_batch,
@@ -322,8 +322,8 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
     all_accuracies_over_time = []
     all_stdevs = []
     all_labels = []
+    classifier_ensemble_stdevs = []
     for batch_idx, test_batch in enumerate(test_tf_dataset):
-        print(batch_idx)
         test_batch.update(test_dataset.batch_metadata)
 
         mean_predictions, stdev_predictions = model.check_constraint_from_example(test_batch)
@@ -346,7 +346,8 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
         for b in range(batch_size):
             example = index_dict_of_batched_vectors_tf(test_batch, b)
 
-            print('classifier ensemble stdev', stdev_probabilities[b].numpy().squeeze())
+            classifier_ensemble_stdev = stdev_probabilities[b].numpy().squeeze()
+            classifier_ensemble_stdevs.append(classifier_ensemble_stdev)
 
             # if the classifier is correct at all time steps, ignore
             if only_errors and tf.reduce_all(classifier_is_correct[b]):
@@ -365,65 +366,47 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
             # if not (in_collision and accept):
             #     continue
 
-            time_steps = np.arange(test_dataset.horizon)
             scenario.plot_environment_rviz(example)
-            anim = RvizAnimationController(time_steps)
 
             stdev_probabilities[b].numpy().squeeze()
             classifier_stdev_msg = Float32()
             classifier_stdev_msg.data = stdev_probabilities[b].numpy().squeeze()
             classifier_stdev_pub_.publish(classifier_stdev_msg)
 
-            while not anim.done:
-                t = anim.t()
-                actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
-                pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
-                action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
-                label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
-                scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
-                scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
-                scenario.plot_action_rviz(actual_t, action_t)
-                scenario.plot_is_close(label_t)
+            actual_0 = scenario.index_state_time(example, 0)
+            actual_1 = scenario.index_state_time(example, 1)
+            pred_0 = scenario.index_predicted_state_time(example, 0)
+            pred_1 = scenario.index_predicted_state_time(example, 1)
+            action = scenario.index_action_time(example, 0)
+            label = example['is_close'][1]
+            scenario.plot_state_rviz(actual_0, label='actual', color='#FF0000AA', idx=0)
+            scenario.plot_state_rviz(actual_1, label='actual', color='#E00016AA', idx=1)
+            scenario.plot_state_rviz(pred_0, label='predicted', color='#0000FFAA', idx=0)
+            scenario.plot_state_rviz(pred_1, label='predicted', color='#0553FAAA', idx=1)
+            scenario.plot_action_rviz(pred_0, action)
+            scenario.plot_is_close(label)
 
-                dynamics_stdev_t = example[add_predicted('stdev')][t, 0].numpy()
-                dynamics_stdev_msg = Float32()
-                dynamics_stdev_msg.data = dynamics_stdev_t
-                dynamics_stdev_pub_.publish(dynamics_stdev_msg)
+            dynamics_stdev_t = example[add_predicted('stdev')][1, 0].numpy()
+            dynamics_stdev_msg = Float32()
+            dynamics_stdev_msg.data = dynamics_stdev_t
+            dynamics_stdev_pub_.publish(dynamics_stdev_msg)
 
-                if t > 0:
-                    accept_probability_t = mean_predictions['probabilities'][b, t - 1, 0].numpy()
-                else:
-                    accept_probability_t = -999
-                accept_probability_msg = Float32()
-                accept_probability_msg.data = accept_probability_t
-                accept_probability_pub_.publish(accept_probability_msg)
+            accept_probability_t = mean_probabilities[b, 0, 0].numpy()
+            accept_probability_msg = Float32()
+            accept_probability_msg.data = accept_probability_t
+            accept_probability_pub_.publish(accept_probability_msg)
 
-                traj_idx_msg = Float32()
-                traj_idx_msg.data = batch_idx * batch_size + b
-                traj_idx_pub_.publish(traj_idx_msg)
+            traj_idx_msg = Float32()
+            traj_idx_msg.data = batch_idx * batch_size + b
+            traj_idx_pub_.publish(traj_idx_msg)
 
-                # this will return when either the animation is "playing" or because the user stepped forward
-                anim.step()
+            # stepper = RvizSimpleStepper()
+            # stepper.step()
+
+        print(np.mean(classifier_ensemble_stdevs))
 
     all_accuracies_over_time = tf.concat(all_accuracies_over_time, axis=0)
     mean_accuracies_over_time = tf.reduce_mean(all_accuracies_over_time, axis=0)
     std_accuracies_over_time = tf.math.reduce_std(all_accuracies_over_time, axis=0)
-
-    import matplotlib.pyplot as plt
-    plt.style.use("slides")
-    time_steps = np.arange(1, test_dataset.horizon)
-    plt.plot(time_steps, mean_accuracies_over_time, label='mean', color='r')
-    plt.plot(time_steps, mean_accuracies_over_time - std_accuracies_over_time, color='orange', alpha=0.5)
-    plt.plot(time_steps, mean_accuracies_over_time + std_accuracies_over_time, color='orange', alpha=0.5)
-    plt.fill_between(time_steps,
-                     mean_accuracies_over_time - std_accuracies_over_time,
-                     mean_accuracies_over_time + std_accuracies_over_time,
-                     label="68% confidence interval",
-                     color='r',
-                     alpha=0.3)
-    plt.ylim(0, 1.05)
-    plt.title("classifier accuracy versus horizon")
-    plt.xlabel("time step")
-    plt.ylabel("accuracy")
-    plt.legend()
-    plt.show()
+    mean_classifier_ensemble_stdev = tf.reduce_mean(classifier_ensemble_stdevs)
+    print(mean_classifier_ensemble_stdev)
