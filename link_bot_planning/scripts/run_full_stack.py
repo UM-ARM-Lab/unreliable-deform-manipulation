@@ -41,9 +41,9 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
 
-        # self.service_provider.launch({
-        #     "world_filename": collect_dynamics_1['world_filename']
-        # })
+        self.service_provider.launch({
+            "world_filename": collect_dynamics_1['world_filename']
+        })
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -52,7 +52,7 @@ class FullStackRunner:
                                        verbose=0)
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'], nickname=self.unique_nickname)
 
-        # self.service_provider.kill()
+        self.service_provider.kill()
 
         files_dataset.split()
         return files_dataset.root_dir
@@ -113,7 +113,7 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
 
-        # self.service_provider.launch()
+        self.service_provider.launch()
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -122,7 +122,7 @@ class FullStackRunner:
                                        verbose=0)
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'], nickname=self.unique_nickname)
 
-        # self.service_provider.kill()
+        self.service_provider.kill()
 
         files_dataset.split()
         return files_dataset.root_dir
