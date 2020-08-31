@@ -1,26 +1,29 @@
-from time import time
 from typing import Dict
 
 import rospy
-from geometry_msgs.msg import Pose
-from std_srvs.srv import Empty
-
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
-from peter_msgs.srv import ComputeOccupancy, WorldControl, GetObjects, StateSpaceDescription, StateSpaceDescriptionRequest
+from geometry_msgs.msg import Pose
+from peter_msgs.srv import ComputeOccupancy, WorldControl
+from std_srvs.srv import Empty
 
 
 class BaseServices:
 
     def __init__(self):
+        self.service_names = []
+
+        self.world_control = self.add_required_service('world_control', WorldControl)
+        self.get_physics = self.add_required_service('gazebo/get_physics_properties', GetPhysicsProperties)
+        self.set_physics = self.add_required_service('gazebo/set_physics_properties', SetPhysicsProperties)
+
+        # services we don't absolute want to wait for on startup
         self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
-        self.world_control = rospy.ServiceProxy('world_control', WorldControl)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
-        self.reset = rospy.ServiceProxy("reset", Empty)
-        self.get_objects = rospy.ServiceProxy("objects", GetObjects)
-        self.states_description = rospy.ServiceProxy("states_description", StateSpaceDescription)
-        self.get_physics = rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = rospy.ServiceProxy('gazebo/set_physics_properties', SetPhysicsProperties)
+
+    def wait_for_services(self):
+        for service_name in self.service_names:
+            rospy.wait_for_service(service_name, timeout=5)
 
     def launch(self, params):
         pass
@@ -30,14 +33,6 @@ class BaseServices:
 
     def move_objects(self, object_moves: Dict[str, Pose]):
         pass
-
-    def get_states_description(self):
-        request = StateSpaceDescriptionRequest()
-        states_response = self.states_description(request)
-        states_dict = {}
-        for subspace in states_response.subspaces:
-            states_dict[subspace.name] = subspace.dimensions
-        return states_dict
 
     def start_record_trial(self, filename):
         start_msg = TriggerVideoRecordingRequest()
@@ -53,3 +48,7 @@ class BaseServices:
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         raise NotImplementedError()
+
+    def add_required_service(self, service_name, service_type):
+        self.service_names.append(service_name)
+        return rospy.ServiceProxy(service_name, service_type)

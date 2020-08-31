@@ -5,7 +5,6 @@ from typing import Dict
 
 import tensorflow as tf
 import tensorflow.keras.layers as layers
-import tensorflow_probability as tfp
 from colorama import Fore
 from tensorflow import keras
 from tensorflow_probability import distributions as tfd
@@ -15,8 +14,8 @@ from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import classifier_losses_and_metrics
 from moonshine.get_local_environment import get_local_env_and_origin_2d_tf as get_local_env
-from moonshine.raster_2d import raster_2d
 from moonshine.moonshine_utils import add_batch, remove_batch, numpify
+from moonshine.raster_2d import raster_2d
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
@@ -154,7 +153,8 @@ class RNNRecoveryModel(MyKerasModel):
         actions = input_dict['action']
         initial_c = tf.zeros([batch_size, self.hparams['rnn_size']], dtype=tf.float32)
         # the first element in the mask doesn't mean we should ignore the first action
-        out_h, _, _ = self.rnn(inputs=actions, mask=input_dict['mask'], training=training, initial_state=[initial_h, initial_c])
+        out_h, _, _ = self.rnn(inputs=actions, mask=input_dict['mask'], training=training,
+                               initial_state=[initial_h, initial_c])
 
         # for every time step's output, map down to several vectors representing the parameters defining the mixture of gaussians
         # ignore the last output because it's not used in evaluating the likelihood of the action sequence
@@ -190,7 +190,8 @@ class RNNRecoveryModel(MyKerasModel):
     def h_to_parameters(self, out_h, batch_size, time):
         means = tf.reshape(self.means_layer(out_h), [batch_size, time, self.n_mixture_components, -1])
         covariances = tf.reshape(self.covariances_layer(out_h), [batch_size, time, self.n_mixture_components, -1])
-        component_weights = tf.reshape(self.mixture_components_layer(out_h), [batch_size, time, self.n_mixture_components, -1])
+        component_weights = tf.reshape(self.mixture_components_layer(out_h),
+                                       [batch_size, time, self.n_mixture_components, -1])
         return component_weights, covariances, means
 
     def state_encoder(self, input_dict, batch_size, training):

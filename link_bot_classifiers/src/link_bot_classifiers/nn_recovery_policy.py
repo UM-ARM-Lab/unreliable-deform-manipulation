@@ -1,31 +1,26 @@
 #!/usr/bin/env python
 import json
 import pathlib
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
-from matplotlib import cm
-import rospy
 import tensorflow as tf
 from colorama import Fore
-from moonshine.moonshine_utils import numpify, index_dict_of_batched_vectors_tf
-from link_bot_pycommon.pycommon import log_scale_0_to_1
-from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE, add_predicted
+from tensorflow import keras
+from tensorflow.keras import layers
+
+import rospy
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, compute_extent_3d, extent_to_env_size, batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
+from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, \
+    batch_point_to_idx_tf_3d_in_batched_envs
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import add_batch
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.my_keras_model import MyKerasModel
-from tensorflow import keras
-from tensorflow_core.python.keras import layers
-from visualization_msgs.msg import Marker
 
 
 class NNRecoveryModel(MyKerasModel):
@@ -201,7 +196,7 @@ class NNRecoveryModel(MyKerasModel):
         loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
         # larget recovery_probability examples are weighted higher because there are so few of them
         # when y_true is 1 this term goes to infinity (high weighting), when y_true is 0 it equals 1 (normal weighting)
-        l = tf.math.divide_no_nan(-1.0, y_true-1)
+        l = tf.math.divide_no_nan(-1.0, y_true - 1)
         loss = loss * l
         return {
             'loss': tf.reduce_mean(loss)
@@ -261,7 +256,8 @@ class NNRecoveryModel(MyKerasModel):
 
 class NNRecoveryPolicy(BaseRecoveryPolicy):
 
-    def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario, rng: np.random.RandomState):
+    def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario,
+                 rng: np.random.RandomState):
         super().__init__(hparams, model_dir, scenario, rng)
         self.model_dir = model_dir
         self.scenario = scenario

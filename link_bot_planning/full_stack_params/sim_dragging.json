@@ -6,7 +6,13 @@
     "world_filename": "sim/dragging_no_obs.world",
     "scenario": "dragging",
     "params": "collect_dynamics_params/dragging_no_obs.json",
-    "n_trajs": 1024
+    "n_trajs": 16
+  },
+  "collect_dynamics_2": {
+    "world_filename": "sim/dragging_obs.world",
+    "scenario": "dragging",
+    "params": "collect_dynamics_params/dragging_obs.json",
+    "n_trajs": 16
   },
   "learn_dynamics": {
     "scenario": "dragging",
@@ -15,11 +21,6 @@
     "forward_model_hparams": "hparams/unconstrained_dynamics/dragging_no_obs.json",
     "n_ensemble": 4,
     "evaluate": true
-  },
-  "collect_dynamics_2": {
-    "scenario": "dragging",
-    "params": "collect_dynamics_params/dragging_obs.json",
-    "n_trajs": 256
   },
   "learn_full_dynamics": {
     "scenario": "dragging",

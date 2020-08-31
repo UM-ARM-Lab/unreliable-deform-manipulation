@@ -7,9 +7,9 @@ import time
 from typing import Dict, List
 
 import rospkg
-import rospy
 from colorama import Fore
 
+import rospy
 from link_bot_classifiers import train_test_classifier, train_test_recovery
 from link_bot_data.base_collect_dynamics_data import DataCollector
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset
@@ -50,7 +50,37 @@ class FullStackRunner:
                                        params=collect_dynamics_data_params,
                                        seed=seed,
                                        verbose=0)
-        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'], nickname=self.unique_nickname)
+        dynamics_data_1_nickname = self.unique_nickname + '_phase1'
+        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'],
+                                                    nickname=dynamics_data_1_nickname)
+
+        self.service_provider.kill()
+
+        files_dataset.split()
+        return files_dataset.root_dir
+
+    def collect_dynamics_data_2(self, seed: int):
+        collect_dynamics_2 = self.full_stack_params['collect_dynamics_2']
+        scenario = collect_dynamics_2['scenario']
+        collect_dynamics_data_params_filename = pathlib.Path(collect_dynamics_2['params'])
+        link_bot_data_path = pathlib.Path(r.get_path('link_bot_data'))
+        full_collect_dynamics_data_params_filename = link_bot_data_path / collect_dynamics_data_params_filename
+
+        with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
+            collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
+
+        self.service_provider.launch({
+            "world_filename": collect_dynamics_2['world_filename']
+        })
+
+        data_collector = DataCollector(scenario_name=scenario,
+                                       service_provider=self.service_provider,
+                                       params=collect_dynamics_data_params,
+                                       seed=seed,
+                                       verbose=0)
+        dynamics_data_2_nickname = self.unique_nickname + '_phase2'
+        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'],
+                                                    nickname=dynamics_data_2_nickname)
 
         self.service_provider.kill()
 
@@ -102,30 +132,6 @@ class FullStackRunner:
             trial_paths.append(trial_path)
 
         return trial_paths
-
-    def collect_dynamics_data_2(self, seed: int):
-        collect_dynamics_2 = self.full_stack_params['collect_dynamics_2']
-        scenario = collect_dynamics_2['scenario']
-        collect_dynamics_data_params_filename = pathlib.Path(collect_dynamics_2['params'])
-        link_bot_data_path = pathlib.Path(r.get_path('link_bot_data'))
-        full_collect_dynamics_data_params_filename = link_bot_data_path / collect_dynamics_data_params_filename
-
-        with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
-            collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
-
-        self.service_provider.launch()
-
-        data_collector = DataCollector(scenario_name=scenario,
-                                       service_provider=self.service_provider,
-                                       params=collect_dynamics_data_params,
-                                       seed=seed,
-                                       verbose=0)
-        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'], nickname=self.unique_nickname)
-
-        self.service_provider.kill()
-
-        files_dataset.split()
-        return files_dataset.root_dir
 
     def make_classifier_dataset(self, dynamics_dataset2, fwd_model_dirs: List):
         make_classifier_dataset_params = self.full_stack_params['make_classifier_dataset']
@@ -247,13 +253,13 @@ def main():
 
     fsr = FullStackRunner(full_stack_params)
     seed = full_stack_params['seed']
-    # dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
-    dynamics_dataset_dir1 =  pathlib.Path('fwd_model_data/sim_dual_1598545692_1598545692_a2ff765094_5120')
+    dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
+    # dynamics_dataset_dir1 = pathlib.Path('fwd_model_data/sim_dual_1598545692_1598545692_a2ff765094_5120')
 
-    # dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
+    dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
     # dynamics_dataset_dir2 = pathlib.Path("fwd_model_data/sim_dragging_1598401518_1598407606_a2ff765094_256")
 
-    fwd_model_dirs = fsr.learn_dynamics(seed, dynamics_dataset_dir1)
+    # fwd_model_dirs = fsr.learn_dynamics(seed, dynamics_dataset_dir1)
 
     # fwd_model_dirs = [
     #     pathlib.Path('dy_trials/sim_dragging_1598410160_0/August_25_22-49-20_a2ff765094'),

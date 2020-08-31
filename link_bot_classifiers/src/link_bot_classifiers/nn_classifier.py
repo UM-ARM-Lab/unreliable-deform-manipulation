@@ -6,7 +6,7 @@ import rospy
 import tensorflow as tf
 from colorama import Fore
 from tensorflow import keras
-from tensorflow_core.python.keras import layers
+from tensorflow.keras import layers
 
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker

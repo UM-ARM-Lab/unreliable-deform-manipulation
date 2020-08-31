@@ -1,4 +1,5 @@
 import roslaunch
+import rospy
 
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.base_services import BaseServices
@@ -17,16 +18,19 @@ class GazeboServices(BaseServices):
         roslaunch.configure_logging(uuid)
         roslaunch_args = ['link_bot_gazebo', 'gazebo.launch', f'world:={world_filename}']
 
-        roslaunch_file1 = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)
-        roslaunch_args1 = roslaunch_args[2:]
+        roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
+        roslaunch_args = roslaunch_args[2:]
 
-        launch_files = [(roslaunch_file1, roslaunch_args1)]
+        launch_info = [(roslaunch_file, roslaunch_args)]
 
-        self.gazebo_process = roslaunch.parent.ROSLaunchParent(uuid, launch_files)
+        self.gazebo_process = roslaunch.parent.ROSLaunchParent(uuid, launch_info)
         self.gazebo_process.start()
 
+        # wait until services are available before returning
+        self.wait_for_services()
+
     def kill(self):
-        self.gazebo_process.terminate()
+        self.gazebo_process.shutdown()
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         # set up physics

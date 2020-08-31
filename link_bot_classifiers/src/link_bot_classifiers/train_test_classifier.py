@@ -5,17 +5,16 @@ import time
 from typing import List, Optional
 
 import numpy as np
-import rospy
 import tensorflow as tf
-from std_msgs.msg import Float32
 
 import link_bot_classifiers
+import rospy
 from link_bot_classifiers.classifier_utils import load_generic_model
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.pycommon import paths_to_json
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import (add_batch,
                                        index_dict_of_batched_vectors_tf,
                                        remove_batch,
@@ -24,6 +23,7 @@ from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
+from std_msgs.msg import Float32
 
 
 def train_main(dataset_dirs: List[pathlib.Path],
