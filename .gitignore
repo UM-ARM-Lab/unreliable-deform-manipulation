@@ -1,4 +1,6 @@
 *.swp
+.idea
+nohup.out
 trial
 cl_trials
 *.tar.gz

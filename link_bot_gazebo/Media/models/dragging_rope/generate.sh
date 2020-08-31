@@ -1,0 +1,1 @@
+n_links=10 mass=0.5 length=0.5 radius=0.02 erb dragging_rope.erb > dragging_rope.sdf
