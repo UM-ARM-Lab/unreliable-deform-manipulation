@@ -2,23 +2,27 @@
 import pathlib
 from typing import Dict, List, Optional
 
-import rospy
 import tensorflow as tf
 from colorama import Fore
 from tensorflow import keras
 from tensorflow.keras import layers
 
+import rospy
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
+from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, \
+    batch_point_to_idx_tf_3d_in_batched_envs, environment_to_occupancy_msg, grid_to_bbox
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
+from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
 from moonshine import classifier_losses_and_metrics
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors, numpify, \
+    index_dict_of_batched_vectors_tf
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.model.filepath_tools import load_trial
@@ -92,20 +96,10 @@ class NNClassifier(MyKerasModel):
         pixel_indices = tf.expand_dims(pixel_indices, axis=0)
         pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
-        # # DEBUG
-        # b = 0
-        # # plot the occupancy grid
-        # time_steps = np.arange(time)
-        # anim = RvizAnimationController(time_steps)
-        # b = 0
-        # full_env_dict = {
-        #     'env': input_dict['env'][b],
-        #     'origin': input_dict['origin'][b],
-        #     'res': input_dict['res'][b],
-        #     'extent': input_dict['extent'][b],
-        # }
-        # self.scenario.plot_environment_rviz(full_env_dict)
-        # # END DEBUG
+        # DEBUG
+        stepper = RvizSimpleStepper()
+        example = index_dict_of_batched_vectors_tf(input_dict, 0)
+        # END DEBUG
 
         conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
         for t in tf.range(time):
@@ -140,56 +134,41 @@ class NNClassifier(MyKerasModel):
                                                        c=self.local_env_c_channels,
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
-                # # DEBUG
-                # raster_dict = {
-                #     'env': tf.clip_by_value(state_component_voxel_grid[b], 0, 1),
-                #     'origin': local_env_origin_t[b].numpy(),
-                #     'res': input_dict['res'][b].numpy(),
-                # }
-                # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
-                # self.raster_debug_pubs[i].publish(raster_msg)
-                # # END  DEBUG
+                # DEBUG
+                raster_dict = {
+                    'env': tf.clip_by_value(state_component_voxel_grid[0], 0, 1),
+                    'origin': local_env_origin_t[0].numpy(),
+                    'res': input_dict['res'][0].numpy(),
+                }
+                raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
+                self.raster_debug_pubs[i].publish(raster_msg)
+                # END  DEBUG
 
                 local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
             local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
             # add channel dimension information because tf.function erases it somehow...
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
-            # # DEBUG
-            # local_env_dict = {
-            #     'env': local_env_t[b],
-            #     'origin': local_env_origin_t[b].numpy(),
-            #     'res': input_dict['res'][b].numpy(),
-            # }
-            # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
-            # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
-            # self.debug_pub.publish(msg)
-            # pred state
+            # DEBUG
+            local_env_dict = {
+                'env': local_env_t[0],
+                'origin': local_env_origin_t[0].numpy(),
+                'res': input_dict['res'][0].numpy(),
+            }
+            msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
+            link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
+            self.debug_pub.publish(msg)
 
-            # debugging_s_t = {k: input_dict[add_predicted(k)][b, t] for k in self.state_keys}
-            # self.scenario.plot_state_rviz(debugging_s_t, label='predicted', color='b')
-            # true state(not known to classifier!)
-            # debugging_true_state_t = numpify({k: input_dict[k][b, t] for k in self.state_keys})
-            # self.scenario.plot_state_rviz(debugging_true_state_t, label='actual')
-            # if t < time - 1:
-            #     debuggin_action_t = numpify({k: input_dict[k][b, t] for k in self.action_keys})
-            #     self.scenario.plot_action_rviz(debugging_s_t, debuggin_action_t)
-            # label_t = input_dict['is_close'][b, t]
-            # self.scenario.plot_is_close(label_t)
-            # local_extent = compute_extent_3d(*local_voxel_grid_t[b].shape[:3], resolution=input_dict['res'][b].numpy())
-            # depth, width, height = extent_to_env_size(local_extent)
-            # bbox_msg = BoundingBox()
-            # bbox_msg.header.frame_id = 'local_occupancy'
-            # bbox_msg.pose.position.x = width / 2
-            # bbox_msg.pose.position.y = depth / 2
-            # bbox_msg.pose.position.z = height / 2
-            # bbox_msg.dimensions.x = width
-            # bbox_msg.dimensions.y = depth
-            # bbox_msg.dimensions.z = height
-            # self.local_env_bbox_pub.publish(bbox_msg)
+            self.scenario.plot_transition_rviz(example, t)
+            bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
+                                    cols=self.local_env_w_cols,
+                                    channels=self.local_env_c_channels,
+                                    resolution=example['res'].numpy())
+            bbox_msg.header.frame_id = 'local_occupancy'
+            self.local_env_bbox_pub.publish(bbox_msg)
 
-            # # anim.step()
-            # # END DEBUG
+            stepper.step()
+            # END DEBUG
 
             conv_z = local_voxel_grid_t
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
@@ -301,8 +280,8 @@ class NNClassifierWrapper(BaseConstraintChecker):
     def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
         predictions = [net(example, training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
-        mean_predictions = {k : tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}
-        stdev_predictions = {k : tf.math.reduce_std(v, axis=0) for k, v in predictions_dict.items()}
+        mean_predictions = {k: tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}
+        stdev_predictions = {k: tf.math.reduce_std(v, axis=0) for k, v in predictions_dict.items()}
         return mean_predictions, stdev_predictions
 
     def check_constraint_batched_tf(self,

@@ -1,6 +1,7 @@
 from typing import Dict
 
 import rospy
+from time import sleep
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
@@ -23,7 +24,8 @@ class BaseServices:
 
     def wait_for_services(self):
         for service_name in self.service_names:
-            rospy.wait_for_service(service_name, timeout=5)
+            rospy.wait_for_service(service_name, timeout=60)
+        sleep(30)
 
     def launch(self, params):
         pass

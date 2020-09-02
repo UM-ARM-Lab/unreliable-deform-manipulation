@@ -24,13 +24,14 @@ def main():
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
-    parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataste')
-    parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataste')
+    parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataset')
+    parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataset')
+    parser.add_argument('--yes', '-y', action='store_true')
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
     args = parser.parse_args()
 
-    success = mkdir_and_ask(args.out_dir, parents=True)
+    success = mkdir_and_ask(args.out_dir, parents=True, yes=args.yes)
     if not success:
         print(Fore.RED + "Aborting" + Fore.RESET)
         return

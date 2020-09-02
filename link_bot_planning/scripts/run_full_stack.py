@@ -50,7 +50,8 @@ class FullStackRunner:
                                        params=collect_dynamics_data_params,
                                        seed=seed,
                                        verbose=0)
-        dynamics_data_1_nickname = self.unique_nickname + '_phase1'
+        dynamics_data_1_nickname = self.nickname + '_phase1'
+        # this function will add a time stamp/git hash to the nickname
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'],
                                                     nickname=dynamics_data_1_nickname)
 
@@ -78,7 +79,7 @@ class FullStackRunner:
                                        params=collect_dynamics_data_params,
                                        seed=seed,
                                        verbose=0)
-        dynamics_data_2_nickname = self.unique_nickname + '_phase2'
+        dynamics_data_2_nickname = self.nickname + '_phase2'
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'],
                                                     nickname=dynamics_data_2_nickname)
 
@@ -136,7 +137,10 @@ class FullStackRunner:
     def make_classifier_dataset(self, dynamics_dataset2, fwd_model_dirs: List):
         make_classifier_dataset_params = self.full_stack_params['make_classifier_dataset']
         labeling_params = pathlib.Path(make_classifier_dataset_params['labeling_params'])
-        outdir = pathlib.Path('classifier_data') / self.unique_nickname
+
+        classifier_data_dir = pathlib.Path('classifier_data')
+        classifier_data_dir.mkdir(exist_ok=True)
+        outdir = classifier_data_dir / self.unique_nickname
         outdir.mkdir(exist_ok=True, parents=False)
         classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset2,
                                                          fwd_model_dir=fwd_model_dirs,
@@ -211,15 +215,15 @@ class FullStackRunner:
                 planner_params = json.load(planners_params_common_file)
             if method_name == "classifier":
                 method_fwd_model_dirs = [d / 'best_checkpoint' for d in fwd_model_dirs]
-                method_classifier_model_dir = classifier_model_dir / 'best_checkpoint'
+                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
                 recovery = {'use_recovery': False}
             elif method_name == "no_classifier":
                 method_fwd_model_dirs = [d / 'best_checkpoint' for d in fwd_model_dirs]
-                method_classifier_model_dir = 'cl_trials/none_baseline/none'
+                method_classifier_model_dir = ['cl_trials/none_baseline/none']
                 recovery = {'use_recovery': False}
             elif method_name == "full_dynamics":
                 method_fwd_model_dirs = [d / 'best_checkpoint' for d in full_dynamics_model_dirs]
-                method_classifier_model_dir = 'cl_trials/none_baseline/none'
+                method_classifier_model_dir = ['cl_trials/none_baseline/none']
                 recovery = {'use_recovery': False}
             else:
                 # recovery = {
@@ -231,11 +235,18 @@ class FullStackRunner:
             planner_params['recovery'] = recovery
             planners_params.append((method_name, planner_params))
 
+        self.service_provider.launch({
+            "world_filename": planning_evaluation_params['world_filename']
+        })
+
         root = planning_module_path / 'results' / self.unique_nickname
         outdir = planning_evaluation(root=root,
                                      planners_params=planners_params,
                                      trials=trials,
                                      skip_on_exception=False)
+
+        self.service_provider.kill()
+
         print(Fore.GREEN + outdir.as_posix() + Fore.RESET)
         return outdir
 
@@ -253,36 +264,36 @@ def main():
 
     fsr = FullStackRunner(full_stack_params)
     seed = full_stack_params['seed']
-    dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
-    # dynamics_dataset_dir1 = pathlib.Path('fwd_model_data/sim_dual_1598545692_1598545692_a2ff765094_5120')
+    # dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
+    dynamics_dataset_dir1 = pathlib.Path('fwd_model_data/sim_dragging_1598931027_phase1_1598931029_a30858efbf_1024')
 
-    dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
-    # dynamics_dataset_dir2 = pathlib.Path("fwd_model_data/sim_dragging_1598401518_1598407606_a2ff765094_256")
-
+    # dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
+    dynamics_dataset_dir2 = pathlib.Path("sim_dragging_1598931464_phase2_1598931504_a30858efbf_1024")
+    #
     # fwd_model_dirs = fsr.learn_dynamics(seed, dynamics_dataset_dir1)
 
-    # fwd_model_dirs = [
-    #     pathlib.Path('dy_trials/sim_dragging_1598410160_0/August_25_22-49-20_a2ff765094'),
-    #     pathlib.Path('dy_trials/sim_dragging_1598410160_1/August_25_22-53-36_a2ff765094'),
-    #     pathlib.Path('dy_trials/sim_dragging_1598410160_2/August_25_22-57-44_a2ff765094'),
-    #     pathlib.Path('dy_trials/sim_dragging_1598410160_3/August_25_23-01-52_a2ff765094')
-    # ]
+    fwd_model_dirs = [
+        pathlib.Path('dy_trials/sim_dragging_1598917127_0/August_31_19-38-47_a30858efbf/'),
+        pathlib.Path('dy_trials/sim_dragging_1598917127_1/August_31_19-41-25_a30858efbf/'),
+        pathlib.Path('dy_trials/sim_dragging_1598917127_2/August_31_19-43-57_a30858efbf/'),
+        pathlib.Path('dy_trials/sim_dragging_1598917127_3/August_31_19-46-30_a30858efbf/'),
+    ]
 
-    # full_dynamics_model_dirs = fsr.learn_full_dynamics(seed, dynamics_dataset_dir2)
-    # full_dynamics_model_dirs = [pathlib.Path("dy_trials/sim_dragging_1598410160_full_0")]
+    full_dynamics_model_dirs = fsr.learn_full_dynamics(seed, dynamics_dataset_dir2)
+    # full_dynamics_model_dirs = [pathlib.Path("dy_trials/sim_dragging_1598917127_full_0/August_31_19-49-02_a30858efbf")]
 
-    # classifier_dataset_dir = fsr.make_classifier_dataset(dynamics_dataset_dir2, fwd_model_dirs)
+    classifier_dataset_dir = fsr.make_classifier_dataset(dynamics_dataset_dir2, fwd_model_dirs)
     # classifier_dataset_dir = pathlib.Path("cl_trials/sim_dragging_1598410160")
-    # classifier_model_dir = fsr.learn_classifier(classifier_dataset_dir, seed)
+    classifier_model_dir = fsr.learn_classifier(classifier_dataset_dir, seed)
     # classifier_model_dir = pathlib.Path("cl_trials/sim_dragging_1598410160/August_25_23-24-14_a2ff765094")
 
     # recovery_dataset_dir = fsr.make_recovery_dataset(dynamics_dataset_dir2, fwd_model_dirs, classifier_model_dir)
     # recovery_dataset_dir = pathlib.Path("recovery_data/sim_dragging_1598300547")
     # recovery_model_dir = fsr.learn_recovery(recovery_dataset_dir, classifier_model_dir, seed)
     # recovery_model_dir = pathlib.Path("recovery_trials/sim_dragging_1598303937/August_24_17-19-01_8e29609f92")
-    # recovery_model_dir = None
+    recovery_model_dir = None
 
-    # fsr.planning_evaluation(fwd_model_dirs, full_dynamics_model_dirs, classifier_model_dir, recovery_model_dir)
+    fsr.planning_evaluation(fwd_model_dirs, full_dynamics_model_dirs, classifier_model_dir, recovery_model_dir)
 
 
 if __name__ == '__main__':

@@ -76,6 +76,10 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          restore_from_name=checkpoint_name,
+                         mid_epoch_val_batches=100,
+                         val_every_n_batches=1000,
+                         save_every_n_minutes=20,
+                         validate_first=True,
                          batch_metadata=train_dataset.batch_metadata)
 
     # Dataset preprocessing
@@ -231,15 +235,10 @@ def eval_main(dataset_dirs: List[pathlib.Path],
             anim = RvizAnimationController(time_steps)
             while not anim.done:
                 t = anim.t()
-                actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
-                pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
-                action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
-                label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
-                scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
-                scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
-                scenario.plot_action_rviz(actual_t, action_t)
-                scenario.plot_is_close(label_t)
+                # use scenario plot transition function here
+                scenario.plot_transition_rviz(example, t)
 
+                # TODO: reconsider where this goes, see visualize_classifier_dataset.py
                 stdev_t = example[add_predicted('stdev')][t, 0].numpy()
                 stdev_msg = Float32()
                 stdev_msg.data = stdev_t

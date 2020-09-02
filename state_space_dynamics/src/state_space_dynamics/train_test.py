@@ -117,8 +117,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     all_errors = None
     for batch in test_tf_dataset:
         outputs = runner.model(batch, training=False)
-        zs = tf.reshape(batch['link_bot'], [-1, 3])[:, 2]
-        errors_for_batch = tf.linalg.norm(outputs['link_bot'] - batch['link_bot'], axis=2)
+        errors_for_batch = tf.linalg.norm(outputs['rope'] - batch['rope'], axis=2)
         if all_errors is not None:
             all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
         else:

@@ -1,11 +1,13 @@
 from typing import Dict
 
 import numpy as np
+
 import rospy
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Int64, Float32
-
+from link_bot_data.link_bot_dataset_utils import add_predicted
+from moonshine.moonshine_utils import numpify
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
+from std_msgs.msg import Int64, Float32
 
 
 class ExperimentScenario:
@@ -140,7 +142,8 @@ class ExperimentScenario:
             positions[object_name] = position_response
         return positions
 
-    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool, timeout: float = 0.5):
+    def move_objects_randomly(self, env_rng, movable_objects_services, movable_objects, kinematic: bool,
+                              timeout: float = 0.5):
         random_object_positions = sample_object_positions(env_rng, movable_objects)
         if kinematic:
             raise NotImplementedError()
@@ -189,7 +192,8 @@ class ExperimentScenario:
         move_action_req.timeout = timeout
         movable_object_services['move'](move_action_req)
 
-    def states_description(self) -> Dict:
+    @staticmethod
+    def states_description() -> Dict:
         raise NotImplementedError()
 
     @staticmethod
@@ -203,21 +207,49 @@ class ExperimentScenario:
     def get_state(self):
         raise NotImplementedError()
 
-    @staticmethod
-    def index_state_time(state: Dict, t: int):
-        raise NotImplementedError()
+    def index_predicted_state_time(self, state, t):
+        state_t = {}
+        for feature_name in self.states_description().keys():
+            if state[feature_name].ndim == 2:
+                state_t[feature_name] = state[add_predicted(feature_name)][t]
+            else:
+                state_t[feature_name] = state[add_predicted(feature_name)][:, t]
+        return state_t
 
-    @staticmethod
-    def index_predicted_state_time(state: Dict, t: int):
-        raise NotImplementedError()
+    def index_state_time(self, state, t):
+        state_t = {}
+        for feature_name in self.states_description().keys():
+            if state[feature_name].ndim == 2:
+                state_t[feature_name] = state[feature_name][t]
+            else:
+                state_t[feature_name] = state[feature_name][:, t]
+        return state_t
 
-    @staticmethod
-    def index_action_time(action: Dict, t: int):
-        raise NotImplementedError()
+    def index_action_time(self, action, t):
+        action_t = {}
+        for feature_name in self.actions_description().keys():
+            if action[feature_name].ndim == 2:
+                if t < action[feature_name].shape[0]:
+                    action_t[feature_name] = action[feature_name][t]
+                else:
+                    action_t[feature_name] = action[feature_name][t - 1]
+            else:
+                if t < action[feature_name].shape[1]:
+                    action_t[feature_name] = action[feature_name][:, t]
+                else:
+                    action_t[feature_name] = action[feature_name][:, t - 1]
+        return action_t
 
     @staticmethod
     def index_label_time(example: Dict, t: int):
-        raise NotImplementedError()
+        if t == 0:
+            # it makes no sense to have a label at t=0, labels are for transitions/sequences
+            # the plotting function that consumes this should use None correctly
+            return None
+        if example['is_close'].ndim == 2:
+            return example['is_close'][:, t]
+        else:
+            return example['is_close'][t]
 
     def randomization_initialization(self):
         raise NotImplementedError()
@@ -237,6 +269,18 @@ class ExperimentScenario:
 
     def dynamics_dataset_metadata(self):
         return {}
+
+    def plot_transition_rviz(self, example: Dict, t):
+        self.plot_environment_rviz(example)
+        debugging_pred_state_t = numpify(self.index_predicted_state_time(example, t))
+        self.plot_state_rviz(debugging_pred_state_t, label='predicted', color='b')
+        # true state(not known to classifier!)
+        debugging_true_state_t = numpify(self.index_state_time(example, t))
+        self.plot_state_rviz(debugging_true_state_t, label='actual')
+        debugging_action_t = numpify(self.index_action_time(example, t))
+        self.plot_action_rviz(debugging_pred_state_t, debugging_action_t)
+        label_t = self.index_label_time(example, t)
+        self.plot_is_close(label_t)
 
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:

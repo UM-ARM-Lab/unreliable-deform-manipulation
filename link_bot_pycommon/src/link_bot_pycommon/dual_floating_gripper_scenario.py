@@ -1,19 +1,16 @@
 from typing import Dict, Optional, List
 
-import actionlib
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
-import rospy
 import tensorflow as tf
-from geometry_msgs.msg import Point
 from matplotlib import colors
-from std_srvs.srv import Empty, EmptyRequest, SetBool, SetBoolRequest
-from visualization_msgs.msg import MarkerArray, Marker
 
+import actionlib
 import ros_numpy
+import rospy
+from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import link_bot_sdf_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
@@ -26,7 +23,9 @@ from moveit_msgs.msg import MoveGroupAction
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, SetRopeState, \
     SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
+from std_srvs.srv import Empty, EmptyRequest, SetBool, SetBoolRequest
 from tf import transformations
+from visualization_msgs.msg import MarkerArray, Marker
 
 
 def make_box_marker_from_extents(extent):
@@ -518,46 +517,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def state_to_points_for_cc(state: Dict):
         return state['link_bot'].reshape(-1, 3)
 
-    @staticmethod
-    def index_predicted_state_time(state, t):
-        state_t = {}
-        for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            if state[feature_name].ndim == 2:
-                state_t[feature_name] = state[add_predicted(feature_name)][t]
-            else:
-                state_t[feature_name] = state[add_predicted(feature_name)][:, t]
-        return state_t
-
-    @staticmethod
-    def index_state_time(state, t):
-        state_t = {}
-        for feature_name in ['gripper1', 'gripper2', 'link_bot']:
-            if state[feature_name].ndim == 2:
-                state_t[feature_name] = state[feature_name][t]
-            else:
-                state_t[feature_name] = state[feature_name][:, t]
-        return state_t
-
-    @staticmethod
-    def index_action_time(action, t):
-        action_t = {}
-        for feature_name in ['gripper1_position', 'gripper2_position']:
-            if action[feature_name].ndim == 2:
-                if t < action[feature_name].shape[0]:
-                    action_t[feature_name] = action[feature_name][t]
-                else:
-                    action_t[feature_name] = action[feature_name][t - 1]
-            else:
-                if t < action[feature_name].shape[1]:
-                    action_t[feature_name] = action[feature_name][:, t]
-                else:
-                    action_t[feature_name] = action[feature_name][:, t - 1]
-        return action_t
-
-    @staticmethod
-    def index_label_time(example: Dict, t: int):
-        return example['is_close'][:, t]
-
     def __repr__(self):
         return "DualFloatingGripperRope"
 
@@ -768,7 +727,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         else:
             raise NotImplementedError()
 
-    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
+    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
+                         plot: bool):
         if 'type' not in goal or goal['type'] == 'midpoint':
             return RopeMidpointGoalRegion(si=si,
                                           scenario=self,
@@ -1005,7 +965,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             midpoint_marker.scale.z = goal_threshold * 2
             midpoint_marker.action = Marker.ADD
             midpoint_marker.type = Marker.SPHERE
-            midpoint_marker.header.frame_id = "/world"
+            midpoint_marker.header.frame_id = "world"
             midpoint_marker.header.stamp = rospy.Time.now()
             midpoint_marker.ns = 'goal'
             midpoint_marker.id = 0
@@ -1026,7 +986,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             point_marker.scale.z = goal_threshold * 2
             point_marker.action = Marker.ADD
             point_marker.type = Marker.SPHERE
-            point_marker.header.frame_id = "/world"
+            point_marker.header.frame_id = "world"
             point_marker.header.stamp = rospy.Time.now()
             point_marker.ns = 'goal'
             point_marker.id = 0
@@ -1047,7 +1007,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             gripper1_marker.scale.z = goal_threshold * 2
             gripper1_marker.action = Marker.ADD
             gripper1_marker.type = Marker.SPHERE
-            gripper1_marker.header.frame_id = "/world"
+            gripper1_marker.header.frame_id = "world"
             gripper1_marker.header.stamp = rospy.Time.now()
             gripper1_marker.ns = 'goal'
             gripper1_marker.id = 1
@@ -1068,7 +1028,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             gripper2_marker.scale.z = goal_threshold * 2
             gripper2_marker.action = Marker.ADD
             gripper2_marker.type = Marker.SPHERE
-            gripper2_marker.header.frame_id = "/world"
+            gripper2_marker.header.frame_id = "world"
             gripper2_marker.header.stamp = rospy.Time.now()
             gripper2_marker.ns = 'goal'
             gripper2_marker.id = 2
@@ -1100,7 +1060,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         if 'point_box' in goal:
             point_marker = make_box_marker_from_extents(goal['point_box'])
-            point_marker.header.frame_id = "/world"
+            point_marker.header.frame_id = "world"
             point_marker.header.stamp = rospy.Time.now()
             point_marker.ns = 'goal'
             point_marker.id = 0
@@ -1112,7 +1072,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         if 'gripper1_box' in goal:
             gripper1_marker = make_box_marker_from_extents(goal['gripper1_box'])
-            gripper1_marker.header.frame_id = "/world"
+            gripper1_marker.header.frame_id = "world"
             gripper1_marker.header.stamp = rospy.Time.now()
             gripper1_marker.ns = 'goal'
             gripper1_marker.id = 1
@@ -1124,7 +1084,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         if 'gripper2_box' in goal:
             gripper2_marker = make_box_marker_from_extents(goal['gripper2_box'])
-            gripper2_marker.header.frame_id = "/world"
+            gripper2_marker.header.frame_id = "world"
             gripper2_marker.header.stamp = rospy.Time.now()
             gripper2_marker.ns = 'goal'
             gripper2_marker.id = 2
@@ -1167,7 +1127,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         lines = Marker()
         lines.action = Marker.ADD  # create or modify
         lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "/world"
+        lines.header.frame_id = "world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
         lines.id = 6 * idx + 0
@@ -1190,7 +1150,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         spheres = Marker()
         spheres.action = Marker.ADD  # create or modify
         spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "/world"
+        spheres.header.frame_id = "world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
         spheres.id = 6 * idx + 1
@@ -1224,7 +1184,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_sphere = Marker()
         gripper1_sphere.action = Marker.ADD  # create or modify
         gripper1_sphere.type = Marker.SPHERE
-        gripper1_sphere.header.frame_id = "/world"
+        gripper1_sphere.header.frame_id = "world"
         gripper1_sphere.header.stamp = rospy.Time.now()
         gripper1_sphere.ns = label
         gripper1_sphere.id = 6 * idx + 2
@@ -1249,7 +1209,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper2_sphere = Marker()
         gripper2_sphere.action = Marker.ADD  # create or modify
         gripper2_sphere.type = Marker.SPHERE
-        gripper2_sphere.header.frame_id = "/world"
+        gripper2_sphere.header.frame_id = "world"
         gripper2_sphere.header.stamp = rospy.Time.now()
         gripper2_sphere.ns = label
         gripper2_sphere.id = 6 * idx + 3
@@ -1274,7 +1234,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper1_text = Marker()
         gripper1_text.action = Marker.ADD  # create or modify
         gripper1_text.type = Marker.TEXT_VIEW_FACING
-        gripper1_text.header.frame_id = "/world"
+        gripper1_text.header.frame_id = "world"
         gripper1_text.header.stamp = rospy.Time.now()
         gripper1_text.ns = label
         gripper1_text.id = 6 * idx + 4
@@ -1297,7 +1257,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         midpoint_sphere = Marker()
         midpoint_sphere.action = Marker.ADD  # create or modify
         midpoint_sphere.type = Marker.SPHERE
-        midpoint_sphere.header.frame_id = "/world"
+        midpoint_sphere.header.frame_id = "world"
         midpoint_sphere.header.stamp = rospy.Time.now()
         midpoint_sphere.ns = label
         midpoint_sphere.id = 6 * idx + 5
@@ -1643,7 +1603,8 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
         # attempt to sample "legit" rope states
         kd = 0.05
         rope = sample_rope_and_grippers(
-            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links,
+            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'],
+            DualFloatingGripperRopeScenario.n_links,
             kd)
 
         goal_state_np = {
@@ -1704,7 +1665,8 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
         # attempt to sample "legit" rope states
         kd = 0.05
         rope = sample_rope_and_grippers(
-            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'], DualFloatingGripperRopeScenario.n_links,
+            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'],
+            DualFloatingGripperRopeScenario.n_links,
             kd)
 
         goal_state_np = {

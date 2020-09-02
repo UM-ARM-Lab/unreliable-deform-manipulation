@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import json
 import pathlib
+from time import perf_counter
 from typing import Dict, Optional
 
 import numpy as np
-import rospy
 import tensorflow as tf
 from colorama import Fore
 
+import rospy
 from link_bot_data.files_dataset import FilesDataset
 from link_bot_data.link_bot_dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon import ros_pycommon
@@ -32,26 +33,19 @@ class DataCollector:
         self.scenario = get_scenario(scenario_name)
 
         if seed is None:
-            self.seed = np.random.randint(0, 10000)
+            self.seed = np.random.randint(0, 100)
         else:
             self.seed = seed
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
-
-        self.env_rng = np.random.RandomState(self.seed)
-        self.action_rng = np.random.RandomState(self.seed)
 
         service_provider.setup_env(verbose=self.verbose,
                                    real_time_rate=0,
                                    max_step_size=self.params['max_step_size'])
 
-    def set_seed(self, seed: int):
-        np.random.seed(seed)
-        self.env_rng = np.random.RandomState(seed)
-        self.action_rng = np.random.RandomState(seed)
-
     def collect_trajectory(self,
                            traj_idx: int,
                            verbose: int,
+                           action_rng: np.random.RandomState
                            ):
         if self.params['no_objects']:
             rows, cols, channels = extent_to_env_shape(self.params['extent'], self.params['res'])
@@ -90,7 +84,7 @@ class DataCollector:
                                                  state=state,
                                                  data_collection_params=self.params,
                                                  action_params=self.params,
-                                                 action_rng=self.action_rng)
+                                                 action_rng=action_rng)
 
             # execute action
             self.scenario.execute_action(action)
@@ -148,16 +142,23 @@ class DataCollector:
 
         self.scenario.randomization_initialization()
 
-        from time import perf_counter
         t0 = perf_counter()
-        for traj_idx in range(n_trajs):
+
+        combined_seeds = [traj_idx + 100000 * self.seed for traj_idx in range(n_trajs)]
+        for traj_idx, seed in enumerate(combined_seeds):
+            # combine the trajectory idx and the overall "seed" to make a unique seed for each trajectory/seed pair
+            env_rng = np.random.RandomState(seed)
+            action_rng = np.random.RandomState(seed)
+
             # Randomize the environment
-            if not self.params['no_objects'] and traj_idx % self.params["randomize_environment_every_n_trajectories"] == 0:
-                self.scenario.randomize_environment(self.env_rng, objects_params=self.params, data_collection_params=self.params)
+            if not self.params['no_objects'] and traj_idx % self.params[
+                "randomize_environment_every_n_trajectories"] == 0:
+                self.scenario.randomize_environment(env_rng, objects_params=self.params,
+                                                    data_collection_params=self.params)
 
             # Generate a new trajectory
-            example = self.collect_trajectory(traj_idx=traj_idx, verbose=self.verbose)
-            print(f'traj {traj_idx}/{n_trajs}, {perf_counter() - t0:.4f}s')
+            example = self.collect_trajectory(traj_idx=traj_idx, verbose=self.verbose, action_rng=action_rng)
+            print(f'traj {traj_idx}/{n_trajs} ({seed}), {perf_counter() - t0:.4f}s')
 
             # Save the data
             features = dict_of_float_tensors_to_bytes_feature(example)

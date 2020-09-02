@@ -15,6 +15,7 @@ from link_bot_classifiers import recovery_policy_utils
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.link_bot_sdf_utils import extent_to_bbox
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 
 
@@ -78,16 +79,8 @@ class PlanAndExecute:
 
         # # Debugging
         # self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
-        # depth, width, height = extent_to_env_size(planner_params['goal_extent'])
-        # cx, cy, cz = extent_to_center(planner_params['goal_extent'])
-        # bbox_msg = BoundingBox()
+        # bbox_msg = extent_to_bbox(planner_params['goal_extent'])
         # bbox_msg.header.frame_id = 'world'
-        # bbox_msg.pose.position.x = cx
-        # bbox_msg.pose.position.y = cy
-        # bbox_msg.pose.position.z = cz
-        # bbox_msg.dimensions.x = width
-        # bbox_msg.dimensions.y = depth
-        # bbox_msg.dimensions.z = height
         # self.goal_bbox_pub.publish(bbox_msg)
 
     def run(self):

@@ -3,20 +3,22 @@
   "nickname": "sim_dual",
   "service_provider": "gazebo",
   "collect_dynamics_1": {
+    "world_filename": "sim/dual_floating_grippers.world",
     "scenario": "dual_floating",
     "params": "collect_dynamics_params/dual_no_obs.json",
-    "n_trajs": 5120
+    "n_trajs": 2048
+  },
+  "collect_dynamics_2": {
+    "world_filename": "sim/dual_arm_victor.world",
+    "scenario": "dual"
   },
   "learn_dynamics": {
     "scenario": "dual_floating",
-    "epochs": 300,
+    "epochs": 100,
     "batch_size": 64,
     "forward_model_hparams": "hparams/unconstrained_dynamics/no_victor_dual_no_obs.json",
-    "n_ensemble": 8,
+    "n_ensemble": 4,
     "evaluate": true
-  },
-  "collect_dynamics_2": {
-    "scenario": "dual"
   },
   "learn_classifier": {
     "labeling_params": "labeling_params/classifier/dual.json"

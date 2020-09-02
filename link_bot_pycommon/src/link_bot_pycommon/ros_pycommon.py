@@ -30,7 +30,10 @@ def get_occupancy(service_provider,
     request.center.z = center_z
     request.robot_name = robot_name
     request.request_new = True
+    from time import  perf_counter
+    t0 = perf_counter()
     response = service_provider.compute_occupancy(request)
+    print(perf_counter() - t0)
     grid = np.array(response.grid).reshape([env_w_cols, env_h_rows, env_c_channels])
     # NOTE: this makes it so we can index with row (y), col (x), channel (z)
     grid = np.transpose(grid, [1, 0, 2])

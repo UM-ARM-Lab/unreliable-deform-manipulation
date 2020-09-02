@@ -118,25 +118,13 @@ def visualize_dataset(args, classifier_dataset):
         if args.display_type == 'just_count':
             continue
         elif args.display_type == '3d':
-            # TODO: de-duplicate this
             time_steps = np.arange(classifier_dataset.horizon)
-            scenario.plot_environment_rviz(example)
             anim = RvizAnimationController(time_steps)
             while not anim.done:
                 t = anim.t()
-                actual_t = remove_batch(scenario.index_state_time(add_batch(example), t))
-                pred_t = remove_batch(scenario.index_predicted_state_time(add_batch(example), t))
-                action_t = remove_batch(scenario.index_action_time(add_batch(example), t))
-                if t == 0:
-                    # it makes no sense to have a label at t=0, labels are for transitions/sequences
-                    label_t = None
-                else:
-                    label_t = remove_batch(scenario.index_label_time(add_batch(example), t)).numpy()
-                scenario.plot_state_rviz(actual_t, label='actual', color='#ff0000aa')
-                scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffaa')
-                scenario.plot_action_rviz(actual_t, action_t)
-                scenario.plot_is_close(label_t)
+                scenario.plot_transition_rviz(example, t)
 
+                # TODO: reconsider where this goes
                 stdev_t = example[add_predicted('stdev')][t, 0].numpy()
                 stdev_msg = Float32()
                 stdev_msg.data = stdev_t

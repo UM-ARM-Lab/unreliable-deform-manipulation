@@ -17,6 +17,9 @@ def main():
     args = parser.parse_args()
 
     files_dataset = FilesDataset(root_dir=args.dataset_dir)
+    sorted_records = sorted(list(args.dataset_dir.glob("*.tfrecords")))
+    for file in sorted_records:
+        files_dataset.add(file)
     files_dataset.split()
 
 

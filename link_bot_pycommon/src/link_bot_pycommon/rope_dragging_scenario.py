@@ -19,7 +19,8 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.link_bot_sdf_utils import point_to_idx_3d_in_env
 from link_bot_pycommon.ros_pycommon import make_movable_object_services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest, \
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \
+    GetDualGripperPointsRequest, \
     Position3DEnable, Position3DEnableRequest
 from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, GetPosition3D, \
     GetPosition3DRequest
@@ -59,7 +60,7 @@ class RopeDraggingScenario(Base3DScenario):
         lines = Marker()
         lines.action = Marker.ADD  # create or modify
         lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "/world"
+        lines.header.frame_id = "world"
         lines.header.stamp = rospy.Time.now()
         lines.ns = label
         lines.id = 3 * idx + 0
@@ -82,7 +83,7 @@ class RopeDraggingScenario(Base3DScenario):
         spheres = Marker()
         spheres.action = Marker.ADD
         spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "/world"
+        spheres.header.frame_id = "world"
         spheres.header.stamp = rospy.Time.now()
         spheres.ns = label
         spheres.id = 3 * idx + 1
@@ -123,7 +124,7 @@ class RopeDraggingScenario(Base3DScenario):
         gripper = Marker()
         gripper.action = Marker.ADD
         gripper.type = Marker.SPHERE
-        gripper.header.frame_id = "/world"
+        gripper.header.frame_id = "world"
         gripper.header.stamp = rospy.Time.now()
         gripper.ns = label
         gripper.id = 3 * idx + 2
@@ -252,7 +253,7 @@ class RopeDraggingScenario(Base3DScenario):
 
             gripper_position = state['gripper'] + gripper_delta_position
             rospy.logerr_once("FORCING Z POSITION TO BE 0")
-            gripper_position[2] = 0.02 # slightly off the ground
+            gripper_position[2] = 0.02  # slightly off the ground
             action = {
                 'gripper_position': gripper_position,
                 'gripper_delta_position': gripper_delta_position,
@@ -516,33 +517,20 @@ class RopeDraggingScenario(Base3DScenario):
     def integrate_dynamics(s_t: Dict, delta_s_t: Dict):
         return {k: s_t[k] + delta_s_t[k] for k in s_t.keys()}
 
-    @staticmethod
-    def index_predicted_state_time(state, t):
-        return {
-            'gripper': state[add_predicted('gripper')][:, t],
-            'rope': state[add_predicted('rope')][:, t],
-        }
-
-    @staticmethod
-    def index_state_time(state, t):
-        return {
-            'gripper': state['gripper'][:, t],
-            'rope': state['rope'][:, t],
-        }
-
-    @staticmethod
-    def index_action_time(action, t):
+    def index_action_time(self, action, t):
         action_t = {}
         for feature_name in ['gripper_position']:
-            if t < action[feature_name].shape[1]:
-                action_t[feature_name] = action[feature_name][:, t]
+            if action[feature_name].ndim == 2:
+                if t < action[feature_name].shape[0]:
+                    action_t[feature_name] = action[feature_name][t]
+                else:
+                    action_t[feature_name] = action[feature_name][t - 1]
             else:
-                action_t[feature_name] = action[feature_name][:, t - 1]
+                if t < action[feature_name].shape[1]:
+                    action_t[feature_name] = action[feature_name][:, t]
+                else:
+                    action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
-
-    @staticmethod
-    def index_label_time(example: Dict, t: int):
-        return example['is_close'][:, t]
 
     @staticmethod
     def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
@@ -591,7 +579,8 @@ class RopeDraggingScenario(Base3DScenario):
             'timeout': [self.action_params['dt']],
         }
 
-    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict, plot: bool):
+    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
+                         plot: bool):
         return RopeDraggingGoalRegion(si=si,
                                       scenario=self,
                                       rng=rng,
@@ -702,7 +691,7 @@ class RopeDraggingScenario(Base3DScenario):
         tail_marker.scale.z = goal_threshold * 2
         tail_marker.action = Marker.ADD
         tail_marker.type = Marker.SPHERE
-        tail_marker.header.frame_id = "/world"
+        tail_marker.header.frame_id = "world"
         tail_marker.header.stamp = rospy.Time.now()
         tail_marker.ns = 'goal'
         tail_marker.id = 0

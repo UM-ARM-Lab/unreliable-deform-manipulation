@@ -69,7 +69,7 @@ def rviz_arrow(position: np.ndarray,
     arrow = Marker()
     arrow.action = Marker.ADD  # create or modify
     arrow.type = Marker.ARROW
-    arrow.header.frame_id = "/world"
+    arrow.header.frame_id = "world"
     arrow.header.stamp = rospy.Time.now()
     arrow.ns = label
     arrow.id = idx

@@ -15,7 +15,7 @@ class FilesDataset:
     def add(self, full_filename: pathlib.Path):
         self.paths.append(full_filename)
 
-    def split(self):
+    def split(self, shuffle=False):
         (self.root_dir / 'train').mkdir(exist_ok=True)
         (self.root_dir / 'test').mkdir(exist_ok=True)
         (self.root_dir / 'val').mkdir(exist_ok=True)
@@ -23,11 +23,13 @@ class FilesDataset:
         n_files = len(self.paths)
         n_validation = int(DEFAULT_VAL_SPLIT * n_files)
         n_testing = int(DEFAULT_TEST_SPLIT * n_files)
-        rng = np.random.RandomState(0)
-        rng.shuffle(self.paths)
+        if shuffle:
+            rng = np.random.RandomState(0)
+            rng.shuffle(self.paths)
         val_files = self.paths[0:n_validation]
         self.paths = self.paths[n_validation:]
-        rng.shuffle(self.paths)
+        if shuffle:
+            rng.shuffle(self.paths)
         test_files = self.paths[0:n_testing]
         train_files = self.paths[n_testing:]
 

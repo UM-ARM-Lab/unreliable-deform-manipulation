@@ -4,8 +4,8 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from jsk_recognition_msgs.msg import BoundingBox
 from geometry_msgs.msg import TransformStamped
+from jsk_recognition_msgs.msg import BoundingBox
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from std_msgs.msg import MultiArrayDimension, Float32MultiArray
 
@@ -86,6 +86,14 @@ def compute_extent_3d(rows: int,
     xmin, ymin, zmin = idx_to_point_3d(0, 0, 0, resolution, origin)
     xmax, ymax, zmax = idx_to_point_3d(rows, cols, channels, resolution, origin)
     return np.array([xmin, xmax, ymin, ymax, zmin, zmax], dtype=np.float32)
+
+
+def grid_to_bbox(rows: int,
+                 cols: int,
+                 channels: int,
+                 resolution: float):
+    extent = compute_extent_3d(rows, cols, channels, resolution)
+    return extent_to_bbox(extent_3d=extent)
 
 
 def extent_array_to_bbox(extent_3d):
