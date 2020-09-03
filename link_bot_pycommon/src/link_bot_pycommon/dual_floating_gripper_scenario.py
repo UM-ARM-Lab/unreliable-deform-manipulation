@@ -12,10 +12,10 @@ import rospy
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.visualization import rviz_arrow
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox
+from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify
@@ -618,9 +618,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 'gripper1': gripper1,
                 'gripper2': gripper2,
             }
-            row1, col1, channel1 = link_bot_sdf_utils.point_to_idx_3d_in_env(
+            row1, col1, channel1 = grid_utils.point_to_idx_3d_in_env(
                 gripper1[0], gripper1[1], gripper1[2], environment)
-            row2, col2, channel2 = link_bot_sdf_utils.point_to_idx_3d_in_env(
+            row2, col2, channel2 = grid_utils.point_to_idx_3d_in_env(
                 gripper2[0], gripper2[1], gripper2[2], environment)
             collision1 = env_inflated[row1, col1, channel1] > 0.5
             collision2 = env_inflated[row2, col2, channel2] > 0.5
@@ -651,7 +651,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             extent = np.array(goal_extent).reshape(3, 2)
             p = rng.uniform(extent[:, 0], extent[:, 1])
             goal = {'midpoint': p}
-            row, col, channel = link_bot_sdf_utils.point_to_idx_3d_in_env(p[0], p[1], p[2], environment)
+            row, col, channel = grid_utils.point_to_idx_3d_in_env(p[0], p[1], p[2], environment)
             collision = env_inflated[row, col, channel] > 0.5
             if not collision:
                 return goal

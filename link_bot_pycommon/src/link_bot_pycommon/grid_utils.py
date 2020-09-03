@@ -92,8 +92,23 @@ def grid_to_bbox(rows: int,
                  cols: int,
                  channels: int,
                  resolution: float):
-    extent = compute_extent_3d(rows, cols, channels, resolution)
-    return extent_to_bbox(extent_3d=extent)
+    xsize = cols * resolution
+    ysize = rows * resolution
+    zsize = channels * resolution
+
+    cx = xsize / 2
+    cy = ysize / 2
+    cz = zsize / 2
+
+    bbox_msg = BoundingBox()
+    bbox_msg.pose.position.x = cx
+    bbox_msg.pose.position.y = cy
+    bbox_msg.pose.position.z = cz
+    bbox_msg.pose.orientation.w = 1
+    bbox_msg.dimensions.x = xsize
+    bbox_msg.dimensions.y = ysize
+    bbox_msg.dimensions.z = zsize
+    return bbox_msg
 
 
 def extent_array_to_bbox(extent_3d):

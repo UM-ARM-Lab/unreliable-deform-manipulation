@@ -4,8 +4,8 @@ import numpy as np
 
 import rospy
 import tf2_ros
-from link_bot_pycommon import link_bot_sdf_utils
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg
+from link_bot_pycommon import grid_utils
+from link_bot_pycommon.grid_utils import environment_to_occupancy_msg
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf
 from moonshine.gpu_config import limit_gpu_mem
 from mps_shape_completion_msgs.msg import OccupancyStamped
@@ -63,8 +63,8 @@ full_occupancy_msg = environment_to_occupancy_msg(full_environment, frame='occup
 
 while True:
     rospy.sleep(0.1)
-    link_bot_sdf_utils.send_occupancy_tf(broadcaster, local_environment, frame='local_occupancy')
+    grid_utils.send_occupancy_tf(broadcaster, local_environment, frame='local_occupancy')
     local_occupancy_pub.publish(local_occupancy_msg)
 
-    link_bot_sdf_utils.send_occupancy_tf(broadcaster, full_environment, frame='occupancy')
+    grid_utils.send_occupancy_tf(broadcaster, full_environment, frame='occupancy')
     full_pub.publish(full_occupancy_msg)

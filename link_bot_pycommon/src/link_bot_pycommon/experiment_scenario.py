@@ -210,7 +210,7 @@ class ExperimentScenario:
     def index_predicted_state_time(self, state, t):
         state_t = {}
         for feature_name in self.states_description().keys():
-            if state[feature_name].ndim == 2:
+            if state[add_predicted(feature_name)].ndim == 2:
                 state_t[feature_name] = state[add_predicted(feature_name)][t]
             else:
                 state_t[feature_name] = state[add_predicted(feature_name)][:, t]

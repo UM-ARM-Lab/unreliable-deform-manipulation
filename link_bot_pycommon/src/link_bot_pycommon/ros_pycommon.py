@@ -3,9 +3,9 @@ from typing import Dict, List
 import numpy as np
 
 import rospy
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_services import BaseServices
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_center, extent_to_env_shape
+from link_bot_pycommon.grid_utils import extent_to_center, extent_to_env_shape
 from peter_msgs.msg import LinkBotAction
 from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest, Position3DEnable, GetPosition3D, Position3DAction
 from std_srvs.srv import Empty
@@ -100,7 +100,7 @@ def get_occupancy_data(env_h_m: float,
                                    center_z=res,  # we want to do a little off the ground because grid cells are centered
                                    robot_name=robot_name)
     origin = np.array(response.origin)
-    full_env_data = link_bot_sdf_utils.OccupancyData(data=grid, resolution=res, origin=origin)
+    full_env_data = grid_utils.OccupancyData(data=grid, resolution=res, origin=origin)
     return full_env_data
 
 

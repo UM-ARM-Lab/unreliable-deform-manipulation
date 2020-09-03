@@ -30,12 +30,7 @@ def plan_result_to_examples(result_idx, result, labeling_params):
         inputs.update(environment)
         outputs = sequence_of_dicts_to_dict_of_np_arrays(actual_path[prediction_start_t:])
         predictions = sequence_of_dicts_to_dict_of_np_arrays(planned_path[prediction_start_t:])
-        yield from generate_classifier_examples_from_batch(inputs=inputs,
-                                                           outputs=outputs,
-                                                           predictions=predictions,
-                                                           start_t=prediction_start_t,
-                                                           labeling_params=labeling_params,
-                                                           prediction_horizon=len(actual_path) - prediction_start_t)
+        yield from generate_classifier_examples_from_batch()
 
 
 def main():

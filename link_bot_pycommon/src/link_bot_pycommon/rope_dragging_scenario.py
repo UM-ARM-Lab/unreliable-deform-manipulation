@@ -16,7 +16,7 @@ from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.link_bot_sdf_utils import point_to_idx_3d_in_env
+from link_bot_pycommon.grid_utils import point_to_idx_3d_in_env
 from link_bot_pycommon.ros_pycommon import make_movable_object_services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \

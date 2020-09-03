@@ -15,9 +15,7 @@ from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.pycommon import paths_to_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import (add_batch,
-                                       index_dict_of_batched_vectors_tf,
-                                       remove_batch,
+from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf,
                                        sequence_of_dicts_to_dict_of_sequences)
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
@@ -41,8 +39,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
     # Datasets
     ###############
     # set load_true_states=True when debugging
-    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=False)
-    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=False)
+    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
+    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
 
     ###############
     # Model
@@ -86,8 +84,9 @@ def train_main(dataset_dirs: List[pathlib.Path],
     train_tf_dataset = train_dataset.get_datasets(mode='train', take=take)
     val_tf_dataset = val_dataset.get_datasets(mode='val', take=take)
 
-    train_tf_dataset = balance(train_tf_dataset)
-    val_tf_dataset = balance(val_tf_dataset)
+    rospy.logerr_once("NOT BALANCING!")
+    # train_tf_dataset = balance(train_tf_dataset)
+    # val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)

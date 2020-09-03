@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent_3d, extent_to_env_size
+from link_bot_pycommon.grid_utils import compute_extent_3d, extent_to_env_size
 
 
 class Test(TestCase):

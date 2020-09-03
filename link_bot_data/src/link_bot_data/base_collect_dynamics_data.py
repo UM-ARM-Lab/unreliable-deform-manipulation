@@ -14,7 +14,7 @@ from link_bot_data.link_bot_dataset_utils import data_directory, dict_of_float_t
 from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_env_shape
+from link_bot_pycommon.grid_utils import extent_to_env_shape
 
 
 class DataCollector:

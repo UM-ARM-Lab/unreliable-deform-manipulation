@@ -3,7 +3,7 @@ from time import sleep
 
 import rospy
 from link_bot_gazebo_python import gazebo_services
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 import tf2_ros
@@ -26,10 +26,10 @@ while True:
                                                      res=res,
                                                      service_provider=services,
                                                      robot_name='victor_and_rope::link_bot')
-        msg = link_bot_sdf_utils.environment_to_occupancy_msg(environment)
+        msg = grid_utils.environment_to_occupancy_msg(environment)
         print(msg.header.stamp)
 
-        link_bot_sdf_utils.send_occupancy_tf(broadcaster, environment)
+        grid_utils.send_occupancy_tf(broadcaster, environment)
         pub.publish(msg)
 
         sleep(1.0)

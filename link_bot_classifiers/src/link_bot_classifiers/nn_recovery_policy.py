@@ -13,7 +13,7 @@ import rospy
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers.base_recovery_policy import BaseRecoveryPolicy
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, \
+from link_bot_pycommon.grid_utils import batch_idx_to_point_3d_in_env_tf, \
     batch_point_to_idx_tf_3d_in_batched_envs
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env

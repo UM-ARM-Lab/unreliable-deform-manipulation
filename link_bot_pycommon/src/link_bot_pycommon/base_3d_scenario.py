@@ -10,9 +10,9 @@ from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import environment_to_occupancy_msg, extent_to_bbox
+from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, extent_to_bbox
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.msg import LabelStatus
@@ -90,7 +90,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_bbox_pub.publish(bbox_msg)
 
     def send_occupancy_tf(self, environment: Dict):
-        link_bot_sdf_utils.send_occupancy_tf(self.broadcaster, environment)
+        grid_utils.send_occupancy_tf(self.broadcaster, environment)
 
     def plot_sampled_goal_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#EB322F')

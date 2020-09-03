@@ -12,9 +12,9 @@ import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_data.visualization import plot_rope_configuration, plot_arrow
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import idx_to_point_3d_in_env
+from link_bot_pycommon.grid_utils import idx_to_point_3d_in_env
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, dict_of_sequences_to_sequence_of_dicts, add_batch, remove_batch
 from sensor_msgs import point_cloud2
@@ -53,7 +53,7 @@ def plot_classifier_data(
         plot_arrow(ax, state[-2], state[-1], action[0] / 2, action[1] / 2, color='cyan', linewidth=3)
 
     if planned_env_origin is not None and res is not None:
-        origin_x, origin_y = link_bot_sdf_utils.idx_to_point(0, 0, res, planned_env_origin)
+        origin_x, origin_y = grid_utils.idx_to_point(0, 0, res, planned_env_origin)
         ax.scatter(origin_x, origin_y, label='origin', marker='*')
 
     if planned_state is not None:

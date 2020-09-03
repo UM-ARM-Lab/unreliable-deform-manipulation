@@ -15,7 +15,7 @@ from link_bot_classifiers import recovery_policy_utils
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import extent_to_bbox
+from link_bot_pycommon.grid_utils import extent_to_bbox
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 
 

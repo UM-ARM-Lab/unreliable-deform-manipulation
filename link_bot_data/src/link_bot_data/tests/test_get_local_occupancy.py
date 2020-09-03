@@ -6,7 +6,7 @@ import rospy
 import tensorflow as tf
 
 from link_bot_gazebo import gazebo_services
-from link_bot_pycommon.link_bot_sdf_utils import compute_extent
+from link_bot_pycommon.grid_utils import compute_extent
 from link_bot_pycommon.ros_pycommon import get_occupancy_data
 from moonshine.get_local_environment import get_local_env_and_origin
 

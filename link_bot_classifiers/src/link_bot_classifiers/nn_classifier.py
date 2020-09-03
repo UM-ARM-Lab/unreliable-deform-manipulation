@@ -11,17 +11,17 @@ import rospy
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_data.link_bot_dataset_utils import add_predicted
-from link_bot_pycommon import link_bot_sdf_utils
+from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.link_bot_sdf_utils import batch_idx_to_point_3d_in_env_tf, \
+from link_bot_pycommon.grid_utils import batch_idx_to_point_3d_in_env_tf, \
     batch_point_to_idx_tf_3d_in_batched_envs, environment_to_occupancy_msg, grid_to_bbox
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
-from moonshine import classifier_losses_and_metrics
-from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function
+from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function, \
+    compute_weighted_mean_loss
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
-from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors, numpify, \
+from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors, \
     index_dict_of_batched_vectors_tf
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
@@ -77,8 +77,6 @@ class NNClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
-        self.loss_function = classifier_losses_and_metrics.class_weighted_binary_classification_sequence_loss_function
-
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
         # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment
         pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)
@@ -96,10 +94,14 @@ class NNClassifier(MyKerasModel):
         pixel_indices = tf.expand_dims(pixel_indices, axis=0)
         pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
-        # DEBUG
-        stepper = RvizSimpleStepper()
-        example = index_dict_of_batched_vectors_tf(input_dict, 0)
-        # END DEBUG
+        # # DEBUG
+        # stepper = RvizSimpleStepper()
+        # input_dict.pop("batch_size")
+        # input_dict.pop("time")
+        # import numpy as np
+        # b = np.random.random_integers(0, 2)
+        # example = index_dict_of_batched_vectors_tf(input_dict, b)
+        # # END DEBUG
 
         conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
         for t in tf.range(time):
@@ -134,41 +136,41 @@ class NNClassifier(MyKerasModel):
                                                        c=self.local_env_c_channels,
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
-                # DEBUG
-                raster_dict = {
-                    'env': tf.clip_by_value(state_component_voxel_grid[0], 0, 1),
-                    'origin': local_env_origin_t[0].numpy(),
-                    'res': input_dict['res'][0].numpy(),
-                }
-                raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
-                self.raster_debug_pubs[i].publish(raster_msg)
-                # END  DEBUG
+                # # DEBUG
+                # raster_dict = {
+                #     'env': tf.clip_by_value(state_component_voxel_grid[b], 0, 1),
+                #     'origin': local_env_origin_t[b].numpy(),
+                #     'res': input_dict['res'][b].numpy(),
+                # }
+                # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
+                # self.raster_debug_pubs[i].publish(raster_msg)
+                # # END  DEBUG
 
                 local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
             local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
             # add channel dimension information because tf.function erases it somehow...
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
-            # DEBUG
-            local_env_dict = {
-                'env': local_env_t[0],
-                'origin': local_env_origin_t[0].numpy(),
-                'res': input_dict['res'][0].numpy(),
-            }
-            msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
-            link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
-            self.debug_pub.publish(msg)
-
-            self.scenario.plot_transition_rviz(example, t)
-            bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
-                                    cols=self.local_env_w_cols,
-                                    channels=self.local_env_c_channels,
-                                    resolution=example['res'].numpy())
-            bbox_msg.header.frame_id = 'local_occupancy'
-            self.local_env_bbox_pub.publish(bbox_msg)
-
-            stepper.step()
-            # END DEBUG
+            # # DEBUG
+            # local_env_dict = {
+            #     'env': local_env_t[b],
+            #     'origin': local_env_origin_t[b].numpy(),
+            #     'res': input_dict['res'][b].numpy(),
+            # }
+            # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
+            # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
+            # self.debug_pub.publish(msg)
+            #
+            # self.scenario.plot_transition_rviz(example, t)
+            # bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
+            #                         cols=self.local_env_w_cols,
+            #                         channels=self.local_env_c_channels,
+            #                         resolution=example['res'].numpy())
+            # bbox_msg.header.frame_id = 'local_occupancy'
+            # self.local_env_bbox_pub.publish(bbox_msg)
+            #
+            # # stepper.step()
+            # # END DEBUG
 
             conv_z = local_voxel_grid_t
             for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
@@ -184,8 +186,17 @@ class NNClassifier(MyKerasModel):
         return tf.transpose(conv_outputs, [1, 0, 2])
 
     def compute_loss(self, dataset_element, outputs):
+        # skip the first element, the label will always be 1
+        is_close_after_start = dataset_element['is_close'][:, 1:]
+        labels = tf.expand_dims(is_close_after_start, axis=2)
+        logits = outputs['logits']
+        bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
+        # mask out / ignore examples where is_close [0] is 0
+        # is_close_at_start = dataset_element['is_close'][:, 0]
+        # bce = bce * is_close_at_start
+        total_bce = compute_weighted_mean_loss(bce, is_close_after_start)
         return {
-            'loss': self.loss_function(dataset_element, outputs)
+            'loss': total_bce
         }
 
     def calculate_metrics(self, dataset_element, outputs):
