@@ -1,17 +1,17 @@
 {
   "extent": [
-    -1.25,
-    1.25,
-    -1.25,
-    1.25,
+    -0.75,
+    0.75,
+    -0.75,
+    0.75,
     0,
     0.3
   ],
   "gripper_action_sample_extent": [
-    -1.2,
-    1.2,
-    -1.2,
-    1.2,
+    -0.5,
+    0.5,
+    -0.5,
+    0.5,
     0,
     0.02
   ],
@@ -24,15 +24,15 @@
     0.001
   ],
   "objects": [
-    "moving_box1",
-    "moving_box2",
-    "moving_box3",
-    "moving_box4",
-    "moving_box5",
-    "moving_box6",
-    "moving_box7",
-    "moving_box8",
-    "moving_box9"
+    "small_box1",
+    "small_box2",
+    "small_box3",
+    "small_box4",
+    "small_box5",
+    "small_box6",
+    "small_box7",
+    "small_box8",
+    "small_box9"
   ],
   "rope_start_extents": [
     -0.5,
@@ -44,10 +44,10 @@
   ],
   "res": 0.01,
   "dt": 1.0,
-  "max_step_size": 0.01,
+  "max_step_size": 0.005,
   "max_distance_gripper_can_move": 0.15,
   "steps_per_traj": 50,
   "trajs_per_file": 32,
-  "randomize_environment_every_n_trajectories": 1,
+  "randomize_environment_every_n_trajectories": 8,
   "no_objects": false
 }

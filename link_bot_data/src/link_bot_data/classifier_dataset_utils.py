@@ -8,7 +8,6 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from link_bot_pycommon.serialization import my_dump
 from moonshine.moonshine_utils import gather_dict, index_dict_of_batched_vectors_tf
@@ -75,31 +74,35 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        for out_example in generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params):
-            for batch_idx in range(out_example['traj_idx'].shape[0]):
-                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+        batch_size = 2
+        out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
+        for out_example in out_examples:
+            actual_batch_size = out_example[0]['is_close'].shape[0]
+            for batch_idx in range(actual_batch_size):
+                for out_example_for_start_t in out_example:
+                    out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
 
-                if batch_idx == 0:
-                    # Debugging visualization
-                    scenario = fwd_models.scenario
-                    classifier_horizon = labeling_params['classifier_horizon']
-                    time_steps = np.arange(classifier_horizon)
-                    anim = RvizAnimationController(time_steps)
-                    while not anim.done:
-                        t = anim.t()
-                        scenario.plot_transition_rviz(out_example_b, t)
-                        anim.step()
+                    DEBUG = False
+                    if DEBUG:
+                        scenario = fwd_models.scenario
+                        classifier_horizon = labeling_params['classifier_horizon']
+                        time_steps = np.arange(classifier_horizon)
+                        anim = RvizAnimationController(time_steps)
+                        while not anim.done:
+                            t = anim.t()
+                            scenario.plot_transition_rviz(out_example_b, t)
+                            anim.step()
 
-                features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
+                    features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
 
-                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-                example = example_proto.SerializeToString()
-                record_filename = "example_{:09d}.tfrecords".format(total_count)
-                full_filename = full_output_directory / record_filename
-                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                    writer.write(example)
-                total_count += 1
-                print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
+                    example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+                    example = example_proto.SerializeToString()
+                    record_filename = "example_{:09d}.tfrecords".format(total_count)
+                    full_filename = full_output_directory / record_filename
+                    with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+                        writer.write(example)
+                    total_count += 1
+                    print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
 
     return outdir
 
@@ -107,10 +110,9 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
 def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
                                  dataset: DynamicsDataset,
-                                 labeling_params: Dict):
-    batch_size = 16
+                                 labeling_params: Dict,
+                                 batch_size: int):
     classifier_horizon = labeling_params['classifier_horizon']
-    scenario = fwd_model.scenario
     assert classifier_horizon >= 2
     tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=False)
 
@@ -124,6 +126,7 @@ def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
         print(f"{idx} / {n_total_batches} batches in {dt:.3f} seconds")
         actual_batch_size = int(example['traj_idx'].shape[0])
 
+        valid_out_examples = []
         for start_t in range(0, dataset.sequence_length - classifier_horizon + 1, labeling_params['start_step']):
             prediction_end_t = dataset.sequence_length
             actual_prediction_horizon = prediction_end_t - start_t
@@ -141,14 +144,18 @@ def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
                                                         labeling_params=labeling_params,
                                                         actual_prediction_horizon=actual_prediction_horizon,
                                                         batch_size=actual_batch_size)
-            yield from generate_classifier_examples_from_batch(scenario, prediction_actual)
+            valid_out_examples_for_start_t = generate_classifier_examples_from_batch(prediction_actual)
+            valid_out_examples.extend(valid_out_examples_for_start_t)
+
+        yield valid_out_examples
 
 
-def generate_classifier_examples_from_batch(scenario: ExperimentScenario, prediction_actual: PredictionActualExample):
+def generate_classifier_examples_from_batch(prediction_actual: PredictionActualExample):
     labeling_params = prediction_actual.labeling_params
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
 
+    valid_out_examples = []
     for classifier_start_t in range(0, prediction_horizon - classifier_horizon + 1):
         classifier_end_t = classifier_start_t + classifier_horizon
 
@@ -202,13 +209,15 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
                                        labeling_params=labeling_params)
         out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
-        is_first_predicted_state_close = is_close[:, 0]
-        valid_indices = tf.where(is_first_predicted_state_close)
-        valid_indices = tf.squeeze(valid_indices, axis=1)
-        # keep only valid_indices from every key in out_example...
-        valid_out_example = gather_dict(out_example, valid_indices)
+        # is_first_predicted_state_close = is_close[:, 0]
+        # valid_indices = tf.where(is_first_predicted_state_close)
+        # valid_indices = tf.squeeze(valid_indices, axis=1)
+        # # keep only valid_indices from every key in out_example...
+        # valid_out_example = gather_dict(out_example, valid_indices)
+        # valid_out_examples.append(valid_out_example)
 
-        yield valid_out_example
+        valid_out_examples.append(out_example)
+    return valid_out_examples
 
 
 def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
