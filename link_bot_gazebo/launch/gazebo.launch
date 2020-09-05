@@ -18,7 +18,6 @@
         </node>
     </group>
 
-
     <include file="$(find physical_robot_3d_rope_shim)/launch/static_transforms.launch">
         <arg name="use_sim_time" value="false"/>
         <arg name="use_val" value="$(arg use_val)"/>

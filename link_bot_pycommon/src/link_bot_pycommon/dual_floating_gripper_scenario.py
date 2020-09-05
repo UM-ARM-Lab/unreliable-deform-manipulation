@@ -128,16 +128,16 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def randomization_initialization(self):
         self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
 
-        # Hacking for car env randomization
-        self.obstacles = [
-            "car_hood",
-            "car_alternator",
-            "car_tube_and_tank",
-            "car_coolant_tank",
-            "car_pulley",
-            "car_engine2",
-        ]
-        self.start_object_poses = self.get_object_poses(self.obstacles)
+        # # Hacking for car env randomization
+        # self.obstacles = [
+        #     "car_hood",
+        #     "car_alternator",
+        #     "car_tube_and_tank",
+        #     "car_coolant_tank",
+        #     "car_pulley",
+        #     "car_engine2",
+        # ]
+        # self.start_object_poses = self.get_object_poses(self.obstacles)
 
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()

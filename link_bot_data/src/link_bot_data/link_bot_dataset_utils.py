@@ -268,9 +268,9 @@ def balance(dataset):
     # FIXME: redo this when I redo my dataset code
     positive_examples = dataset.filter(label_is(1))
     negative_examples = dataset.filter(label_is(0))
-    # negative_examples = negative_examples.repeat()
-    print("UP-SAMPLING POSITIVE EXAMPLES!!!")
-    positive_examples = positive_examples.repeat()
+    negative_examples = negative_examples.repeat()
+    # print("UP-SAMPLING POSITIVE EXAMPLES!!!")
+    # positive_examples = positive_examples.repeat()
     balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 

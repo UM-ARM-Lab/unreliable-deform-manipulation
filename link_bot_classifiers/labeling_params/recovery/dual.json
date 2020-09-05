@@ -1,7 +1,7 @@
 {
-  "threshold": 0.025,
+  "threshold": 0.0453338947147131,
   "state_key": "link_bot",
   "action_sequence_horizon": 2,
   "n_action_samples": 32,
-  "start_step": 1
+  "start_step": 4
 }

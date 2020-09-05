@@ -3,16 +3,13 @@ from typing import Dict, Optional
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
-import rospy
 import tensorflow as tf
-from geometry_msgs.msg import Point
 from matplotlib import colors
-from std_srvs.srv import EmptyRequest, Empty
-from visualization_msgs.msg import MarkerArray, Marker
 
 import ros_numpy
+import rospy
 from gazebo_msgs.srv import SetModelStateRequest
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from geometry_msgs.msg import Point
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
@@ -21,9 +18,11 @@ from link_bot_pycommon.ros_pycommon import make_movable_object_services
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \
     GetDualGripperPointsRequest, \
-    Position3DEnable, Position3DEnableRequest
+    Position3DEnable, Position3DEnableRequest, WorldControlRequest
 from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, GetPosition3D, \
     GetPosition3DRequest
+from std_srvs.srv import EmptyRequest, Empty
+from visualization_msgs.msg import MarkerArray, Marker
 
 
 class RopeDraggingScenario(Base3DScenario):
@@ -476,6 +475,46 @@ class RopeDraggingScenario(Base3DScenario):
         pass
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
+        # TODO: make scenarios take in a environment method,
+        #  or make environment randomization methods take in the scenario,
+        #  or just make scenarios more composable and have a few different (static) combinations that are hard-coded
+        return self.slide_obstacles(env_rng, objects_params, data_collection_params)
+        # return self.lift_then_shuffle(env_rng, objects_params, data_collection_params)
+
+    def slide_obstacles(self, env_rng, objects_params: Dict, data_collection_params: Dict):
+        # If we reset the sim we'd get less interesting/diverse obstacle configurations
+        # but without resetting we can't have repeatable trials because the rope can get in the way differently
+        # depending on where it ended up from the previous trial
+        # self.reset_sim_srv(EmptyRequest())
+
+        # set random positions for all the objects
+        for services in self.movable_object_services.values():
+            position, _ = self.random_object_pose(env_rng, objects_params)
+            set_msg = Position3DActionRequest()
+            set_msg.position = ros_numpy.msgify(Point, position)
+            services['set'](set_msg)
+
+        req = WorldControlRequest()
+        req.seconds = 0.1
+        self.world_control_srv(req)
+
+        for services in self.movable_object_services.values():
+            disable = Position3DEnableRequest()
+            disable.enable = False
+            services['enable'](disable)
+
+        req = WorldControlRequest()
+        req.seconds = 0.2
+        self.world_control_srv(req)
+
+        for services in self.movable_object_services.values():
+            services['stop'](EmptyRequest())
+
+        req = WorldControlRequest()
+        req.seconds = 0.2
+        self.world_control_srv(req)
+
+    def lift_then_shuffle(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # reset so the rope is straightened out
         self.reset_sim_srv(EmptyRequest())
 

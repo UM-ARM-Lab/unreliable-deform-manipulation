@@ -1,0 +1,24 @@
+<launch>
+    <arg name="use_victor"      default="false"/>
+    <arg name="use_val"         default="false"/>
+
+    <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
+    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
+
+    <group ns="static_transform_publishers">
+        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
+              args="0 0 0 0 0 0 robot_root world">
+            <param name="use_sim_time" value="false"/>
+        </node>
+    </group>
+
+    <include file="$(find physical_robot_3d_rope_shim)/launch/static_transforms.launch">
+        <arg name="use_val" value="$(arg use_val)"/>
+        <arg name="use_victor" value="$(arg use_victor)"/>
+        <arg name="use_sim_time" value="false"/>
+        <arg name="use_mocap_shims" value="false"/>
+    </include>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
+
+</launch>
