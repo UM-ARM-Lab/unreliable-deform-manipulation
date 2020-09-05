@@ -81,12 +81,14 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          batch_metadata=train_dataset.batch_metadata)
 
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=take)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', take=take)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=take, shuffle_files=True)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', take=take, shuffle_files=True)
 
-    rospy.logerr_once("NOT BALANCING!")
-    # train_tf_dataset = balance(train_tf_dataset)
-    # val_tf_dataset = balance(val_tf_dataset)
+    train_tf_dataset = train_tf_dataset.shuffle(256, reshuffle_each_iteration=True)
+
+    # rospy.logerr_once("NOT BALANCING!")
+    train_tf_dataset = balance(train_tf_dataset)
+    val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)

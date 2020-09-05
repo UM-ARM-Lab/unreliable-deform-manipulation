@@ -10,18 +10,18 @@
     "gripper_position"
   ],
   "rope_image_k": 2000,
-  "rnn_size": 128,
+  "rnn_size": 256,
   "fc_layer_sizes": [
-    128
+    256
   ],
   "pooling": [
     2,
     2,
-    1
+    2
   ],
   "conv_filters": [
     [
-      26,
+      32,
       [
         3,
         3,
@@ -29,7 +29,7 @@
       ]
     ],
     [
-      26,
+      32,
       [
         3,
         3,
@@ -37,7 +37,7 @@
       ]
     ],
     [
-      26,
+      32,
       [
         3,
         3,
@@ -51,8 +51,7 @@
   "batch_norm": true,
   "local_env_h_rows": 100,
   "local_env_w_cols": 100,
-  "local_env_c_channels": 20,
+  "local_env_c_channels": 25,
   "learning_rate": 0.001,
-  "flooding_level": 0.01,
   "stdev": true
 }

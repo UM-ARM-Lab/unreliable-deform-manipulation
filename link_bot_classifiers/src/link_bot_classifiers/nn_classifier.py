@@ -192,8 +192,8 @@ class NNClassifier(MyKerasModel):
         logits = outputs['logits']
         bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
         # mask out / ignore examples where is_close [0] is 0
-        # is_close_at_start = dataset_element['is_close'][:, 0]
-        # bce = bce * is_close_at_start
+        is_close_at_start = dataset_element['is_close'][:, 0]
+        bce = bce * is_close_at_start
         total_bce = compute_weighted_mean_loss(bce, is_close_after_start)
         return {
             'loss': total_bce

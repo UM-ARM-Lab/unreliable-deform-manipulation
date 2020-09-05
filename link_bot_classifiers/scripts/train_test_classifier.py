@@ -9,7 +9,7 @@ import tensorflow as tf
 from link_bot_classifiers import train_test_classifier
 from moonshine.gpu_config import limit_gpu_mem
 
-limit_gpu_mem(6.5)
+limit_gpu_mem(9)
 
 
 def train_main(args):
@@ -47,7 +47,7 @@ def main():
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
-    train_parser.add_argument('--batch-size', type=int, default=16)
+    train_parser.add_argument('--batch-size', type=int, default=24)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--debug', action='store_true')
     train_parser.add_argument('--epochs', type=int, default=10)

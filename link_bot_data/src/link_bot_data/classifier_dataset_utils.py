@@ -4,15 +4,30 @@ from time import perf_counter
 from typing import Dict, List, Optional
 
 import numpy as np
+from multiprocessing import Pool, Value
 import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from link_bot_pycommon.serialization import my_dump
-from moonshine.moonshine_utils import gather_dict, index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+
+
+class Counter(object):
+    def __init__(self, value=0):
+        self.val = Value('total_count', value)
+        self.lock = self.val.get_lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
 
 
 class PredictionActualExample:
@@ -67,19 +82,20 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
     my_dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     t0 = perf_counter()
-    total_count = 0
     for mode in ['train', 'val', 'test']:
         tf_dataset = dataset.get_datasets(mode=mode)
 
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        batch_size = 2
+        batch_size = 8
+        counter = Counter()
         out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
         for out_example in out_examples:
             actual_batch_size = out_example[0]['is_close'].shape[0]
             for batch_idx in range(actual_batch_size):
-                for out_example_for_start_t in out_example:
+
+                def _save_example(out_example_for_start_t, _counter):
                     out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
 
                     DEBUG = False
@@ -97,12 +113,17 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
 
                     example_proto = tf.train.Example(features=tf.train.Features(feature=features))
                     example = example_proto.SerializeToString()
-                    record_filename = "example_{:09d}.tfrecords".format(total_count)
+                    total_example_idx = _counter.value()
+                    record_filename = "example_{:09d}.tfrecords".format(total_example_idx)
                     full_filename = full_output_directory / record_filename
                     with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                         writer.write(example)
-                    total_count += 1
-                    print(f"Examples: {total_count:10d}, Time: {perf_counter() - t0:.3f}")
+                    print(f"Examples: {total_example_idx:10d}, Time: {perf_counter() - t0:.3f}")
+                    _counter.increment()
+
+                # use a worker pool to parallelize this
+                with Pool(processes=8) as pool:
+                    pool.imap_unordered(_save_example, [(e, counter) for e in out_example])
 
     return outdir
 

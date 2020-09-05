@@ -4,6 +4,7 @@ import pathlib
 from typing import List, Optional
 
 import tensorflow as tf
+import numpy as np
 from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
@@ -37,6 +38,7 @@ class BaseDataset:
                      do_not_process: bool = False,
                      shard: Optional[int] = None,
                      take: Optional[int] = None,
+                     shuffle_files: Optional[bool] = False,
                      **kwargs) -> tf.data.Dataset:
         all_filenames = self.get_record_filenames(mode)
         return self.get_datasets_from_records(all_filenames,
@@ -45,7 +47,6 @@ class BaseDataset:
                                               shard=shard,
                                               take=take,
                                               **kwargs)
-
 
     def get_record_filenames(self, mode: str) -> List[str]:
         if mode == 'all':
@@ -74,7 +75,13 @@ class BaseDataset:
                                   do_not_process: Optional[bool] = False,
                                   shard: Optional[int] = None,
                                   take: Optional[int] = None,
+                                  shuffle_files: Optional[bool] = False,
                                   **kwargs) -> tf.data.Dataset:
+        if shuffle_files:
+            print("Shuffling records")
+            shuffle_rng = np.random.RandomState(0)
+            records = shuffle_rng.shuffle(records)
+
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 
         # Given the member lists of states, actions, and constants set in the constructor, create a dict for parsing a feature
