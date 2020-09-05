@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <sdf version="1.4">
-    <model name="small_box">
+    <model name="moving_box">
         <link name="link_1">
-            <kinematic>1</kinematic>
             <pose>0 0 0.125 0 0 0</pose>
             <inertial>
                 <pose>0 0 0 0 0 0</pose>
