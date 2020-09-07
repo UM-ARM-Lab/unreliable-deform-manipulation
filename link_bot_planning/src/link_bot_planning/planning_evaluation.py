@@ -169,6 +169,7 @@ def planning_evaluation(root: pathlib.Path,
         common_output_directory.mkdir(parents=True)
 
     for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
+        print(Fore.GREEN + f"Running method {planner_config_name}" + Fore.RESET)
         if skip_on_exception:
             try:
                 evaluate_planning_method(comparison_idx=comparison_idx,

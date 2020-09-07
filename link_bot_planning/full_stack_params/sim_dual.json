@@ -34,26 +34,27 @@
     "labeling_params": "labeling_params/classifier/dual.json"
   },
   "learn_classifier": {
-    "epochs": 1,
+    "epochs": 10,
     "classifier_hparams": "hparams/classifier/dual.json",
     "batch_size": 8
   },
   "make_recovery_dataset": {
-    "batch_size": 2,
+    "batch_size": 12,
     "labeling_params": "labeling_params/recovery/dual.json"
   },
   "learn_recovery": {
-    "epochs": 1,
+    "epochs": 10,
     "batch_size": 8,
     "recovery_hparams": "hparams/recovery/dual.json"
   },
   "planning_evaluation": {
-    "n_trials": 1,
+    "n_trials": 100,
     "planners_params_common": "planner_configs/victor_dual/common.json",
     "launch": "victor_tabletop.launch",
     "methods": [
-      "classifier_no_recovery",
-      "none",
+      "no_classifier",
+      "classifier",
+      "recovery",
       "full_dynamics"
     ]
   }

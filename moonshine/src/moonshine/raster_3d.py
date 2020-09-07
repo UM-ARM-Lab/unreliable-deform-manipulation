@@ -8,6 +8,7 @@ def raster_3d(state, pixel_indices, res, origin, h, w, c, k, batch_size: int):
     """ output is 1-channel voxel grid, using the max to reduce values contributed to by different points in the input state """
     res = res[0]
     n_points = tf.cast(state.shape[1] / 3, tf.int64)
+    batch_size = tf.cast(batch_size, tf.int64)
     points = tf.reshape(state, [batch_size, n_points, 3])
 
     # Below is a un-vectorized implementation, which is much easier to read and understand

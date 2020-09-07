@@ -205,7 +205,7 @@ class NNClassifier(MyKerasModel):
     @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
-        time = input_dict['time']
+        time = tf.cast(input_dict['time'], tf.int32)
 
         conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
@@ -318,9 +318,10 @@ class NNClassifierWrapper(BaseConstraintChecker):
         if self.hparams['stdev']:
             net_inputs[add_predicted('stdev')] = tf.cast(predictions['stdev'], tf.float32)
 
+        net_inputs = make_dict_tf_float32(net_inputs)
         mean_predictions, stdev_predictions = self.check_constraint_from_example(net_inputs, training=False)
-        mean_probability = mean_predictions['probability']
-        stdev_probability = stdev_predictions['probability']
+        mean_probability = mean_predictions['probabilities']
+        stdev_probability = stdev_predictions['probabilities']
         mean_probability = tf.squeeze(mean_probability, axis=2)
         stdev_probability = tf.squeeze(stdev_probability, axis=2)
         return mean_probability, stdev_probability

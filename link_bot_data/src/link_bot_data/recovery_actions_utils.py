@@ -4,7 +4,6 @@ from time import perf_counter
 from typing import Optional, List
 
 import numpy as np
-import rospy
 import tensorflow as tf
 from colorama import Fore
 
@@ -42,10 +41,13 @@ def make_recovery_dataset(dataset_dir,
 
     dataset = DynamicsDataset([dataset_dir])
 
+    outdir.mkdir(exist_ok=True)
     new_hparams_filename = outdir / 'hparams.json'
     recovery_dataset_hparams = dynamics_hparams
 
     scenario = fwd_model.scenario
+    if not isinstance(classifier_model_dir, List):
+        classifier_model_dir = [classifier_model_dir]
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario)
 
     recovery_dataset_hparams['dataset_dir'] = dataset_dir
@@ -114,6 +116,7 @@ def make_recovery_dataset(dataset_dir,
                 record_idx += 1
 
     return outdir
+
 
 def generate_recovery_examples(tf_dataset: tf.data.Dataset,
                                fwd_model,
@@ -205,17 +208,18 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                                   for k, v in _actual_states.items()}
 
             # Predict
-            predictions = fwd_model.propagate_differentiable_batched(
-                start_states=start_states_tiled, actions=_random_actions_dict)
+            mean_dynamics_predictions, _ = fwd_model.propagate_differentiable_batched(environment=None,
+                                                                                      states=start_states_tiled,
+                                                                                      actions=_random_actions_dict)
 
             # Check classifier
             environment_tiled = {k: tf.concat([v] * n_action_samples, axis=0) for k, v in environment.items()}
-            accept_probabilities = classifier_model.check_constraint_batched_tf(environment=environment_tiled,
-                                                                                predictions=predictions,
-                                                                                actions=_random_actions_dict,
-                                                                                batch_size=batch_sample,
-                                                                                state_sequence_length=classifier_horizon)
-            return predictions, accept_probabilities
+            accept_probabilities, _ = classifier_model.check_constraint_batched_tf(environment=environment_tiled,
+                                                                                   predictions=mean_dynamics_predictions,
+                                                                                   actions=_random_actions_dict,
+                                                                                   batch_size=batch_sample,
+                                                                                   state_sequence_length=classifier_horizon)
+            return mean_dynamics_predictions, accept_probabilities
 
         predictions, accept_probabilities = _predict_and_classify(actual_states, random_actions_dict)
 

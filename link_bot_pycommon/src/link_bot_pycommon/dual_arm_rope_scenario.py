@@ -3,6 +3,7 @@ from typing import Dict
 import actionlib
 import numpy as np
 import rospy
+from link_bot_data.link_bot_dataset_utils import add_predicted
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
 
@@ -79,8 +80,9 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         }
 
     def states_description(self) -> Dict:
-        joints_res = self.joint_states_srv(GetJointStateRequest())
-        n_joints = len(joints_res.joint_state.position)
+        # joints_res = self.joint_states_srv(GetJointStateRequest())
+        # FIXME:
+        n_joints = 7 + 7 + 14
         return {
             'gripper1': 3,
             'gripper2': 3,
@@ -109,3 +111,6 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         return {
             'joint_names': joints_res.joint_state.name
         }
+
+    def simple_name(self):
+        return "dual_arm"

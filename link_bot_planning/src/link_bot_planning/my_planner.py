@@ -1,28 +1,23 @@
-import sys
 import pathlib
-from enum import Enum
 import time
-from time import sleep
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+from dataclasses_json import dataclass_json
 from matplotlib import cm
 
-from dataclasses_json import dataclass_json
-from moonshine.tests.testing_utils import are_dicts_close_np
 import rospy
-from dataclasses_json import dataclass_json
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
-from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_planning.ompl_viz import planner_data_to_json
-from moonshine.moonshine_utils import listify
-from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-from link_bot_pycommon.base_services import BaseServices
+from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.tests.testing_utils import are_dicts_close_np
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 class MyPlannerStatus(Enum):
@@ -101,7 +96,7 @@ class MyPlanner:
         self.cleanup_before_plan(0)
 
         # just for debugging
-        self.cc = CollisionCheckerClassifier(pathlib.Path("cl_trials/cc_baseline/cc"), 0.0, self.scenario)
+        self.cc = CollisionCheckerClassifier([pathlib.Path("cl_trials/cc_baseline/cc")], self.scenario, 0.0)
         self.cc_but_accept_count = 0
 
     def cleanup_before_plan(self, seed):
@@ -166,11 +161,11 @@ class MyPlanner:
     def predict(self, previous_states, previous_actions, new_action):
         new_actions = [new_action]
         last_previous_state = previous_states[-1]
-        predicted_states = self.fwd_model.propagate(environment=self.environment,
-                                                    start_states=last_previous_state,
-                                                    actions=new_actions)
+        mean_predicted_states, stdev_predicted_states = self.fwd_model.propagate(environment=self.environment,
+                                                                                 start_states=last_previous_state,
+                                                                                 actions=new_actions)
         # get only the final state predicted
-        final_predicted_state = predicted_states[-1]
+        final_predicted_state = mean_predicted_states[-1]
 
         # compute new num_diverged by checking the constraint
         # walk back up the branch until num_diverged == 0
@@ -185,8 +180,8 @@ class MyPlanner:
             previous_action = previous_actions[previous_idx - 1]
             all_actions.insert(0, previous_action)
         classifier_probabilities, _ = self.classifier_model.check_constraint(environment=self.environment,
-                                                                          states_sequence=all_states,
-                                                                          actions=all_actions)
+                                                                             states_sequence=all_states,
+                                                                             actions=all_actions)
         not_in_collision = self.cc.check_constraint(environment=self.environment,
                                                     states_sequence=all_states,
                                                     actions=all_actions)
@@ -246,6 +241,7 @@ class MyPlanner:
                                            g=MyPlanner.propagate.g,
                                            b=MyPlanner.propagate.b,
                                            a=alpha)
+
     propagate.r = 0
     propagate.g = 0
     propagate.b = 0

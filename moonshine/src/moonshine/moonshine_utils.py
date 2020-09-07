@@ -9,7 +9,16 @@ def numpify(x, dtype=np.float32):
     if isinstance(x, np.ndarray):
         return x
     elif isinstance(x, list):
-        return np.array(x, dtype=dtype)
+        if len(x) == 0:
+            return np.array(x)
+        if isinstance(x[0], int):
+            return np.array(x, dtype=dtype)
+        elif isinstance(x[0], float):
+            return np.array(x, dtype=dtype)
+        elif isinstance(x[0], str):
+            return np.array(x, dtype=np.str)
+        else:
+            return [numpify(xi) for xi in x]
     elif isinstance(x, tf.Tensor):
         return x.numpy()
     elif isinstance(x, dict):
@@ -17,6 +26,8 @@ def numpify(x, dtype=np.float32):
     elif isinstance(x, tuple):
         return tuple(numpify(x_i) for x_i in x)
     elif isinstance(x, int):
+        return x
+    elif isinstance(x, str):
         return x
     elif isinstance(x, float):
         return x

@@ -88,7 +88,6 @@
   "res": 0.02,
   "max_step_size": 0.01,
   "steps_per_traj": 20,
-  "trajs_per_file": 8,
   "no_objects": false,
   "randomize_environment_every_n_trajectories": 8,
   "repeat_delta_gripper_motion_probability": 0.8,

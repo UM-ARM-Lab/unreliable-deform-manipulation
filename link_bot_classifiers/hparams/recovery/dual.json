@@ -1,6 +1,6 @@
 {
   "model_class": "nn",
-  "scenario": "dual",
+  "scenario": "dual_arm",
   "state_keys": [
     "link_bot",
     "gripper1",

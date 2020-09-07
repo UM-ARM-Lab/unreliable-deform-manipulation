@@ -20,6 +20,7 @@ from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as ge
 from moonshine.moonshine_utils import add_batch
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
+from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
@@ -259,17 +260,11 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
     def __init__(self, hparams: Dict, model_dir: pathlib.Path, scenario: ExperimentScenario,
                  rng: np.random.RandomState):
         super().__init__(hparams, model_dir, scenario, rng)
-        self.model_dir = model_dir
-        self.scenario = scenario
 
         # load the model?
-        model_hparams_file = model_dir / 'params.json'
-        if not model_hparams_file.exists():
-            raise FileNotFoundError("no hparams file found!")
-        self.model_hparams = json.load(model_hparams_file.open('r'))
-        self.model = NNRecoveryModel(hparams=self.model_hparams, batch_size=1, scenario=self.scenario)
+        self.model = NNRecoveryModel(hparams=self.hparams, batch_size=1, scenario=self.scenario)
         self.ckpt = tf.train.Checkpoint(model=self.model)
-        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir / 'latest_checkpoint', max_to_keep=1)
+        self.manager = tf.train.CheckpointManager(self.ckpt, model_dir, max_to_keep=1)
 
         self.ckpt.restore(self.manager.latest_checkpoint)
         if self.manager.latest_checkpoint:

@@ -5,6 +5,17 @@
     <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
     <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
 
+    <group if="$(arg use_victor)">
+        <include file="$(find victor_moveit_config)/launch/planning_context.launch">
+            <arg name="load_robot_description" value="true"/>
+        </include>
+    </group>
+    <group if="$(arg use_val)">
+        <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
+            <arg name="load_robot_description" value="true"/>
+        </include>
+    </group>
+
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
               args="0 0 0 0 0 0 robot_root world">

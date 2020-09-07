@@ -1,11 +1,13 @@
-from typing import Dict
 import json
-import pathlib
+from typing import Dict
+
+from link_bot_pycommon.pycommon import paths_from_json
 
 
 def labeling_params_from_planner_params(planner_params, fallback_labeling_params: Dict):
-    classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])
-    classifier_hparams_filename = classifier_model_dir.parent / 'params.json'
+    classifier_model_dirs = paths_from_json(planner_params['classifier_model_dir'])
+    representative_classifier_model_dir = classifier_model_dirs[0]
+    classifier_hparams_filename = representative_classifier_model_dir.parent / 'params.json'
     classifier_hparams = json.load(classifier_hparams_filename.open('r'))
     if 'labeling_params' in classifier_hparams:
         labeling_params = classifier_hparams['labeling_params']

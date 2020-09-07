@@ -159,7 +159,14 @@ def vector_to_points_2d(x):
 
 
 def make_dict_tf_float32(d):
-    return {k: tf.cast(s_k, tf.float32) for k, s_k in d.items()}
+    f32d = {}
+    for k, s_k in d.items():
+        s_k = tf.convert_to_tensor(s_k)
+        if s_k.dtype == tf.string:
+            f32d[k] = s_k
+        else:
+            f32d[k] = tf.cast(s_k, tf.float32)
+    return f32d
 
 
 def make_dict_float32(d):

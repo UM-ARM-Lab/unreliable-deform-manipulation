@@ -50,6 +50,11 @@ class BaseDynamicsFunction:
             self.action_keys = net.action_keys
 
     def propagate_from_example(self, example, training: bool = False):
+        """ This is the function that all other propagate functions eventually call """
+        if 'batch_size' not in example:
+            example['batch_size'] = example[self.state_keys[0]].shape[0]
+        if 'sequence_length' not in example:
+            example['sequence_length'] = example[self.state_keys[0]].shape[1]
         predictions = [net(example, training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_prediction = {state_key: tf.math.reduce_mean(predictions_dict[state_key], axis=0) for state_key in self.state_keys}

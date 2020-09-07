@@ -142,6 +142,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
 
+        #TODO: rename this to rope endpoints reset positions or something
         reset.gripper1.x = numpify(data_collection_params['left_gripper_reset_position'][0])
         reset.gripper1.y = numpify(data_collection_params['left_gripper_reset_position'][1])
         reset.gripper1.z = numpify(data_collection_params['left_gripper_reset_position'][2])
@@ -521,7 +522,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return "DualFloatingGripperRope"
 
     def simple_name(self):
-        return "dual_floating_gripper_rope"
+        return "dual_floating"
 
     @staticmethod
     def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):

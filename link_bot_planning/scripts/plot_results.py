@@ -80,6 +80,7 @@ def plot_plan(args, scenario, step, metadata, fallback_labeing_params: Dict):
             for vertex in tree_json['vertices']:
                 scenario.plot_tree_state(vertex, color='#77777722')
                 sleep(0.001)
+
         tree_thread = threading.Thread(target=_draw_tree_function, args=(scenario, step['tree_json'],))
         tree_thread.start()
 
@@ -149,6 +150,17 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
         types.extend([step['type']] * len(actions))
         all_actual_states.extend(actual_states[:-1])
         all_predicted_states.extend(predicted_states[:-1])
+
+        if args.show_tree and step['type'] == 'executed_plan':
+            def _draw_tree_function(scenario, tree_json):
+                print(f"n vertices {len(tree_json['vertices'])}")
+                for vertex in tree_json['vertices']:
+                    scenario.plot_tree_state(vertex, color='#77777722')
+                    sleep(0.001)
+
+            tree_thread = threading.Thread(target=_draw_tree_function,
+                                           args=(scenario, step['planning_result']['tree'],))
+            tree_thread.start()
 
     # but do add the actual final states
     all_actual_states.append(actual_states[-1])

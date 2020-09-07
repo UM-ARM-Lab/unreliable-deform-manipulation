@@ -121,7 +121,7 @@ class PlanAndExecute:
             actual_path = [state_t]
         else:
             if self.verbose >= 2 and not self.no_execution:
-                print(Fore.CYAN + "Executing Plan" + Fore.RESET)
+                rospy.loginfo(Fore.CYAN + "Executing Plan" + Fore.RESET)
             actual_path = execute_actions(self.service_provider,
                                           self.planner.scenario,
                                           planning_query.start,
@@ -170,7 +170,10 @@ class PlanAndExecute:
             # This includes the occupancy map but can also include things like the initial state of the tether
             environment = self.get_environment()
 
-            planning_query = PlanningQuery(goal=goal, environment=environment, start=start_state, seed=trial_idx)
+            # Try to make the seeds reproducible, but it needs to change based on attempt idx or we would just keep
+            # trying the same plans over and over
+            seed = 100000 * trial_idx + attempt_idx
+            planning_query = PlanningQuery(goal=goal, environment=environment, start=start_state, seed=seed)
             planning_queries.append(planning_query)
 
             planning_result = self.plan(planning_query)
@@ -185,8 +188,8 @@ class PlanAndExecute:
                     # Nothing else to do here, just give up
                     end_state = self.planner.scenario.get_state()
                     trial_status = TrialStatus.NotProgressingNoRecovery
-                    print(
-                        Fore.BLUE + f"Trial {trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s" + Fore.RESET)
+                    trial_msg = f"Trial {trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s"
+                    rospy.loginfo(Fore.BLUE + trial_msg + Fore.RESET)
                     trial_data_dict = {
                         'planning_queries': planning_queries,
                         'total_time': time_since_start,
@@ -236,10 +239,10 @@ class PlanAndExecute:
             if reached_goal or time_since_start > total_timeout:
                 if reached_goal:
                     trial_status = TrialStatus.Reached
-                    print(Fore.BLUE + f"Trial {trial_idx} Ended: Goal reached!" + Fore.RESET)
+                    rospy.loginfo(Fore.BLUE + f"Trial {trial_idx} Ended: Goal reached!" + Fore.RESET)
                 else:
                     trial_status = TrialStatus.Timeout
-                    print(Fore.BLUE + f"Trial {trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
+                    rospy.loginfo(Fore.BLUE + f"Trial {trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
                 trial_data_dict = {
                     'planning_queries': planning_queries,
                     'total_time': time_since_start,

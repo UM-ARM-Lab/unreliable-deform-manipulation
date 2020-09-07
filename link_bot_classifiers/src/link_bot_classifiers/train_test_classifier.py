@@ -86,9 +86,9 @@ def train_main(dataset_dirs: List[pathlib.Path],
 
     train_tf_dataset = train_tf_dataset.shuffle(256, reshuffle_each_iteration=True)
 
-    # rospy.logerr_once("NOT BALANCING!")
-    train_tf_dataset = balance(train_tf_dataset)
-    val_tf_dataset = balance(val_tf_dataset)
+    rospy.logerr_once("NOT BALANCING!")
+    # train_tf_dataset = balance(train_tf_dataset)
+    # val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
