@@ -4,11 +4,12 @@ import uuid
 from time import time, sleep
 from typing import Optional, Dict, List, Tuple
 
-import rosbag
-import rospy
+import numpy as np
 from colorama import Fore
 from ompl import util as ou
 
+import rosbag
+import rospy
 from control_msgs.msg import FollowJointTrajectoryActionGoal
 from link_bot_data.link_bot_dataset_utils import data_directory
 from link_bot_gazebo_python import gazebo_services
@@ -17,6 +18,7 @@ from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.serialization import dummy_proof_write, my_dump
+from moonshine.moonshine_utils import numpify
 
 
 class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
@@ -65,6 +67,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                                                self.follow_joint_trajectory_goal_callback,
                                                queue_size=10)
         self.bag = None
+        self.final_execution_to_goal_errors = []
 
     def randomize_environment(self):
         super().randomize_environment()
@@ -106,6 +109,16 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             sleep(1)
             self.service_provider.stop_record_trial()
             self.bag.close()
+
+        # compute the current running average success
+        goal = trial_data['planning_queries'][0].goal
+        final_actual_state = numpify(trial_data['end_state'])
+        final_execution_to_goal_error = self.planner.scenario.distance_to_goal(final_actual_state, goal)
+        self.final_execution_to_goal_errors.append(final_execution_to_goal_error)
+        goal_threshold = self.planner_params['goal_threshold']
+        n = len(self.final_execution_to_goal_errors)
+        success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
+        print(Fore.CYAN + f"Current average success rate {success_percentage}%")
 
 
 def evaluate_planning_method(comparison_idx: int,
@@ -189,7 +202,9 @@ def planning_evaluation(root: pathlib.Path,
             evaluate_planning_method(comparison_idx=comparison_idx,
                                      planner_params=planner_params,
                                      trials=trials,
-                                     planner_config_name=planner_config_name, common_output_directory=common_output_directory)
+                                     planner_config_name=planner_config_name,
+                                     verbose=verbose,
+                                     common_output_directory=common_output_directory)
         print(f"Results written to {common_output_directory}")
 
-    return root
+    return common_output_directory

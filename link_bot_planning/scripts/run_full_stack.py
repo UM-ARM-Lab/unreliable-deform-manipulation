@@ -3,9 +3,11 @@
 import argparse
 import json
 import pathlib
+import re
 import time
 from typing import Dict, List
 
+import colorama
 import rospkg
 from colorama import Fore
 
@@ -138,12 +140,12 @@ class FullStackRunner:
         classifier_data_dir.mkdir(exist_ok=True)
         outdir = classifier_data_dir / self.unique_nickname
         outdir.mkdir(exist_ok=True, parents=False)
-        rospy.loginfo(Fore.GREEN + outdir.as_posix() + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + outdir.as_posix())
         classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset2,
                                                          fwd_model_dir=fwd_model_dirs,
                                                          labeling_params=labeling_params,
                                                          outdir=outdir)
-        rospy.loginfo(Fore.GREEN + outdir.as_posix() + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return classifier_dataset_dir
 
     def learn_classifier(self, classifier_dataset_dir: pathlib.Path, seed: int):
@@ -177,7 +179,7 @@ class FullStackRunner:
                                                      batch_size=make_recovery_dataset_params['batch_size'],
                                                      labeling_params=labeling_params,
                                                      outdir=outdir)
-        rospy.loginfo(Fore.GREEN + recovery_dataset_dir.as_posix() + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + recovery_dataset_dir.as_posix())
         return recovery_dataset_dir
 
     def learn_recovery(self, recovery_dataset_dir: pathlib.Path, classifier_model_dir: pathlib.Path, seed: int):
@@ -196,7 +198,7 @@ class FullStackRunner:
                                                     batch_size=batch_size,
                                                     epochs=epochs,
                                                     seed=seed)
-        rospy.loginfo(Fore.GREEN + trial_path.as_posix() + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + trial_path.as_posix())
         return trial_path
 
     def planning_evaluation(self,
@@ -209,35 +211,9 @@ class FullStackRunner:
         n_trials = planning_evaluation_params['n_trials']
         trials = list(range(n_trials))
         planners_params_common_filename = pathlib.Path(planning_evaluation_params['planners_params_common'])
-        planners_params = []
-        for method_name in planning_evaluation_params['methods']:
-            with planners_params_common_filename.open('r') as planners_params_common_file:
-                planner_params = json.load(planners_params_common_file)
-            if method_name == "classifier":
-                method_fwd_model_dirs = [d / 'best_checkpoint' for d in fwd_model_dirs]
-                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
-                recovery = {'use_recovery': False}
-            elif method_name == "recovery":
-                method_fwd_model_dirs = [d / 'best_checkpoint' for d in full_dynamics_model_dirs]
-                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
-                recovery = {
-                    'recovery_model_dir': recovery_model_dir / 'best_checkpoint',
-                    'use_recovery': True,
-                }
-            elif method_name == "no_classifier":
-                method_fwd_model_dirs = [d / 'best_checkpoint' for d in fwd_model_dirs]
-                method_classifier_model_dir = [pathlib.Path('cl_trials/none_baseline/none')]
-                recovery = {'use_recovery': False}
-            elif method_name == "full_dynamics":
-                method_fwd_model_dirs = [d / 'best_checkpoint' for d in full_dynamics_model_dirs]
-                method_classifier_model_dir = [pathlib.Path('cl_trials/none_baseline/none')]
-                recovery = {'use_recovery': False}
-            else:
-                raise NotImplementedError(f"Method {method_name} not implemented")
-            planner_params['fwd_model_dir'] = method_fwd_model_dirs
-            planner_params['classifier_model_dir'] = method_classifier_model_dir
-            planner_params['recovery'] = recovery
-            planners_params.append((method_name, planner_params))
+        planners_params = self.make_planners_params(classifier_model_dir, full_dynamics_model_dirs, fwd_model_dirs,
+                                                    planners_params_common_filename, planning_evaluation_params,
+                                                    recovery_model_dir)
 
         self.service_provider.launch(planning_evaluation_params)
 
@@ -249,11 +225,67 @@ class FullStackRunner:
 
         self.service_provider.kill()
 
-        rospy.loginfo(Fore.GREEN + outdir.as_posix() + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return outdir
+
+    def make_planners_params(self,
+                             classifier_model_dir: pathlib.Path,
+                             full_dynamics_model_dirs: List[pathlib.Path],
+                             udnn_model_dirs: List[pathlib.Path],
+                             planners_params_common_filename: pathlib.Path,
+                             planning_evaluation_params: Dict,
+                             recovery_model_dir: pathlib.Path):
+        planners_params = []
+        for method_name in planning_evaluation_params['methods']:
+            with planners_params_common_filename.open('r') as planners_params_common_file:
+                planner_params = json.load(planners_params_common_file)
+            if method_name == "classifier":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
+                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
+                recovery = {'use_recovery': False}
+            elif method_name == "learned_recovery":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
+                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
+                recovery = {
+                    'recovery_model_dir': recovery_model_dir / 'best_checkpoint',
+                    'use_recovery': True,
+                }
+            elif method_name == "random_recovery":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
+                method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
+                link_bot_planning_path = pathlib.Path(r.get_path('link_bot_planning'))
+                recovery = {
+                    'recovery_model_dir': link_bot_planning_path / 'recovery_trials' / 'random',
+                    'use_recovery': True,
+                }
+            elif method_name == "no_classifier":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
+                method_classifier_model_dir = [pathlib.Path('cl_trials/none_baseline/none')]
+                recovery = {'use_recovery': False}
+            elif method_name == "full_dynamics":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in full_dynamics_model_dirs]
+                method_classifier_model_dir = [pathlib.Path('cl_trials/none_baseline/none')]
+                recovery = {'use_recovery': False}
+            else:
+                raise NotImplementedError(f"Method {method_name} not implemented")
+            planner_params['fwd_model_dir'] = method_fwd_model_dirs
+            planner_params['classifier_model_dir'] = method_classifier_model_dir
+            planner_params['recovery'] = recovery
+            table_nickname = re.split(r'[_\-\s]', method_name)
+            # TODO: bad API design
+            table_config = {
+                "nickname": table_nickname,
+                "classifier": 'TODO',
+                "recovery": 'TODO',
+                "dynamics": 'TODO',
+            }
+            planner_params['table_config'] = table_config
+            planners_params.append((method_name, planner_params))
+        return planners_params
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("full_stack_param", type=pathlib.Path)
 

@@ -105,6 +105,7 @@ def inflate_tf_3d(env, radius_m: float, res: float):
                                   use_bias=False,
                                   weights=[tf.ones([s, s, s, 1, 1])])
     conv.build([1, h, w, c, 1])
+    conv.set_weights([tf.ones([s, s, s, 1, 1])])
     x = tf.cast(env, tf.float32)[tf.newaxis, :, :, :, tf.newaxis]
     inflated = tf.squeeze(tf.clip_by_value(conv(x), clip_value_min=0, clip_value_max=1))
     return inflated

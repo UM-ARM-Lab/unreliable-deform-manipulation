@@ -1,24 +1,20 @@
 #!/usr/bin/env python
 
 import argparse
+import gzip
 import json
-import rospy
 import pathlib
-from typing import List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
-import gzip
 from colorama import Style, Fore
-from scipy import stats
 from tabulate import tabulate
 
-from link_bot_data.classifier_dataset_utils import generate_classifier_examples_from_batch
+import rospy
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
-from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays
 
 
 def make_cell(text, tablefmt):
@@ -67,7 +63,6 @@ def metrics_main(args):
     errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"])
     print('-' * 90)
     if not args.no_plot:
-
         execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 10))
         execution_success_ax.set_xlabel("Task Error Threshold")
         execution_success_ax.set_ylabel("Success Rate")

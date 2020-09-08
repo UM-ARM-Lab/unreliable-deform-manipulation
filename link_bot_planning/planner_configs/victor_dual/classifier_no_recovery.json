@@ -1,5 +1,40 @@
 {
   "scene": "tabletop",
+  "scenario": "dual_arm",
+  "home": {
+    "name": [
+      "victor_left_arm_joint_1",
+      "victor_left_arm_joint_2",
+      "victor_left_arm_joint_3",
+      "victor_left_arm_joint_4",
+      "victor_left_arm_joint_5",
+      "victor_left_arm_joint_6",
+      "victor_left_arm_joint_7",
+      "victor_right_arm_joint_1",
+      "victor_right_arm_joint_2",
+      "victor_right_arm_joint_3",
+      "victor_right_arm_joint_4",
+      "victor_right_arm_joint_5",
+      "victor_right_arm_joint_6",
+      "victor_right_arm_joint_7"
+    ],
+    "position": [
+      -1.1462081323840563,
+      1.226658522254759,
+      2.496373975637866,
+      -0.9015918195233449,
+      -0.6934815434002939,
+      1.489008421851203,
+      -0.1997030509448301,
+      -1.995304455498625,
+      -1.217371294047899,
+      -2.148658497914306,
+      0.9268130437662494,
+      0.46886492789985645,
+      -1.2886398689514698,
+      2.035848925520293
+    ]
+  },
   "objects": [
     "box1",
     "box2",
@@ -52,16 +87,16 @@
     "use_recovery": false
   },
   "fwd_model_dir": [
-    "dy_trials/no_victor_longer_0/best_checkpoint",
-    "dy_trials/no_victor_longer_1/best_checkpoint",
-    "dy_trials/no_victor_longer_2/best_checkpoint",
-    "dy_trials/no_victor_longer_3/best_checkpoint",
-    "dy_trials/no_victor_longer_4/best_checkpoint",
-    "dy_trials/no_victor_longer_5/best_checkpoint",
-    "dy_trials/no_victor_longer_6/best_checkpoint",
-    "dy_trials/no_victor_longer_7/best_checkpoint"
+    "dy_trials/sim_dual_1599289247_0/September_05_06-32-09_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_1/September_05_07-25-25_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_2/September_05_08-18-41_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_3/September_05_09-12-12_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_4/September_05_10-05-52_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_5/September_05_10-58-56_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_6/September_05_11-52-30_3d78a1f2a3/best_checkpoint",
+    "dy_trials/sim_dual_1599289247_7/September_05_12-46-21_3d78a1f2a3/best_checkpoint"
   ],
-  "classifier_model_dir": "cl_trials/dual-robot-frame/July_29_17-38-37_7b8a49f6fe/best_checkpoint",
+  "classifier_model_dir": "cl_trials/sim_dual_1599348269/September_05_19-24-29_8440e91e85/best_checkpoint",
   "accept_threshold": 0.5,
   "goal_threshold": 0.05,
   "goal_type": "midpoint",
@@ -69,13 +104,13 @@
   "real_time_rate": 0.0,
   "table_config": {
     "nickname": [
-      "Classifier"
+      "classifier"
     ],
-    "classifier": "Learned",
-    "recovery": "None",
+    "classifier": "learned",
+    "recovery": "none",
     "dynamics": [
-      "Ensemble",
-      "Unconstrained"
+      "ensemble",
+      "unconstrained"
     ]
   }
 }

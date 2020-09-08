@@ -4,17 +4,18 @@ from typing import Dict
 from link_bot_classifiers import classifier_utils
 from link_bot_planning.nearest_rrt import NearestRRT
 from link_bot_pycommon.get_scenario import get_scenario
+from link_bot_pycommon.pycommon import paths_from_json
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
 def get_planner(planner_params: Dict, verbose: int):
-    fwd_model_dirs = [pathlib.Path(model_dir) for model_dir in planner_params['fwd_model_dir']]
+    fwd_model_dirs = paths_from_json(planner_params['fwd_model_dir'])
 
     fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dirs)
     scenario = get_scenario(planner_params["scenario"])
 
-    classifier_model_dir = planner_params['classifier_model_dir']
+    classifier_model_dir = paths_from_json(planner_params['classifier_model_dir'])
     classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
 
     planner = NearestRRT(fwd_model=fwd_model,

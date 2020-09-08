@@ -642,10 +642,13 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance2 = np.linalg.norm(goal['gripper2'] - gripper2)
         return max(distance1, distance2)
 
-    @staticmethod
-    def sample_midpoint_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+    def sample_midpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_threshold'], res=environment['res'])
+        # from copy import deepcopy
+        # environment_ = deepcopy(environment)
+        # environment_['env'] = env_inflated
+        # self.plot_environment_rviz(environment_)
         goal_extent = planner_params['goal_extent']
 
         while True:

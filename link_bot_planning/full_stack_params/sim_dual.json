@@ -54,7 +54,8 @@
     "methods": [
       "no_classifier",
       "classifier",
-      "recovery",
+      "learned_recovery",
+      "random_recovery",
       "full_dynamics"
     ]
   }

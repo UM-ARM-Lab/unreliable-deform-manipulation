@@ -3,8 +3,9 @@ import argparse
 import json
 import pathlib
 
-import rospy
+from colorama import init
 
+import rospy
 from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from moonshine.gpu_config import limit_gpu_mem
@@ -13,6 +14,8 @@ limit_gpu_mem(7.5)
 
 
 def main():
+    init(autoreset=True)
+
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
                         help='json file(s) describing what should be compared')
