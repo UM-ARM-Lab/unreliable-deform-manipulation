@@ -8,6 +8,7 @@ import time
 from typing import Dict, List
 
 import colorama
+import hjson
 import rospkg
 from colorama import Fore
 
@@ -33,7 +34,7 @@ class FullStackRunner:
         service_provider_name = full_stack_params['service_provider']
         self.service_provider = get_service_provider(service_provider_name)
 
-    def collect_dynamics_data_1(self, seed: int):
+    def collect_dynamics_data_1(self, runlog: Dict, seed: int):
         collect_dynamics_1 = self.full_stack_params['collect_dynamics_1']
         scenario = collect_dynamics_1['scenario']
         collect_dynamics_data_params_filename = pathlib.Path(collect_dynamics_1['params'])
@@ -58,9 +59,11 @@ class FullStackRunner:
         self.service_provider.kill()
 
         files_dataset.split()
-        return files_dataset.root_dir
+        return {
+            'dynamics_dataset_dir': files_dataset.root_dir,
+        }
 
-    def collect_dynamics_data_2(self, seed: int):
+    def collect_dynamics_data_2(self, runlog: Dict, seed: int):
         collect_dynamics_2 = self.full_stack_params['collect_dynamics_2']
         scenario = collect_dynamics_2['scenario']
         collect_dynamics_data_params_filename = pathlib.Path(collect_dynamics_2['params'])
@@ -84,9 +87,12 @@ class FullStackRunner:
         self.service_provider.kill()
 
         files_dataset.split()
-        return files_dataset.root_dir
+        return {
+            'dynamics_dataset_dir': files_dataset.root_dir,
+        }
 
-    def learn_dynamics(self, seed: int, dynamics_dataset_dir: pathlib.Path):
+    def learn_dynamics(self, runlog: Dict, seed: int):
+        dynamics_dataset_dir = runlog['collect_dynamics_data_1']['dynamics_dataset_1']
         learn_dynamics_params = self.full_stack_params['learn_dynamics']
         n_ensemble = learn_dynamics_params['n_ensemble']
         batch_size = learn_dynamics_params['batch_size']
@@ -107,9 +113,12 @@ class FullStackRunner:
                                                ensemble_idx=ensemble_idx)
             trial_paths.append(trial_path)
 
-        return trial_paths
+        return {
+            'model_dirs': trial_paths,
+        }
 
-    def learn_full_dynamics(self, seed: int, dynamics_dataset_dir: pathlib.Path):
+    def learn_full_dynamics(self, runlog: Dict, seed: int):
+        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
         learn_dynamics_params = self.full_stack_params['learn_full_dynamics']
         n_ensemble = learn_dynamics_params['n_ensemble']
         batch_size = learn_dynamics_params['batch_size']
@@ -119,7 +128,7 @@ class FullStackRunner:
 
         trial_paths = []
         for ensemble_idx in range(n_ensemble):
-            trial_path = train_test.train_main(dataset_dirs=[dynamics_dataset_dir],
+            trial_path = train_test.train_main(dataset_dirs=[dynamics_dataset_2],
                                                model_hparams=forward_model_hparams,
                                                trials_directory=pathlib.Path('dy_trials'),
                                                checkpoint=None,
@@ -130,9 +139,13 @@ class FullStackRunner:
                                                ensemble_idx=ensemble_idx)
             trial_paths.append(trial_path)
 
-        return trial_paths
+        return {
+            'model_dirs': trial_paths,
+        }
 
-    def make_classifier_dataset(self, dynamics_dataset2, fwd_model_dirs: List):
+    def make_classifier_dataset(self, runlog: Dict, seed: int):
+        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
+        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
         make_classifier_dataset_params = self.full_stack_params['make_classifier_dataset']
         labeling_params = pathlib.Path(make_classifier_dataset_params['labeling_params'])
 
@@ -141,14 +154,17 @@ class FullStackRunner:
         outdir = classifier_data_dir / self.unique_nickname
         outdir.mkdir(exist_ok=True, parents=False)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
-        classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset2,
-                                                         fwd_model_dir=fwd_model_dirs,
+        classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset_2,
+                                                         fwd_model_dir=udnn_model_dirs,
                                                          labeling_params=labeling_params,
                                                          outdir=outdir)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
-        return classifier_dataset_dir
+        return {
+            'classifier_dataset_dir': classifier_dataset_dir,
+        }
 
-    def learn_classifier(self, classifier_dataset_dir: pathlib.Path, seed: int):
+    def learn_classifier(self, runlog: Dict, seed: int):
+        classifier_dataset_dir = runlog['make_classifier_dataset']['classifier_dataset_dir']
         learn_classifier_params = self.full_stack_params['learn_classifier']
         batch_size = learn_classifier_params['batch_size']
         epochs = learn_classifier_params['epochs']
@@ -162,33 +178,40 @@ class FullStackRunner:
                                                       batch_size=batch_size,
                                                       epochs=epochs,
                                                       seed=seed)
-        return trial_path
+        return {
+            'model_dir': trial_path,
+        }
 
-    def make_recovery_dataset(self, dynamics_dataset_dir2: pathlib.Path,
-                              fwd_model_dirs: List[pathlib.Path],
-                              classifier_model_dir: pathlib.Path):
+    def make_recovery_dataset(self, runlog: Dict, seed: int):
+        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
+        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
+        classifier_model_dir = runlog['learn_classifier']['model_dir']
         make_recovery_dataset_params = self.full_stack_params['make_recovery_dataset']
         labeling_params = pathlib.Path(make_recovery_dataset_params['labeling_params'])
         recovery_data_dir = pathlib.Path('recovery_data')
         recovery_data_dir.mkdir(exist_ok=True)
         outdir = pathlib.Path('recovery_data') / self.unique_nickname
         outdir.mkdir(parents=False, exist_ok=True)
-        recovery_dataset_dir = make_recovery_dataset(dataset_dir=dynamics_dataset_dir2,
-                                                     fwd_model_dir=fwd_model_dirs,
+        recovery_dataset_dir = make_recovery_dataset(dataset_dir=dynamics_dataset_2,
+                                                     fwd_model_dir=udnn_model_dirs,
                                                      classifier_model_dir=classifier_model_dir,
                                                      batch_size=make_recovery_dataset_params['batch_size'],
                                                      labeling_params=labeling_params,
                                                      outdir=outdir)
         rospy.loginfo(Fore.GREEN + recovery_dataset_dir.as_posix())
-        return recovery_dataset_dir
+        return {
+            'recovery_dataset_dir': recovery_dataset_dir,
+        }
 
-    def learn_recovery(self, recovery_dataset_dir: pathlib.Path, classifier_model_dir: pathlib.Path, seed: int):
+    def learn_recovery(self, runlog: Dict, seed: int):
+        recovery_dataset_dir = runlog['make_recovery_dataset']['recovery_dataset_dir']
+        classifier_model_dir = runlog['learn_classifier']['model_dir']
         learn_recovery_params = self.full_stack_params['learn_recovery']
         batch_size = learn_recovery_params['batch_size']
         epochs = learn_recovery_params['epochs']
-        recoverys_module_path = pathlib.Path(r.get_path('link_bot_classifiers'))
+        recovery_module_path = pathlib.Path(r.get_path('link_bot_classifiers'))
         classifier_model_dir = classifier_model_dir / 'best_checkpoint'
-        recovery_hparams = recoverys_module_path / learn_recovery_params['recovery_hparams']
+        recovery_hparams = recovery_module_path / learn_recovery_params['recovery_hparams']
         trial_path = train_test_recovery.train_main(dataset_dirs=[recovery_dataset_dir],
                                                     classifier_checkpoint=classifier_model_dir,
                                                     model_hparams=recovery_hparams,
@@ -199,19 +222,21 @@ class FullStackRunner:
                                                     epochs=epochs,
                                                     seed=seed)
         rospy.loginfo(Fore.GREEN + trial_path.as_posix())
-        return trial_path
+        return {
+            'model_dir': trial_path,
+        }
 
-    def planning_evaluation(self,
-                            fwd_model_dirs: List[pathlib.Path],
-                            full_dynamics_model_dirs: List[pathlib.Path],
-                            classifier_model_dir: pathlib.Path,
-                            recovery_model_dir: pathlib.Path):
+    def planning_evaluation(self, runlog: Dict, seed: int):
+        classifier_model_dir = runlog['learn_classifier']['model_dir']
+        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
+        full_dynamics_model_dirs = runlog['learn_full_dynamics']['model_dirs']
+        recovery_model_dir = runlog['learn_recovery']['model_dir']
         planning_module_path = pathlib.Path(r.get_path('link_bot_planning'))
         planning_evaluation_params = self.full_stack_params["planning_evaluation"]
         n_trials = planning_evaluation_params['n_trials']
         trials = list(range(n_trials))
         planners_params_common_filename = pathlib.Path(planning_evaluation_params['planners_params_common'])
-        planners_params = self.make_planners_params(classifier_model_dir, full_dynamics_model_dirs, fwd_model_dirs,
+        planners_params = self.make_planners_params(classifier_model_dir, full_dynamics_model_dirs, udnn_model_dirs,
                                                     planners_params_common_filename, planning_evaluation_params,
                                                     recovery_model_dir)
 
@@ -288,6 +313,7 @@ def main():
     colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("full_stack_param", type=pathlib.Path)
+    parser.add_argument("--from-logfile", type=pathlib.Path)
 
     args = parser.parse_args()
 
@@ -297,44 +323,62 @@ def main():
         full_stack_params = json.load(f)
 
     fsr = FullStackRunner(full_stack_params)
+
+    if args.from_logfile:
+        with args.from_logfile.open("r") as logfile:
+            runlog = hjson.loads(logfile.read())
+    else:
+        # create a logfile
+        logfile_dir = pathlib.Path("results") / "log" / fsr.unique_nickname
+        logfile_dir.mkdir(parents=True)
+        logfile_name = logfile_dir / "logfile.hjson"
+        runlog = logfile_name.open("w")
+
     seed = full_stack_params['seed']
-    # dynamics_dataset_dir1 = fsr.collect_dynamics_data_1(seed)
-    dynamics_dataset_dir1 = pathlib.Path("fwd_model_data/sim_dual_phase1_1599289280_3d78a1f2a3_5120")
+    if 'collect_dynamics_data_1' not in runlog:
+        collect_dynamics_data_1_out = fsr.collect_dynamics_data_1(runlog, seed)
+        runlog['collect_dynamics_data_1'] = collect_dynamics_data_1_out
+        hjson.dump(runlog, logfile)
 
-    # dynamics_dataset_dir2 = fsr.collect_dynamics_data_2(seed)
-    dynamics_dataset_dir2 = pathlib.Path("fwd_model_data/sim_dual_phase2_1599290755_3d78a1f2a3_2048")
+    if 'collect_dynamics_data_2' not in runlog:
+        collect_dynamics_data_2_out = fsr.collect_dynamics_data_2(runlog, seed)
+        runlog['collect_dynamics_data_2'] = collect_dynamics_data_2_out
+        hjson.dump(runlog, logfile)
 
-    # fwd_model_dirs = fsr.learn_dynamics(seed, dynamics_dataset_dir1)
+    if 'learn_dynamics' not in runlog:
+        learn_dynamics_out = fsr.learn_dynamics(runlog, seed)
+        runlog['learn_dynamics'] = learn_dynamics_out
+        hjson.dump(runlog, logfile)
 
-    # TODO: implement this
-    # fwd_model_dirs = infer_ensemble_models('dy_trials/sim_dual_1599289247_0')
-    fwd_model_dirs = [
-        pathlib.Path('dy_trials/sim_dual_1599289247_0/September_05_06-32-09_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_1/September_05_07-25-25_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_2/September_05_08-18-41_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_3/September_05_09-12-12_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_4/September_05_10-05-52_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_5/September_05_10-58-56_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_6/September_05_11-52-30_3d78a1f2a3/'),
-        pathlib.Path('dy_trials/sim_dual_1599289247_7/September_05_12-46-21_3d78a1f2a3/'),
-    ]
+    if 'learn_full_dynamics' not in runlog:
+        learn_full_dynamics_out = fsr.learn_full_dynamics(runlog, seed)
+        runlog['learn_full_dynamics'] = learn_full_dynamics_out
+        hjson.dump(runlog, logfile)
 
-    # full_dynamics_model_dirs = fsr.learn_full_dynamics(seed, dynamics_dataset_dir2)
-    full_dynamics_model_dirs = [pathlib.Path("dy_trials/sim_dual_1599289247_full_0/September_05_13-44-00_3d78a1f2a3/")]
+    if 'make_classifier_dataset' not in runlog:
+        make_classifier_dataset_out = fsr.make_classifier_dataset(runlog, seed)
+        runlog['make_classifier_dataset'] = make_classifier_dataset_out
+        hjson.dump(runlog, logfile)
 
-    # classifier_dataset_dir = fsr.make_classifier_dataset(dynamics_dataset_dir2, fwd_model_dirs)
-    classifier_dataset_dir = pathlib.Path("classifier_data/sim_dual_1599344051")
-    # classifier_model_dir = fsr.learn_classifier(classifier_dataset_dir, seed)
-    classifier_model_dir = pathlib.Path("cl_trials/sim_dual_1599348269/September_05_19-24-29_8440e91e85")
+    if 'learn_classifier' not in runlog:
+        learn_classifier_out = fsr.learn_classifier(runlog, seed)
+        runlog['learn_classifier'] = learn_classifier_out
+        hjson.dump(runlog, logfile)
 
-    # recovery_dataset_dir = fsr.make_recovery_dataset(dynamics_dataset_dir2, fwd_model_dirs, classifier_model_dir)
-    recovery_dataset_dir = pathlib.Path("recovery_data/sim_dual_1599358002")
-    # recovery_model_dir = fsr.learn_recovery(recovery_dataset_dir, classifier_model_dir, seed)
-    recovery_model_dir = pathlib.Path("recovery_trials/sim_dual_1599363170/September_05_23-32-51_8440e91e85")
-    # recovery_model_dir = None
+    if 'make_recovery_dataset' not in runlog:
+        make_recovery_dataset_out = fsr.make_recovery_dataset(runlog, seed)
+        runlog['make_recovery_dataset'] = make_recovery_dataset_out
+        hjson.dump(runlog, logfile)
 
-    fsr.planning_evaluation(fwd_model_dirs, full_dynamics_model_dirs, classifier_model_dir, recovery_model_dir)
+    if 'learn_recovery' not in runlog:
+        learn_recovery_out = fsr.learn_recovery(runlog, seed)
+        runlog['learn_recovery'] = learn_recovery_out
+        hjson.dump(runlog, logfile)
 
+    if 'planning_evaluation' not in runlog:
+        planning_evaluation_out = fsr.planning_evaluation(runlog, seed)
+        runlog['planning_evaluation'] = planning_evaluation_out
+        hjson.dump(runlog, logfile)
 
 if __name__ == '__main__':
     main()
