@@ -113,8 +113,14 @@ class FullStackRunner:
                                                ensemble_idx=ensemble_idx)
             trial_paths.append(trial_path)
 
+        # Use one of the models we trained to compute the 90th percentile on the validation set
+        classifier_threshold = train_test.compute_classifier_threshold(dataset_dirs=[dynamics_dataset_dir],
+                                                                       checkpoint=trial_paths[0],
+                                                                       mode='val',
+                                                                       batch_size=batch_size)
         return {
             'model_dirs': trial_paths,
+            'classifier_threshold': classifier_threshold
         }
 
     def learn_full_dynamics(self, runlog: Dict, seed: int):

@@ -7,6 +7,7 @@ from typing import List, Optional
 import numpy as np
 import tensorflow as tf
 
+import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
@@ -86,6 +87,44 @@ def train_main(dataset_dirs: List[pathlib.Path],
     return trial_path
 
 
+def compute_classifier_threshold(dataset_dirs: List[pathlib.Path],
+                                 checkpoint: pathlib.Path,
+                                 mode: str,
+                                 batch_size: int,
+                                 ):
+    test_dataset = DynamicsDataset(dataset_dirs)
+
+    trials_directory = pathlib.Path('trials').absolute()
+    trial_path = checkpoint.parent.absolute()
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
+                                                    trials_directory=trials_directory)
+    model = state_space_dynamics.get_model(params['model_class'])
+    net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
+
+    runner = ModelRunner(model=net,
+                         training=False,
+                         restore_from_name=checkpoint.name,
+                         batch_metadata=test_dataset.batch_metadata,
+                         trial_path=trial_path,
+                         params=params)
+
+    test_tf_dataset = test_dataset.get_datasets(mode=mode)
+    test_tf_dataset = batch_tf_dataset(test_tf_dataset, batch_size, drop_remainder=True)
+
+    all_errors = None
+    for batch in test_tf_dataset:
+        outputs = runner.model(batch, training=False)
+        errors_for_batch = test_dataset.scenario.batch_full_distance(batch, outputs)
+        if all_errors is not None:
+            all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
+        else:
+            all_errors = errors_for_batch
+
+    classifier_threshold = np.percentile(all_errors.numpy(), 90)
+    rospy.loginfo(f"90th percentile {classifier_threshold}")
+    return classifier_threshold
+
+
 def eval_main(dataset_dirs: List[pathlib.Path],
               checkpoint: pathlib.Path,
               mode: str,
@@ -114,7 +153,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
         print(f"{name}: {value}")
 
     # more metrics that can't be expressed as just an average over metrics on each batch
-    key = 'link_bot' # FIXME: hard coded state key
+    key = 'link_bot'  # FIXME: hard coded state key
     all_errors = None
     for batch in test_tf_dataset:
         outputs = runner.model(batch, training=False)

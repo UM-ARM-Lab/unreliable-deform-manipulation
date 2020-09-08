@@ -374,18 +374,13 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_goal_differentiable(state, goal):
-        rope_points = tf.reshape(state['rope'], [-1, 3])[:, :2]
+        rope_points = tf.reshape(state['rope'], [-1, 3])
         tail_point = rope_points[0]
         distance = tf.linalg.norm(tail_point - goal)
         return distance
 
-    @staticmethod
-    def distance(s1, s2):
-        rope_points1 = np.reshape(s1['rope'], [-1, 3])[:, :2]
-        tail_point1 = rope_points1[0]
-        rope_points2 = np.reshape(s2['rope'], [-1, 3])[:, :2]
-        tail_point2 = rope_points2[0]
-        return np.linalg.norm(tail_point1 - tail_point2)
+    def batch_full_distance(self, s1: Dict, s2: Dict):
+        return np.linalg.norm(s1['rope'] - s2['rope'], axis=1)
 
     @staticmethod
     def distance_differentiable(s1, s2):

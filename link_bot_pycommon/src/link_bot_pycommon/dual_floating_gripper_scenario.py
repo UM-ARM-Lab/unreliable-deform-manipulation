@@ -142,7 +142,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
 
-        #TODO: rename this to rope endpoints reset positions or something
+        # TODO: rename this to rope endpoints reset positions or something
         reset.gripper1.x = numpify(data_collection_params['left_gripper_reset_position'][0])
         reset.gripper1.y = numpify(data_collection_params['left_gripper_reset_position'][1])
         reset.gripper1.z = numpify(data_collection_params['left_gripper_reset_position'][2])
@@ -698,15 +698,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         distance = tf.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=-1)
         return distance
 
-    @staticmethod
-    def distance(s1: Dict, s2: Dict):
-        """ this is not the distance metric used in planning, but the one used in evaluation (like distance to goal) """
-        rope1_points = np.reshape(s1['link_bot'], [-1, 3])
-        rope2_points = np.reshape(s2['link_bot'], [-1, 3])
-        rope1_midpoint = rope1_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
-        rope2_midpoint = rope2_points[int(DualFloatingGripperRopeScenario.n_links / 2)]
-        distance = float(np.linalg.norm(rope2_midpoint - rope1_midpoint))
-        return distance
+    def batch_full_distance(self, s1: Dict, s2: Dict):
+        return np.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=1)
 
     @staticmethod
     def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):

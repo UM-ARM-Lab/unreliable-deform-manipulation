@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Vector3
 from link_bot_data.link_bot_dataset_utils import add_predicted
-from moonshine.moonshine_utils import numpify
+from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -90,9 +90,13 @@ class ExperimentScenario:
     def distance_to_goal(state, goal):
         raise NotImplementedError()
 
-    @staticmethod
-    def distance(s1, s2):
+    def batch_full_distance(self, s1: Dict, s2: Dict):
+        """ this is not the distance metric used in planning """
         raise NotImplementedError()
+
+    def full_distance(self, s1: Dict, s2: Dict):
+        """ this is not the distance metric used in planning """
+        return remove_batch(self.batch_distance(add_batch(s1), add_batch(s2)))
 
     def __repr__(self):
         raise NotImplementedError()
