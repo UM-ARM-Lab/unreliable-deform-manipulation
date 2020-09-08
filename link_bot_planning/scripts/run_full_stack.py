@@ -154,6 +154,7 @@ class FullStackRunner:
         udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
         make_classifier_dataset_params = self.full_stack_params['make_classifier_dataset']
         labeling_params = pathlib.Path(make_classifier_dataset_params['labeling_params'])
+        labeling_params['threshold'] = runlog['learn_dynamics']['classifier_threshold']
 
         classifier_data_dir = pathlib.Path('classifier_data')
         classifier_data_dir.mkdir(exist_ok=True)
@@ -194,6 +195,7 @@ class FullStackRunner:
         classifier_model_dir = runlog['learn_classifier']['model_dir']
         make_recovery_dataset_params = self.full_stack_params['make_recovery_dataset']
         labeling_params = pathlib.Path(make_recovery_dataset_params['labeling_params'])
+        labeling_params['threshold'] = runlog['learn_dynamics']['classifier_threshold']
         recovery_data_dir = pathlib.Path('recovery_data')
         recovery_data_dir.mkdir(exist_ok=True)
         outdir = pathlib.Path('recovery_data') / self.unique_nickname
