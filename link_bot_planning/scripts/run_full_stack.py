@@ -295,7 +295,7 @@ class FullStackRunner:
                 method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
                 link_bot_planning_path = pathlib.Path(r.get_path('link_bot_planning'))
                 recovery = {
-                    'recovery_model_dir': link_bot_planning_path / 'recovery_trials' / 'random',
+                    'recovery_model_dir': link_bot_planning_path / 'recovery_trials' / 'random' / 'random',
                     'use_recovery': True,
                 }
             elif method_name == "no_classifier":
