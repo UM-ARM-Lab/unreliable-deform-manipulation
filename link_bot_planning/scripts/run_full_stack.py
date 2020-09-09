@@ -29,6 +29,7 @@ r = rospkg.RosPack()
 class FullStackRunner:
 
     def __init__(self, full_stack_params: Dict):
+        self.gui = True
         self.full_stack_params = full_stack_params
         self.nickname = full_stack_params['nickname']
         self.unique_nickname = f"{self.nickname}_{int(time.time())}"
@@ -45,7 +46,7 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
-        self.service_provider.launch(collect_dynamics_1)
+        self.service_provider.launch(collect_dynamics_1, gui=self.gui)
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -74,7 +75,7 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
-        self.service_provider.launch(collect_dynamics_2)
+        self.service_provider.launch(collect_dynamics_2, gui=self.gui)
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -254,7 +255,7 @@ class FullStackRunner:
                                                     planners_params_common_filename, planning_evaluation_params,
                                                     recovery_model_dir)
 
-        self.service_provider.launch(planning_evaluation_params)
+        self.service_provider.launch(planning_evaluation_params, gui=self.gui)
 
         root = planning_module_path / 'results' / self.nickname
         outdir = planning_evaluation(root=root,
@@ -328,6 +329,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("full_stack_param", type=pathlib.Path)
     parser.add_argument("--from-logfile", type=pathlib.Path)
+    parser.add_argument("--gui", action='store_true')
 
     args = parser.parse_args()
 
@@ -337,6 +339,7 @@ def main():
         full_stack_params = hjson.load(f)
 
     fsr = FullStackRunner(full_stack_params)
+    fsr.gui = args.gui
 
     if args.from_logfile:
         with args.from_logfile.open("r") as logfile:

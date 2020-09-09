@@ -1,5 +1,4 @@
 import roslaunch
-import rospy
 
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
 from link_bot_pycommon.base_services import BaseServices
@@ -12,11 +11,11 @@ class GazeboServices(BaseServices):
         self.max_step_size = None
         self.gazebo_process = None
 
-    def launch(self, params):
+    def launch(self, params, gui: bool = False):
         launch_file_name = params['launch']
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
-        roslaunch_args = ['link_bot_gazebo', launch_file_name]
+        roslaunch_args = ['link_bot_gazebo', launch_file_name, "gui:=", gui]
 
         roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
         roslaunch_args = roslaunch_args[2:]
