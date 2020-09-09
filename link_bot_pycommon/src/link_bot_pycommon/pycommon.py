@@ -232,7 +232,7 @@ def paths_from_json(model_dirs):
     elif model_dirs is None:
         return None
     else:
-        raise NotImplementedError()
+        raise NotImplementedError(type(model_dirs))
 
 
 def paths_to_json(model_dirs: Union[List[pathlib.Path], pathlib.Path]) -> Union[List[str], str, None]:

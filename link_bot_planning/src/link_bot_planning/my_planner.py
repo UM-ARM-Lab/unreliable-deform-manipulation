@@ -311,7 +311,7 @@ class MyPlanner:
                 self.rrt.getPlannerData(planner_data)
                 tree = planner_data_to_json(planner_data, self.scenario)
         elif planner_status == MyPlannerStatus.Failure:
-            print("Failed at starting state:", start_state)
+            rospy.logerr("Failed at starting state:", start_state)
             tree = {}
             actions = []
             planned_path = [start_state]

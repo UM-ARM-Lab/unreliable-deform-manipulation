@@ -41,12 +41,21 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             outdir: pathlib.Path,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None):
+    labeling_params = json.load(labeling_params.open("r"))
+    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, start_at, stop_at)
+
+
+def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
+                                             fwd_model_dir: List[pathlib.Path],
+                                             labeling_params: Dict,
+                                             outdir: pathlib.Path,
+                                             start_at: Optional[int] = None,
+                                             stop_at: Optional[int] = None):
     # append "best_checkpoint" before loading
     if not isinstance(fwd_model_dir, List):
         fwd_model_dir = [fwd_model_dir]
     fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
 
-    labeling_params = json.load(labeling_params.open("r"))
     dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
 
@@ -101,7 +110,6 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                         writer.write(example)
                     print(f"Examples: {total_example_idx:10d}, Time: {perf_counter() - t0:.3f}")
                     total_example_idx += 1
-
 
     return outdir
 

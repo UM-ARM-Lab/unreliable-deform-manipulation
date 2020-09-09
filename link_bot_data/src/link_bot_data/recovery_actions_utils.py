@@ -1,7 +1,7 @@
 import json
 import pathlib
 from time import perf_counter
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 import tensorflow as tf
@@ -19,11 +19,25 @@ from state_space_dynamics import model_utils
 def make_recovery_dataset(dataset_dir,
                           fwd_model_dir,
                           classifier_model_dir: pathlib.Path,
-                          labeling_params,
-                          outdir,
+                          labeling_params: pathlib.Path,
+                          outdir: pathlib.Path,
                           batch_size: int,
                           start_at: Optional[int] = None,
                           stop_at: Optional[int] = None):
+    labeling_params = json.load(labeling_params.open("r"))
+
+    make_recovery_dataset_from_params_dict(dataset_dir, fwd_model_dir, classifier_model_dir, labeling_params, outdir,
+                                           batch_size, start_at, stop_at)
+
+
+def make_recovery_dataset_from_params_dict(dataset_dir,
+                                           fwd_model_dir,
+                                           classifier_model_dir: pathlib.Path,
+                                           labeling_params: Dict,
+                                           outdir: pathlib.Path,
+                                           batch_size: int,
+                                           start_at: Optional[int] = None,
+                                           stop_at: Optional[int] = None):
     # append "best_checkpoint" before loading
     classifier_model_dir = classifier_model_dir / 'best_checkpoint'
     if not isinstance(fwd_model_dir, List):
@@ -33,7 +47,6 @@ def make_recovery_dataset(dataset_dir,
     np.random.seed(0)
     tf.random.set_seed(0)
 
-    labeling_params = json.load(labeling_params.open("r"))
     dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
     fwd_model, _ = model_utils.load_generic_model(fwd_model_dir)
 

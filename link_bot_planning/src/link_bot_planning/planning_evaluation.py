@@ -50,7 +50,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.planner_config_name, comparison_item_idx)
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
-        print(Fore.CYAN + str(self.root) + Fore.RESET)
+        rospy.loginfo(Fore.CYAN + f"Root Directory: {self.root.as_posix()}" + Fore.RESET)
         self.goal = goal
 
         metadata = {
@@ -77,7 +77,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             filename = self.root.absolute() / 'plan-{}.avi'.format(trial_idx)
             self.service_provider.start_record_trial(str(filename))
             bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{trial_idx}.bag"
-            print(Fore.YELLOW + str(bagname) + Fore.RESET)
+            rospy.loginfo(Fore.YELLOW + f"Bag file name: {bagname.as_posix()}" + Fore.RESET)
             self.bag = rosbag.Bag(bagname, 'w')
 
     def follow_joint_trajectory_goal_callback(self, goal_msg):
@@ -88,7 +88,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def get_goal(self, environment: Dict):
         if self.goal is not None:
             if self.verbose >= 1:
-                print("Using Goal {}".format(self.goal))
+                rospy.loginfo("Using Goal {}".format(self.goal))
             return self.goal
         else:
             return super().get_goal(environment)
@@ -118,7 +118,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         goal_threshold = self.planner_params['goal_threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
-        print(Fore.CYAN + f"Current average success rate {success_percentage}%")
+        rospy.loginfo(Fore.CYAN + f"Current average success rate {success_percentage}%")
 
 
 def evaluate_planning_method(comparison_idx: int,
@@ -145,7 +145,7 @@ def evaluate_planning_method(comparison_idx: int,
                                real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size)
 
-    print(Fore.GREEN + f"Running Trials {trials}" + Fore.RESET)
+    rospy.loginfo(Fore.GREEN + f"Running Trials {trials}" + Fore.RESET)
 
     runner = EvalPlannerConfigs(
         planner=planner,
@@ -176,13 +176,13 @@ def planning_evaluation(root: pathlib.Path,
 
     common_output_directory = data_directory(root)
     common_output_directory = pathlib.Path(common_output_directory)
-    print(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
+    rospy.loginfo(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
     if not common_output_directory.is_dir():
-        print(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
+        rospy.loginfo(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
         common_output_directory.mkdir(parents=True)
 
     for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
-        print(Fore.GREEN + f"Running method {planner_config_name}" + Fore.RESET)
+        rospy.loginfo(Fore.GREEN + f"Running method {planner_config_name}" + Fore.RESET)
         if skip_on_exception:
             try:
                 evaluate_planning_method(comparison_idx=comparison_idx,
@@ -205,6 +205,6 @@ def planning_evaluation(root: pathlib.Path,
                                      planner_config_name=planner_config_name,
                                      verbose=verbose,
                                      common_output_directory=common_output_directory)
-        print(f"Results written to {common_output_directory}")
+        rospy.loginfo(f"Results written to {common_output_directory}")
 
     return common_output_directory

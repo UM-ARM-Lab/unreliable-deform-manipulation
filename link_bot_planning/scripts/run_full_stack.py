@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import json
 import pathlib
 import re
 import time
@@ -15,11 +14,13 @@ from colorama import Fore
 import rospy
 from link_bot_classifiers import train_test_classifier, train_test_recovery
 from link_bot_data.base_collect_dynamics_data import DataCollector
-from link_bot_data.classifier_dataset_utils import make_classifier_dataset
-from link_bot_data.recovery_actions_utils import make_recovery_dataset
+from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
+from link_bot_data.recovery_actions_utils import make_recovery_dataset_from_params_dict
 from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_service_provider import get_service_provider
+from link_bot_pycommon.pycommon import paths_from_json
+from link_bot_pycommon.serialization import MyHjsonEncoder
 from state_space_dynamics import train_test
 
 r = rospkg.RosPack()
@@ -42,7 +43,7 @@ class FullStackRunner:
         full_collect_dynamics_data_params_filename = link_bot_data_path / collect_dynamics_data_params_filename
 
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
-            collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
+            collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
         self.service_provider.launch(collect_dynamics_1)
 
@@ -71,7 +72,7 @@ class FullStackRunner:
         full_collect_dynamics_data_params_filename = link_bot_data_path / collect_dynamics_data_params_filename
 
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
-            collect_dynamics_data_params = json.load(collect_dynamics_data_params_file)
+            collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
         self.service_provider.launch(collect_dynamics_2)
 
@@ -92,7 +93,7 @@ class FullStackRunner:
         }
 
     def learn_dynamics(self, runlog: Dict, seed: int):
-        dynamics_dataset_dir = runlog['collect_dynamics_data_1']['dynamics_dataset_1']
+        dynamics_dataset_dir = pathlib.Path(runlog['collect_dynamics_data_1']['dynamics_dataset_dir'])
         learn_dynamics_params = self.full_stack_params['learn_dynamics']
         n_ensemble = learn_dynamics_params['n_ensemble']
         batch_size = learn_dynamics_params['batch_size']
@@ -115,7 +116,7 @@ class FullStackRunner:
 
         # Use one of the models we trained to compute the 90th percentile on the validation set
         classifier_threshold = train_test.compute_classifier_threshold(dataset_dirs=[dynamics_dataset_dir],
-                                                                       checkpoint=trial_paths[0],
+                                                                       checkpoint=trial_paths[0] / 'best_checkpoint',
                                                                        mode='val',
                                                                        batch_size=batch_size)
         return {
@@ -124,7 +125,7 @@ class FullStackRunner:
         }
 
     def learn_full_dynamics(self, runlog: Dict, seed: int):
-        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
+        dynamics_dataset_2 = pathlib.Path(runlog['collect_dynamics_data_2']['dynamics_dataset_dir'])
         learn_dynamics_params = self.full_stack_params['learn_full_dynamics']
         n_ensemble = learn_dynamics_params['n_ensemble']
         batch_size = learn_dynamics_params['batch_size']
@@ -150,10 +151,12 @@ class FullStackRunner:
         }
 
     def make_classifier_dataset(self, runlog: Dict, seed: int):
-        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
-        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
+        dynamics_dataset_2 = pathlib.Path(runlog['collect_dynamics_data_2']['dynamics_dataset_dir'])
+        udnn_model_dirs = paths_from_json(runlog['learn_dynamics']['model_dirs'])
         make_classifier_dataset_params = self.full_stack_params['make_classifier_dataset']
-        labeling_params = pathlib.Path(make_classifier_dataset_params['labeling_params'])
+        labeling_params_filename = pathlib.Path(make_classifier_dataset_params['labeling_params'])
+        with labeling_params_filename.open("r") as labeling_params_file:
+            labeling_params = hjson.load(labeling_params_file)
         labeling_params['threshold'] = runlog['learn_dynamics']['classifier_threshold']
 
         classifier_data_dir = pathlib.Path('classifier_data')
@@ -161,17 +164,17 @@ class FullStackRunner:
         outdir = classifier_data_dir / self.unique_nickname
         outdir.mkdir(exist_ok=True, parents=False)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
-        classifier_dataset_dir = make_classifier_dataset(dataset_dir=dynamics_dataset_2,
-                                                         fwd_model_dir=udnn_model_dirs,
-                                                         labeling_params=labeling_params,
-                                                         outdir=outdir)
+        classifier_dataset_dir = make_classifier_dataset_from_params_dict(dataset_dir=dynamics_dataset_2,
+                                                                          fwd_model_dir=udnn_model_dirs,
+                                                                          labeling_params=labeling_params,
+                                                                          outdir=outdir)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return {
             'classifier_dataset_dir': classifier_dataset_dir,
         }
 
     def learn_classifier(self, runlog: Dict, seed: int):
-        classifier_dataset_dir = runlog['make_classifier_dataset']['classifier_dataset_dir']
+        classifier_dataset_dir = pathlib.Path(runlog['make_classifier_dataset']['classifier_dataset_dir'])
         learn_classifier_params = self.full_stack_params['learn_classifier']
         batch_size = learn_classifier_params['batch_size']
         epochs = learn_classifier_params['epochs']
@@ -190,30 +193,33 @@ class FullStackRunner:
         }
 
     def make_recovery_dataset(self, runlog: Dict, seed: int):
-        dynamics_dataset_2 = runlog['collect_dynamics_data_2']['dynamics_dataset_dir']
-        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
-        classifier_model_dir = runlog['learn_classifier']['model_dir']
+        dynamics_dataset_2 = pathlib.Path(runlog['collect_dynamics_data_2']['dynamics_dataset_dir'])
+        udnn_model_dirs = paths_from_json(runlog['learn_dynamics']['model_dirs'])
+        classifier_model_dir = pathlib.Path(runlog['learn_classifier']['model_dir'])
         make_recovery_dataset_params = self.full_stack_params['make_recovery_dataset']
-        labeling_params = pathlib.Path(make_recovery_dataset_params['labeling_params'])
+        labeling_params_filename = pathlib.Path(make_recovery_dataset_params['labeling_params'])
+        with labeling_params_filename.open("r") as labeling_params_file:
+            labeling_params = hjson.load(labeling_params_file)
         labeling_params['threshold'] = runlog['learn_dynamics']['classifier_threshold']
         recovery_data_dir = pathlib.Path('recovery_data')
         recovery_data_dir.mkdir(exist_ok=True)
         outdir = pathlib.Path('recovery_data') / self.unique_nickname
         outdir.mkdir(parents=False, exist_ok=True)
-        recovery_dataset_dir = make_recovery_dataset(dataset_dir=dynamics_dataset_2,
-                                                     fwd_model_dir=udnn_model_dirs,
-                                                     classifier_model_dir=classifier_model_dir,
-                                                     batch_size=make_recovery_dataset_params['batch_size'],
-                                                     labeling_params=labeling_params,
-                                                     outdir=outdir)
+        batch_size = make_recovery_dataset_params['batch_size']
+        recovery_dataset_dir = make_recovery_dataset_from_params_dict(dataset_dir=dynamics_dataset_2,
+                                                                      fwd_model_dir=udnn_model_dirs,
+                                                                      classifier_model_dir=classifier_model_dir,
+                                                                      batch_size=batch_size,
+                                                                      labeling_params=labeling_params,
+                                                                      outdir=outdir)
         rospy.loginfo(Fore.GREEN + recovery_dataset_dir.as_posix())
         return {
             'recovery_dataset_dir': recovery_dataset_dir,
         }
 
     def learn_recovery(self, runlog: Dict, seed: int):
-        recovery_dataset_dir = runlog['make_recovery_dataset']['recovery_dataset_dir']
-        classifier_model_dir = runlog['learn_classifier']['model_dir']
+        recovery_dataset_dir = pathlib.Path(runlog['make_recovery_dataset']['recovery_dataset_dir'])
+        classifier_model_dir = pathlib.Path(runlog['learn_classifier']['model_dir'])
         learn_recovery_params = self.full_stack_params['learn_recovery']
         batch_size = learn_recovery_params['batch_size']
         epochs = learn_recovery_params['epochs']
@@ -235,10 +241,10 @@ class FullStackRunner:
         }
 
     def planning_evaluation(self, runlog: Dict, seed: int):
-        classifier_model_dir = runlog['learn_classifier']['model_dir']
-        udnn_model_dirs = runlog['learn_dynamics']['model_dirs']
-        full_dynamics_model_dirs = runlog['learn_full_dynamics']['model_dirs']
-        recovery_model_dir = runlog['learn_recovery']['model_dir']
+        classifier_model_dir = pathlib.Path(runlog['learn_classifier']['model_dir'])
+        udnn_model_dirs = paths_from_json(runlog['learn_dynamics']['model_dirs'])
+        full_dynamics_model_dirs = paths_from_json(runlog['learn_full_dynamics']['model_dirs'])
+        recovery_model_dir = pathlib.Path(runlog['learn_recovery']['model_dir'])
         planning_module_path = pathlib.Path(r.get_path('link_bot_planning'))
         planning_evaluation_params = self.full_stack_params["planning_evaluation"]
         n_trials = planning_evaluation_params['n_trials']
@@ -271,7 +277,7 @@ class FullStackRunner:
         planners_params = []
         for method_name in planning_evaluation_params['methods']:
             with planners_params_common_filename.open('r') as planners_params_common_file:
-                planner_params = json.load(planners_params_common_file)
+                planner_params = hjson.load(planners_params_common_file)
             if method_name == "classifier":
                 method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
                 method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
@@ -328,65 +334,86 @@ def main():
     rospy.init_node("run_full_stack")
 
     with args.full_stack_param.open('r') as f:
-        full_stack_params = json.load(f)
+        full_stack_params = hjson.load(f)
 
     fsr = FullStackRunner(full_stack_params)
 
     if args.from_logfile:
         with args.from_logfile.open("r") as logfile:
             runlog = hjson.loads(logfile.read())
+        logfile_name = args.from_logfile
     else:
         # create a logfile
         logfile_dir = pathlib.Path("results") / "log" / fsr.unique_nickname
         logfile_dir.mkdir(parents=True)
         logfile_name = logfile_dir / "logfile.hjson"
-        runlog = logfile_name.open("w")
+        logfile = logfile_name.open("w")
+        runlog = {}
 
     seed = full_stack_params['seed']
     if 'collect_dynamics_data_1' not in runlog:
         collect_dynamics_data_1_out = fsr.collect_dynamics_data_1(runlog, seed)
         runlog['collect_dynamics_data_1'] = collect_dynamics_data_1_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'collect_dynamics_data_2' not in runlog:
         collect_dynamics_data_2_out = fsr.collect_dynamics_data_2(runlog, seed)
         runlog['collect_dynamics_data_2'] = collect_dynamics_data_2_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'learn_dynamics' not in runlog:
         learn_dynamics_out = fsr.learn_dynamics(runlog, seed)
         runlog['learn_dynamics'] = learn_dynamics_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'learn_full_dynamics' not in runlog:
         learn_full_dynamics_out = fsr.learn_full_dynamics(runlog, seed)
         runlog['learn_full_dynamics'] = learn_full_dynamics_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'make_classifier_dataset' not in runlog:
         make_classifier_dataset_out = fsr.make_classifier_dataset(runlog, seed)
         runlog['make_classifier_dataset'] = make_classifier_dataset_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'learn_classifier' not in runlog:
         learn_classifier_out = fsr.learn_classifier(runlog, seed)
         runlog['learn_classifier'] = learn_classifier_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'make_recovery_dataset' not in runlog:
         make_recovery_dataset_out = fsr.make_recovery_dataset(runlog, seed)
         runlog['make_recovery_dataset'] = make_recovery_dataset_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'learn_recovery' not in runlog:
         learn_recovery_out = fsr.learn_recovery(runlog, seed)
         runlog['learn_recovery'] = learn_recovery_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'planning_evaluation' not in runlog:
         planning_evaluation_out = fsr.planning_evaluation(runlog, seed)
         runlog['planning_evaluation'] = planning_evaluation_out
-        hjson.dump(runlog, logfile)
+        with logfile_name.open("w") as logfile:
+            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
+
 
 if __name__ == '__main__':
     main()
