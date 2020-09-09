@@ -16,7 +16,6 @@ class GazeboServices(BaseServices):
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
         roslaunch_args = ['link_bot_gazebo', launch_file_name, f"gui:={str(gui).lower()}"]
-        print(roslaunch_args)
 
         roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
         roslaunch_args = roslaunch_args[2:]

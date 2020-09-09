@@ -26,6 +26,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                checkpoint: Optional[pathlib.Path] = None,
                ensemble_idx: Optional[int] = None,
                trials_directory=pathlib.Path,
+               **kwargs,
                ):
     ###############
     # Datasets
@@ -106,6 +107,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               checkpoint: pathlib.Path,
               mode: str,
               batch_size: int,
+              **kwargs,
               ):
     ###############
     # Model

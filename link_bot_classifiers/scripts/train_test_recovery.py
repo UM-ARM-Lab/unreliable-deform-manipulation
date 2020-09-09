@@ -12,12 +12,12 @@ from moonshine.gpu_config import limit_gpu_mem
 limit_gpu_mem(6)
 
 
-def train_main(args, seed: int):
-    train_test_recovery.train_main(seed=seed, **args)
+def train_main(args):
+    train_test_recovery.train_main(**vars(args))
 
 
-def eval_main(args, seed: int):
-    train_test_recovery.eval_main(**args)
+def eval_main(args):
+    train_test_recovery.eval_main(**vars(args))
 
 
 def main():
@@ -52,20 +52,16 @@ def main():
 
     args = parser.parse_args()
 
-    if args.seed is None:
-        seed = np.random.randint(0, 10000)
-    else:
-        seed = args.seed
-    print("Using seed {}".format(seed))
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
+    print("Using seed {}".format(args.seed))
+    np.random.seed(args.seed)
+    tf.random.set_seed(args.seed)
 
     rospy.init_node("train_test_recovery")
 
     if args == argparse.Namespace():
         parser.print_usage()
     else:
-        args.func(args, seed)
+        args.func(args)
 
 
 if __name__ == '__main__':
