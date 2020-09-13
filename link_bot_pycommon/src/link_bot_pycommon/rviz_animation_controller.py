@@ -3,24 +3,20 @@ from time import sleep
 import numpy as np
 
 import rospy
+from peter_msgs.msg import AnimationControl
 from peter_msgs.srv import GetFloat32, GetFloat32Request, GetBool, GetBoolRequest
 from std_msgs.msg import Empty as EmptyMsg
 from std_msgs.msg import Int64
-from std_srvs.srv import Empty as EmptySrv
-from std_srvs.srv import EmptyRequest
 
 
 class RvizAnimationController:
 
-    def __init__(self, time_steps=None, n_time_steps: int = None, start_playing=True):
+    def __init__(self, time_steps=None, n_time_steps: int = None):
         if time_steps is not None:
             self.time_steps = np.array(time_steps, dtype=np.int64)
         if n_time_steps is not None:
             self.time_steps = np.arange(n_time_steps, dtype=np.int64)
-        self.fwd_sub = rospy.Subscriber("rviz_anim/forward", EmptyMsg, self.on_fwd)
-        self.bwd_sub = rospy.Subscriber("rviz_anim/backward", EmptyMsg, self.on_bwd)
-        self.play_pause_sub = rospy.Subscriber("rviz_anim/play_pause", EmptyMsg, self.on_play_pause)
-        self.done_sub = rospy.Subscriber("rviz_anim/done", EmptyMsg, self.on_done)
+        self.command_sub = rospy.Subscriber("rviz_anim/control", AnimationControl, self.on_control)
         self.period_srv = rospy.ServiceProxy("rviz_anim/period", GetFloat32)
         self.time_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("rviz_anim/max_time", Int64, queue_size=10)
@@ -38,19 +34,45 @@ class RvizAnimationController:
         self.fwd = True
         self.done = False
 
-    def on_fwd(self, msg):
+    def on_control(self, msg: AnimationControl):
+        if msg.command == AnimationControl.STEP_BACKWARD:
+            self.on_bwd()
+        elif msg.command == AnimationControl.STEP_FORWARD:
+            self.on_fwd()
+        elif msg.command == AnimationControl.PLAY_BACKWARD:
+            self.on_play_backward()
+        elif msg.command == AnimationControl.PLAY_FORWARD:
+            self.on_play_forward()
+        elif msg.command == AnimationControl.PAUSE:
+            self.on_pause()
+        elif msg.command == AnimationControl.DONE:
+            self.on_done()
+        else:
+            raise NotImplementedError(f"Unsupported animation control {msg.command}")
+
+    def on_fwd(self):
         self.should_step = True
         self.playing = False
         self.fwd = True
 
-    def on_bwd(self, msg):
+    def on_bwd(self):
         self.should_step = True
         self.playing = False
         self.fwd = False
 
-    def on_play_pause(self, msg):
-        self.playing = not self.playing
+    def on_play_forward(self):
+        self.playing = True
         self.fwd = True
+
+    def on_play_backward(self):
+        self.playing = True
+        self.fwd = False
+
+    def on_pause(self):
+        self.playing = False
+
+    def on_done(self):
+        self.done = True
 
     def step(self):
         if self.playing:
@@ -83,9 +105,6 @@ class RvizAnimationController:
         self.max_time_pub.publish(max_t_msg)
 
         return self.done
-
-    def on_done(self, msg):
-        self.done = True
 
     def t(self):
         return self.time_steps[self.idx]

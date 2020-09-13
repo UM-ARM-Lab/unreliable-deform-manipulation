@@ -14,6 +14,11 @@ catkin_python_setup()
 
 catkin_package()
 
+catkin_package(
+   INCLUDE_DIRS include
+   CATKIN_DEPENDS roscpp peter_msgs
+   )
+
 set(rviz_animation_controller_src
         src/merrrt_visualization/rviz_animation_controller.cpp
         include/merrrt_visualization/rviz_animation_controller.h)

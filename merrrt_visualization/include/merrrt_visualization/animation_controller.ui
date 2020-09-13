@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>556</width>
+    <width>659</width>
     <height>37</height>
    </rect>
   </property>
@@ -55,12 +55,26 @@
       </size>
      </property>
      <property name="text">
-      <string>&lt;</string>
+      <string>Step backward</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="play_pause_button">
+    <widget class="QPushButton" name="play_backward_button">
+     <property name="text">
+      <string>Play Backward</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pause_button">
+     <property name="text">
+      <string>Pause</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="play_forward_button">
      <property name="minimumSize">
       <size>
        <width>50</width>
@@ -68,7 +82,7 @@
       </size>
      </property>
      <property name="text">
-      <string>play</string>
+      <string>Play Forward</string>
      </property>
     </widget>
    </item>
@@ -81,7 +95,10 @@
       </size>
      </property>
      <property name="text">
-      <string>&gt;</string>
+      <string>Step Forward</string>
+     </property>
+     <property name="icon">
+      <iconset theme="SP_MediaSkipForward"/>
      </property>
     </widget>
    </item>

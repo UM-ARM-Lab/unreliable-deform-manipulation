@@ -21,6 +21,7 @@ add_message_files(
         SubspaceDescription.msg
         Vector2.msg
         WheelSpeeds.msg
+        AnimationControl.msg
 )
 
 add_service_files(

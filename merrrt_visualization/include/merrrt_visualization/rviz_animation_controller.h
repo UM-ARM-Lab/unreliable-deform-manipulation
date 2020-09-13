@@ -11,15 +11,15 @@
 #include <QWidget>
 #include <thread>
 
-#include "ui_mainwidget.h"
+#include "ui_animation_controller.h"
 
 namespace merrrt_visualization
 {
 class RVizAnimationController : public rviz::Panel
 {
-  Q_OBJECT
+ Q_OBJECT
 
-public:
+ public:
   explicit RVizAnimationController(QWidget *parent = nullptr);
 
   virtual ~RVizAnimationController();
@@ -28,25 +28,26 @@ public:
 
   void MaxTimeCallback(const std_msgs::Int64::ConstPtr &msg);
 
-public slots:
+ public slots:
 
   void ForwardClicked();
 
   void BackwardClicked();
 
-  void PlayPauseClicked();
+  void PauseClicked();
+
+  void PlayForwardClicked();
+
+  void PlayBackwardClicked();
 
   void DoneClicked();
 
-private:
+ private:
   void QueueThread();
 
   Ui_MainWidget ui;
   ros::NodeHandle ros_node_;
-  ros::Publisher fwd_pub_;
-  ros::Publisher bwd_pub_;
-  ros::Publisher play_pause_pub_;
-  ros::Publisher done_pub_;
+  ros::Publisher command_pub_;
   ros::ServiceServer period_srv_;
   ros::ServiceServer auto_play_srv_;
   ros::Subscriber time_sub_;

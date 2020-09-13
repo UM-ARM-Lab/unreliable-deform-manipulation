@@ -1,6 +1,7 @@
 #include <merrrt_visualization/rviz_animation_controller.h>
 #include <peter_msgs/GetBool.h>
 #include <peter_msgs/GetFloat32.h>
+#include <peter_msgs/AnimationControl.h>
 #include <std_msgs/Empty.h>
 
 #include <QApplication>
@@ -20,7 +21,9 @@ RVizAnimationController::RVizAnimationController(QWidget *parent) : rviz::Panel(
   ui.setupUi(this);
   connect(ui.forward_button, &QPushButton::clicked, this, &RVizAnimationController::ForwardClicked);
   connect(ui.backward_button, &QPushButton::clicked, this, &RVizAnimationController::BackwardClicked);
-  connect(ui.play_pause_button, &QPushButton::clicked, this, &RVizAnimationController::PlayPauseClicked);
+  connect(ui.play_forward_button, &QPushButton::clicked, this, &RVizAnimationController::PlayForwardClicked);
+  connect(ui.play_backward_button, &QPushButton::clicked, this, &RVizAnimationController::PlayBackwardClicked);
+  connect(ui.pause_button, &QPushButton::clicked, this, &RVizAnimationController::PauseClicked);
   connect(ui.done_button, &QPushButton::clicked, this, &RVizAnimationController::DoneClicked);
 
   // highlight_animation_ = new QPropertyAnimation(ui, "background-color");
@@ -28,10 +31,7 @@ RVizAnimationController::RVizAnimationController(QWidget *parent) : rviz::Panel(
   // highlight_animation_->setStartValue("#ffff00");
   // highlight_animation_->setEndValue("#ffffff");
 
-  fwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/forward", 10);
-  bwd_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/backward", 10);
-  play_pause_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/play_pause", 10);
-  done_pub_ = ros_node_.advertise<std_msgs::Empty>("rviz_anim/done", 10);
+  command_pub_ = ros_node_.advertise<peter_msgs::AnimationControl>("rviz_anim/control", 10);
 
   auto period_bind = [this](peter_msgs::GetFloat32Request &req, peter_msgs::GetFloat32Response &res) {
     res.data = static_cast<float>(ui.period_spinbox->value());
@@ -89,22 +89,44 @@ void RVizAnimationController::MaxTimeCallback(const std_msgs::Int64::ConstPtr &m
 
 void RVizAnimationController::DoneClicked()
 {
-  done_pub_.publish(std_msgs::Empty());
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::DONE;
+  command_pub_.publish(cmd);
 }
 
 void RVizAnimationController::ForwardClicked()
 {
-  fwd_pub_.publish(std_msgs::Empty());
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::STEP_FORWARD;
+  command_pub_.publish(cmd);
 }
 
 void RVizAnimationController::BackwardClicked()
 {
-  bwd_pub_.publish(std_msgs::Empty());
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::STEP_BACKWARD;
+  command_pub_.publish(cmd);
 }
 
-void RVizAnimationController::PlayPauseClicked()
+void RVizAnimationController::PauseClicked()
 {
-  play_pause_pub_.publish(std_msgs::Empty());
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::PAUSE;
+  command_pub_.publish(cmd);
+}
+
+void RVizAnimationController::PlayForwardClicked()
+{
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::PLAY_FORWARD;
+  command_pub_.publish(cmd);
+}
+
+void RVizAnimationController::PlayBackwardClicked()
+{
+  peter_msgs::AnimationControl cmd;
+  cmd.command = peter_msgs::AnimationControl::PLAY_BACKWARD;
+  command_pub_.publish(cmd);
 }
 
 void RVizAnimationController::QueueThread()
