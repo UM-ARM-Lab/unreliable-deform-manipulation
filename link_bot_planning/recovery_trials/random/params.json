@@ -1,3 +1,30 @@
 {
-  "model_class": "random"
+  "model_class": "random",
+  "repeat_delta_gripper_motion_probability": 0.8,
+  "max_distance_gripper_can_move": 0.10,
+  "max_distance_between_grippers": null,
+  "extent": [
+    0.35,
+    1.5,
+    -0.6,
+    0.6,
+    0.2,
+    1.8
+  ],
+  "gripper1_action_sample_extent": [
+    0.35,
+    1.5,
+    -0.6,
+    0.6,
+    0.2,
+    1.3
+  ],
+  "gripper2_action_sample_extent": [
+    0.35,
+    1.5,
+    -0.6,
+    0.6,
+    0.2,
+    1.3
+  ]
 }

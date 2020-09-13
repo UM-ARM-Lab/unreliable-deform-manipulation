@@ -185,12 +185,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                       environment: Dict,
                       state,
                       data_collection_params: Dict,
-                      action_params: Dict):
+                      action_params: Dict,
+                      no_repeat: Optional[bool] = False,
+                      ):
         action = None
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
             repeat_probability = data_collection_params['repeat_delta_gripper_motion_probability']
-            if self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
+            if not no_repeat and self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
                 gripper1_delta_position = self.last_action['gripper1_delta_position']
                 gripper2_delta_position = self.last_action['gripper2_delta_position']
             else:
