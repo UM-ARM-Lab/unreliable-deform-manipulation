@@ -54,3 +54,6 @@ class BaseServices:
     def add_required_service(self, service_name, service_type):
         self.service_names.append(service_name)
         return rospy.ServiceProxy(service_name, service_type)
+
+    def restore_from_bag(self, bagfile_name):
+        raise NotImplementedError()

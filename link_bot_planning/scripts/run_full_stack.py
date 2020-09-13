@@ -1,14 +1,15 @@
 #!/usr/bin/env python
-
 import argparse
+import logging
 import pathlib
 import re
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import colorama
 import hjson
 import rospkg
+import tensorflow as tf
 from colorama import Fore
 
 import rospy
@@ -28,7 +29,8 @@ r = rospkg.RosPack()
 
 class FullStackRunner:
 
-    def __init__(self, full_stack_params: Dict):
+    def __init__(self, full_stack_params: Dict, launch: Optional[bool] = False):
+        self.launch = launch
         self.gui = True
         self.full_stack_params = full_stack_params
         self.nickname = full_stack_params['nickname']
@@ -46,7 +48,8 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
-        self.service_provider.launch(collect_dynamics_1, gui=self.gui)
+        if self.launch:
+            self.service_provider.launch(collect_dynamics_1, gui=self.gui)
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -58,7 +61,8 @@ class FullStackRunner:
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'],
                                                     nickname=dynamics_data_1_nickname)
 
-        self.service_provider.kill()
+        if self.launch:
+            self.service_provider.kill()
 
         files_dataset.split()
         return {
@@ -75,7 +79,8 @@ class FullStackRunner:
         with full_collect_dynamics_data_params_filename.open('r') as collect_dynamics_data_params_file:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
-        self.service_provider.launch(collect_dynamics_2, gui=self.gui)
+        if self.launch:
+            self.service_provider.launch(collect_dynamics_2, gui=self.gui)
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -86,7 +91,8 @@ class FullStackRunner:
         files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'],
                                                     nickname=dynamics_data_2_nickname)
 
-        self.service_provider.kill()
+        if self.launch:
+            self.service_provider.kill()
 
         files_dataset.split()
         return {
@@ -248,6 +254,7 @@ class FullStackRunner:
         recovery_model_dir = pathlib.Path(runlog['learn_recovery']['model_dir'])
         planning_module_path = pathlib.Path(r.get_path('link_bot_planning'))
         planning_evaluation_params = self.full_stack_params["planning_evaluation"]
+        test_scenes_dir = pathlib.Path(planning_evaluation_params["test_scenes_dir"])
         n_trials = planning_evaluation_params['n_trials']
         trials = list(range(n_trials))
         planners_params_common_filename = pathlib.Path(planning_evaluation_params['planners_params_common'])
@@ -255,15 +262,18 @@ class FullStackRunner:
                                                     planners_params_common_filename, planning_evaluation_params,
                                                     recovery_model_dir)
 
-        self.service_provider.launch(planning_evaluation_params, gui=self.gui)
+        if self.launch:
+            self.service_provider.launch(planning_evaluation_params, gui=self.gui)
 
         root = planning_module_path / 'results' / self.nickname
         outdir = planning_evaluation(root=root,
                                      planners_params=planners_params,
                                      trials=trials,
+                                     test_scenes_dir=test_scenes_dir,
                                      skip_on_exception=False)
 
-        self.service_provider.kill()
+        if self.launch:
+            self.service_provider.kill()
 
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return outdir
@@ -325,11 +335,15 @@ class FullStackRunner:
 
 
 def main():
+    tf.get_logger().setLevel(logging.ERROR)
+
     colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("full_stack_param", type=pathlib.Path)
     parser.add_argument("--from-logfile", type=pathlib.Path)
     parser.add_argument("--gui", action='store_true')
+    parser.add_argument("--launch", action='store_true')
+    parser.add_argument("--steps", help="a comma separated list of steps to explicitly include, regardless of logfile")
 
     args = parser.parse_args()
 
@@ -338,8 +352,9 @@ def main():
     with args.full_stack_param.open('r') as f:
         full_stack_params = hjson.load(f)
 
-    fsr = FullStackRunner(full_stack_params)
+    fsr = FullStackRunner(full_stack_params, launch=args.launch)
     fsr.gui = args.gui
+    included_steps = args.steps.split(",")
 
     if args.from_logfile:
         with args.from_logfile.open("r") as logfile:
@@ -410,7 +425,7 @@ def main():
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'planning_evaluation' not in runlog:
+    if 'planning_evaluation' not in runlog or 'planning_evaluation' in included_steps:
         planning_evaluation_out = fsr.planning_evaluation(runlog, seed)
         runlog['planning_evaluation'] = planning_evaluation_out
         with logfile_name.open("w") as logfile:

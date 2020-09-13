@@ -35,12 +35,14 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
+                 test_scenes_dir: Optional[pathlib.Path] = None,
                  ):
         super().__init__(planner,
                          trials=trials,
                          verbose=verbose,
                          planner_params=planner_params,
                          service_provider=service_provider,
+                         test_scenes_dir=test_scenes_dir,
                          no_execution=no_execution)
         self.record = record
         self.planner_config_name = planner_config_name
@@ -130,6 +132,7 @@ def evaluate_planning_method(comparison_idx: int,
                              record: bool = False,
                              no_execution: bool = False,
                              timeout: Optional[int] = None,
+                             test_scenes_dir: Optional[pathlib.Path] = None,
                              ):
     # override some arguments
     if timeout is not None:
@@ -145,8 +148,6 @@ def evaluate_planning_method(comparison_idx: int,
                                real_time_rate=planner_params['real_time_rate'],
                                max_step_size=planner.fwd_model.max_step_size)
 
-    rospy.loginfo(Fore.GREEN + f"Running Trials {trials}" + Fore.RESET)
-
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
@@ -157,6 +158,7 @@ def evaluate_planning_method(comparison_idx: int,
         outdir=common_output_directory,
         comparison_item_idx=comparison_idx,
         goal=planner_params['fixed_goal'],
+        test_scenes_dir=test_scenes_dir,
         record=record,
         no_execution=no_execution
     )
@@ -171,6 +173,7 @@ def planning_evaluation(root: pathlib.Path,
                         record: bool = False,
                         no_execution: bool = False,
                         timeout: Optional[int] = None,
+                        test_scenes_dir: Optional[pathlib.Path] = None,
                         ):
     ou.setLogLevel(ou.LOG_ERROR)
 
@@ -188,6 +191,7 @@ def planning_evaluation(root: pathlib.Path,
                 evaluate_planning_method(comparison_idx=comparison_idx,
                                          planner_params=planner_params,
                                          trials=trials,
+                                         test_scenes_dir=test_scenes_dir,
                                          planner_config_name=planner_config_name,
                                          common_output_directory=common_output_directory,
                                          verbose=verbose,
@@ -202,6 +206,7 @@ def planning_evaluation(root: pathlib.Path,
             evaluate_planning_method(comparison_idx=comparison_idx,
                                      planner_params=planner_params,
                                      trials=trials,
+                                     test_scenes_dir=test_scenes_dir,
                                      planner_config_name=planner_config_name,
                                      verbose=verbose,
                                      common_output_directory=common_output_directory)

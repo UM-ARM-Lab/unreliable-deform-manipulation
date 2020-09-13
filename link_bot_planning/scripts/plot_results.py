@@ -177,6 +177,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
             return '#ff00ff'
 
     scenario.reset_planning_viz()
+    dist_to_goal = np.inf
     while not anim.done:
         t = anim.t()
         s_t = all_actual_states[t]
@@ -196,13 +197,15 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
         if s_t_pred is not None:
             scenario.plot_state_rviz(s_t_pred, label='predicted', color=c)
             is_close = scenario.compute_label(s_t, s_t_pred, labeling_params)
+            # print(s_t['gripper1'])
             scenario.plot_is_close(is_close)
         else:
             scenario.plot_is_close(None)
-
-        actually_at_goal = scenario.distance_to_goal(s_t, goal) < goal_threshold
+        dist_to_goal = scenario.distance_to_goal(s_t, goal)
+        actually_at_goal = dist_to_goal < goal_threshold
         scenario.plot_goal_rviz(goal, goal_threshold, actually_at_goal)
         anim.step()
+    print(f"final dist to goal {dist_to_goal:.3f}")
 
 
 if __name__ == '__main__':

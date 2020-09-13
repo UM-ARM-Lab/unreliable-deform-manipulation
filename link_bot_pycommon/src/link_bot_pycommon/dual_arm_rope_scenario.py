@@ -1,17 +1,16 @@
 from typing import Dict
 
-import actionlib
 import numpy as np
-import rospy
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from sensor_msgs.msg import JointState
-from std_srvs.srv import Empty
 
+import actionlib
 import ros_numpy
+import rospy
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from link_bot_pycommon.moveit_utils import make_moveit_action_goal
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
 from peter_msgs.srv import GetDualGripperPointsRequest, GetJointStateRequest, GetRopeStateRequest, GetJointState
+from sensor_msgs.msg import JointState
+from std_srvs.srv import Empty
 
 
 class DualArmRopeScenario(DualFloatingGripperRopeScenario):

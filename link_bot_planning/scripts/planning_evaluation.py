@@ -21,6 +21,7 @@ def main():
                         help='json file(s) describing what should be compared')
     parser.add_argument("trials", type=int_range_arg, default="0-50")
     parser.add_argument("nickname", type=str, help='output will be in results/$nickname-compare-$time')
+    parser.add_argument("--test-scenes-dir", type=pathlib.Path)
     parser.add_argument("--timeout", type=int, help='timeout to override what is in the planner config file')
     parser.add_argument("--no-execution", action="store_true", help='no execution')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
@@ -45,6 +46,7 @@ def main():
                                skip_on_exception=args.skip_on_exception,
                                verbose=args.verbose,
                                timeout=args.timeout,
+                               test_scenes_dir=args.test_scenes_dir,
                                no_execution=args.no_execution,
                                record=args.record)
 

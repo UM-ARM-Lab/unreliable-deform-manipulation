@@ -1,7 +1,10 @@
-import roslaunch
+import pathlib
 
-from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest
+import rosbag
+import roslaunch
+from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest, SetLinkState, SetLinkStateRequest
 from link_bot_pycommon.base_services import BaseServices
+from peter_msgs.srv import WorldControlRequest
 
 
 class GazeboServices(BaseServices):
@@ -10,6 +13,31 @@ class GazeboServices(BaseServices):
         super().__init__()
         self.max_step_size = None
         self.gazebo_process = None
+
+        self.set_link_state = self.add_required_service('gazebo/set_link_state', SetLinkState)
+
+    def restore_from_bag(self, bagfile_name: pathlib.Path):
+        # run a few times to really make sure it happens
+        for _ in range(4):
+            with rosbag.Bag(bagfile_name) as bag:
+                saved_links_states = next(iter(bag.read_messages()))[1]
+                set_link_state_req = SetLinkStateRequest()
+                set_link_state_req.link_state = saved_links_states
+
+                n = len(saved_links_states.name)
+                for i in range(n):
+                    name = saved_links_states.name[i]
+                    pose = saved_links_states.pose[i]
+                    twist = saved_links_states.twist[i]
+                    set_req = SetLinkStateRequest()
+                    set_req.link_state.link_name = name
+                    set_req.link_state.pose = pose
+                    set_req.link_state.twist = twist
+                    self.set_link_state(set_req)
+
+            step = WorldControlRequest()
+            step.steps = 1
+            self.world_control(step)
 
     def launch(self, params, gui: bool = False):
         launch_file_name = params['launch']

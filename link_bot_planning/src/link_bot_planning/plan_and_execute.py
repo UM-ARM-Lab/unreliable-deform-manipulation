@@ -3,19 +3,18 @@ import pathlib
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
-import rospy
 import tensorflow as tf
 from colorama import Fore
 from dataclasses_json import dataclass_json
 
+import rospy
 from link_bot_classifiers import recovery_policy_utils
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.grid_utils import extent_to_bbox
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 
 
@@ -57,7 +56,9 @@ class PlanAndExecute:
                  verbose: int,
                  planner_params: Dict,
                  service_provider: BaseServices,
-                 no_execution: bool):
+                 no_execution: bool,
+                 test_scenes_dir: Optional[pathlib.Path] = None,
+                 ):
         self.planner = planner
         self.trials = trials
         self.planner_params = planner_params
@@ -67,6 +68,7 @@ class PlanAndExecute:
         self.env_rng = np.random.RandomState(0)
         self.goal_rng = np.random.RandomState(0)
         self.recovery_rng = np.random.RandomState(0)
+        self.test_scenes_dir = test_scenes_dir
         if self.planner_params['recovery']['use_recovery']:
             recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
             self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
@@ -94,7 +96,14 @@ class PlanAndExecute:
             np.random.seed(trial_idx)
             tf.random.set_seed(trial_idx)
 
-            self.randomize_environment()
+            if self.test_scenes_dir is not None:
+                # Gazebo specific
+                bagfile_name = self.test_scenes_dir / f'scene_{trial_idx:04d}.bag'
+                rospy.loginfo(Fore.GREEN + f"Restoring scene {bagfile_name}")
+                self.service_provider.restore_from_bag(bagfile_name)
+            else:
+                self.randomize_environment()
+                rospy.loginfo(Fore.GREEN + f"Randomizing Environment")
 
             self.plan_and_execute(trial_idx)
 
