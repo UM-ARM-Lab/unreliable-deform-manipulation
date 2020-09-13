@@ -4,6 +4,8 @@ from typing import Dict
 
 import ompl.base as ob
 
+import rospy
+
 
 class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
     def __init__(self, planner, params: Dict, verbose: int):
@@ -24,5 +26,5 @@ class TimeoutOrNotProgressing(ob.PlannerTerminationCondition):
         self.timed_out = dt_s > self.params['timeout']
         should_terminate = self.timed_out or self.not_progressing
         if self.verbose >= 3:
-            print(f"{self.attempted_extensions:6d}, {self.all_rejected}")
+            rospy.loginfo(f"{self.attempted_extensions:6d}, {self.all_rejected}")
         return should_terminate

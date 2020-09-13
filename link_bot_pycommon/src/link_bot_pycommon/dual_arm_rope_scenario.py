@@ -92,7 +92,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         super().plot_state_rviz(state, label, **kwargs)
         # TODO: remove this once we no longer need to use the old datasets
-        if 'joint_positions' in state:
+        if 'joint_positions' in state and 'joint_names' in state:
             joint_msg = JointState()
             joint_msg.header.stamp = rospy.Time.now()
             joint_msg.position = state['joint_positions']

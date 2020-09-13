@@ -120,7 +120,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         goal_threshold = self.planner_params['goal_threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
-        rospy.loginfo(Fore.CYAN + f"Current average success rate {success_percentage}%")
+        rospy.loginfo(Fore.CYAN + f"Current average success rate {success_percentage:.2f}%")
 
 
 def evaluate_planning_method(comparison_idx: int,

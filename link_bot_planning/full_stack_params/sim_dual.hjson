@@ -55,9 +55,9 @@
     methods: [
 #      no_classifier
 #      classifier
-      learned_recovery
+#      learned_recovery
 #      random_recovery
-#      full_dynamics
+      full_dynamics
     ]
   }
 }

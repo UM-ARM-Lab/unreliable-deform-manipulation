@@ -54,11 +54,13 @@ class BaseDynamicsFunction:
         if 'batch_size' not in example:
             example['batch_size'] = example[self.state_keys[0]].shape[0]
         if 'sequence_length' not in example:
-            example['sequence_length'] = example[self.state_keys[0]].shape[1]
+            example['sequence_length'] = example[self.action_keys[0]].shape[1] + 1  # only used by Image Cond Dyn
         predictions = [net(example, training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
-        mean_prediction = {state_key: tf.math.reduce_mean(predictions_dict[state_key], axis=0) for state_key in self.state_keys}
-        stdev_prediction = {state_key: tf.math.reduce_std(predictions_dict[state_key], axis=0) for state_key in self.state_keys}
+        mean_prediction = {state_key: tf.math.reduce_mean(predictions_dict[state_key], axis=0) for state_key in
+                           self.state_keys}
+        stdev_prediction = {state_key: tf.math.reduce_std(predictions_dict[state_key], axis=0) for state_key in
+                            self.state_keys}
         all_stdevs = tf.concat(list(stdev_prediction.values()), axis=2)
         mean_prediction['stdev'] = tf.reduce_sum(all_stdevs, axis=2, keepdims=True)
         return mean_prediction, stdev_prediction
@@ -69,10 +71,10 @@ class BaseDynamicsFunction:
 
     def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> Tuple[
         List[Dict], List[Dict]]:
-        del environment  # unused
         # add time dimension of size 1
         net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
         net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
+        net_inputs.update(environment)
         net_inputs = add_batch(net_inputs)
         net_inputs = make_dict_tf_float32(net_inputs)
         # the network returns a dictionary where each value is [T, n_state]
@@ -86,9 +88,9 @@ class BaseDynamicsFunction:
         return mean_predictions, stdev_predictions
 
     def propagate_differentiable_batched(self, environment: Dict, states: Dict, actions: Dict) -> Tuple[Dict, Dict]:
-        del environment  # unused
         net_inputs = states
         net_inputs.update(actions)
+        net_inputs.update(environment)
         net_inputs = make_dict_tf_float32(net_inputs)
         mean_predictions, stdev_predictions = self.propagate_from_example(net_inputs, training=False)
         return mean_predictions, stdev_predictions
