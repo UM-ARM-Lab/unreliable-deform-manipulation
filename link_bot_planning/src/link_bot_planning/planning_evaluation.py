@@ -46,6 +46,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          no_execution=no_execution)
         self.record = record
         self.planner_config_name = planner_config_name
+        self.comparison_item_idx = comparison_item_idx
         self.outdir = outdir
 
         self.subfolder = "{}_{}".format(
@@ -120,7 +121,8 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         goal_threshold = self.planner_params['goal_threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
-        rospy.loginfo(Fore.CYAN + f"Current average success rate {success_percentage:.2f}%")
+        update_msg = f"[{self.subfolder}] Current average success rate {success_percentage:.2f}%"
+        rospy.loginfo(Fore.CYAN + update_msg)
 
 
 def evaluate_planning_method(comparison_idx: int,

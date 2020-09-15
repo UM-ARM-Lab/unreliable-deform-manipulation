@@ -53,11 +53,11 @@
     test_scenes_dir: test_scenes/dual_1599931915/
     launch: victor_tabletop.launch
     methods: [
+#      learned_recovery
 #      no_classifier
 #      classifier
-#      learned_recovery
-#      random_recovery
       full_dynamics
+      random_recovery
     ]
   }
 }

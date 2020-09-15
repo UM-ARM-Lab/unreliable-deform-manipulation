@@ -213,7 +213,6 @@ class PlanAndExecute:
                 else:
                     recovery_action = self.recovery_policy(environment=planning_query.environment,
                                                            state=planning_query.start)
-                    print(recovery_action)
                     attempt_idx += 1
                     rospy.loginfo(f"Attempting recovery action {attempt_idx}")
 

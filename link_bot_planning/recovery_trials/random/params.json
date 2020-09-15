@@ -5,15 +5,16 @@
   "max_distance_between_grippers": null,
   "extent": [
     0.35,
-    1.5,
-    -0.6,
-    0.6,
-    0.2,
-    1.8
+    1.3,
+    -0.7,
+    0.7,
+    0.55,
+    1.35
+
   ],
   "gripper1_action_sample_extent": [
     0.35,
-    1.5,
+    1.3,
     -0.6,
     0.6,
     0.2,
@@ -21,7 +22,7 @@
   ],
   "gripper2_action_sample_extent": [
     0.35,
-    1.5,
+    1.3,
     -0.6,
     0.6,
     0.2,

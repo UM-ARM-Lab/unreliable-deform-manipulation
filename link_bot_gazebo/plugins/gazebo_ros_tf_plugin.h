@@ -32,7 +32,7 @@ private:
 
   event::ConnectionPtr update_connection_;
   physics::WorldPtr world_;
-  physics::Model_V models_;
+  std::vector<std::string> model_names_;
   std::string frame_id_;
 
   void PrivateQueueThread();

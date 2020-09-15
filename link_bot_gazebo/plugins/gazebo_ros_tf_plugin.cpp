@@ -49,26 +49,7 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
     else
     {
       auto const model_names_str = sdf->GetElement("model_names")->Get<std::string>();
-      std::vector<std::string> model_names;
-      boost::split(model_names, model_names_str, boost::is_any_of(" "));
-      for (auto const model_name : model_names)
-      {
-        auto const model = world_->ModelByName(model_name);
-        if (!model)
-        {
-          ROS_ERROR_STREAM("could not find model with name " << model_name);
-          ROS_ERROR_STREAM("possible model names are:");
-          for (auto const available_model : world_->Models())
-          {
-            ROS_ERROR_STREAM(available_model->GetScopedName()
-                             << "[ scoped: " << available_model->GetScopedName() << " ]");
-          }
-        }
-        else
-        {
-          models_.push_back(model);
-        }
-      }
+      boost::split(model_names_, model_names_str, boost::is_any_of(" "));
     }
   }
 
@@ -88,10 +69,21 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
 
 void GazeboRosTfPlugin::PeriodicUpdate()
 {
-  for (auto const model : models_)
+  for (auto const model_name : model_names_)
   {
-    auto const pose = model->WorldPose();
+    auto const model = world_->ModelByName(model_name);
+    if (!model)
+    {
+      ROS_WARN_STREAM_THROTTLE(1, "could not find model with name " << model_name);
+      ROS_WARN_STREAM_THROTTLE(1, "possible model names are:");
+      for (auto const available_model : world_->Models())
+      {
+        ROS_WARN_STREAM_THROTTLE(1, available_model->GetScopedName() << "[ scoped: " << available_model->GetScopedName() << " ]");
+      }
+      continue;
+    }
 
+    auto const pose = model->WorldPose();
     geometry_msgs::TransformStamped transform_msg;
     transform_msg.header.frame_id = frame_id_;
     transform_msg.header.stamp = ros::Time::now();
