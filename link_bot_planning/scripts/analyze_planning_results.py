@@ -7,11 +7,11 @@ import pathlib
 
 import matplotlib.pyplot as plt
 import numpy as np
+import orjson
 from colorama import Style, Fore
 from tabulate import tabulate
 
 import rospy
-from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
@@ -51,8 +51,6 @@ def metrics_main(args):
 
     with args.analysis_params.open('r') as analysis_params_file:
         analysis_params = json.load(analysis_params_file)
-    with args.fallback_labeling_params.open('r') as fallback_labeling_params_file:
-        fallback_labeling_params = json.load(fallback_labeling_params_file)
 
     # The default for where we write results
     first_results_dir = args.results_dirs[0]
@@ -90,9 +88,9 @@ def metrics_main(args):
         N = len(metrics_filenames)
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
-            metadata = json.load(metadata_file)
+            metadata_str = metadata_file.read()
+        metadata = json.loads(metadata_str)
         planner_params = metadata['planner_params']
-        labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeling_params)
         goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(metadata['scenario'])
         table_config = planner_params['table_config']
@@ -106,10 +104,13 @@ def metrics_main(args):
         total_times = []
         n_recovery = 0
         # TODO: parallelize this
+        from time import perf_counter
+        t0 = perf_counter()
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
-            datum = json.loads(data_str.decode("utf-8"))
+            # orjson is twice as fast, and yes it really matters here.
+            datum = orjson.loads(data_str.decode("utf-8"))
             total_time = datum['total_time']
             total_times.append(total_time)
 
@@ -123,6 +124,7 @@ def metrics_main(args):
             for step in steps:
                 if step['type'] == 'executed_recovery':
                     n_recovery += 1
+        print(perf_counter() - t0)
 
         ###############################################################################################
 
@@ -213,7 +215,6 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
     parser.add_argument('analysis_params', type=pathlib.Path)
-    parser.add_argument('fallback_labeling_params', type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--final', action='store_true')
     parser.set_defaults(func=metrics_main)

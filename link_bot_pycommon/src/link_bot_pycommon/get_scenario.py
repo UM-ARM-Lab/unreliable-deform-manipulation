@@ -17,6 +17,8 @@ def get_scenario(scenario_name: str) -> ExperimentScenario:
         return DualArmRopeScenario()
     elif scenario_name == 'dual_arm_rope':
         return DualArmRopeScenario()
+    elif scenario_name == 'dual_floating_gripper_rope':
+        return DualFloatingGripperRopeScenario()
     elif scenario_name == 'dual_floating':
         return DualFloatingGripperRopeScenario()
     else:
