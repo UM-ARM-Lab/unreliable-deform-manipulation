@@ -16,7 +16,6 @@ add_message_files(
         ModelsPoses.msg
         NamedPoint.msg
         NamedPoints.msg
-        Objects.msg
         ReconstructionInputs.msg
         SubspaceDescription.msg
         Vector2.msg
@@ -32,15 +31,12 @@ add_service_files(
         GetDualGripperPoints.srv
         GetBool.srv
         GetFloat32.srv
-        GetObject.srv
-        GetObjects.srv
         GetPosition3D.srv
         GetRopeState.srv
         GetJointState.srv
         LinkBotReset.srv
         LinkBotState.srv
         LinkBotTrajectory.srv
-        ListObjects.srv
         Position3DAction.srv
         Position3DDeltaAction.srv
         Position3DEnable.srv

@@ -1,4 +1,0 @@
-peter_msgs/Action action
----
-peter_msgs/Objects objects
-bool needs_reset

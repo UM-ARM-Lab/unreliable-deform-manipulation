@@ -1,5 +1,0 @@
-peter_msgs/LinkBotAction[] gripper1_traj
----
-peter_msgs/Objects[] actual_path
-bool needs_reset
-
