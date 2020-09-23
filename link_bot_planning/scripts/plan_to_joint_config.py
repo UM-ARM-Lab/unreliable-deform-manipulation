@@ -1,14 +1,16 @@
 import argparse
 import json
 
+import colorama
+
 import actionlib
 import rospy
-
 from link_bot_pycommon.moveit_utils import make_moveit_action_goal
 from moveit_msgs.msg import MoveGroupAction, MoveItErrorCodes
 
 
 def main():
+    colorama.init(autoreset=True)
     rospy.init_node("plan_to_joint_config")
 
     parser = argparse.ArgumentParser()

@@ -3,7 +3,7 @@ import argparse
 import json
 import pathlib
 
-from colorama import init
+import colorama
 
 import rospy
 from link_bot_planning.planning_evaluation import planning_evaluation
@@ -14,7 +14,7 @@ limit_gpu_mem(7.5)
 
 
 def main():
-    init(autoreset=True)
+    colorama.init(autoreset=True)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',

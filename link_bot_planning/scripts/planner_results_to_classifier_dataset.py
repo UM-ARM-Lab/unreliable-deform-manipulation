@@ -4,6 +4,7 @@ import json
 import pathlib
 from time import perf_counter
 
+import colorama
 import tensorflow as tf
 from colorama import Fore
 
@@ -34,6 +35,7 @@ def plan_result_to_examples(result_idx, result, labeling_params):
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', type=pathlib.Path, nargs='+')
     parser.add_argument('labeling_params', type=pathlib.Path)

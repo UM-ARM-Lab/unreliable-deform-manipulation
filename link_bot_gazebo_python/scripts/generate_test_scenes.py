@@ -2,6 +2,7 @@ import argparse
 import pathlib
 import time
 
+import colorama
 import hjson
 import numpy as np
 import tensorflow as tf
@@ -15,6 +16,8 @@ from link_bot_pycommon.get_scenario import get_scenario
 
 
 def main():
+    colorama.init(autoreset=True)
+
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("scenario_name", type=str)
     parser.add_argument("data_collection_params", type=pathlib.Path)

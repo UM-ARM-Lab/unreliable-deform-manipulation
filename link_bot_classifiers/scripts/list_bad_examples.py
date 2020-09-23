@@ -1,26 +1,21 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
-from time import perf_counter
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
 import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from link_bot_pycommon.pycommon import print_dict
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch, add_batch
-from std_msgs.msg import Float32
-from scipy import stats
 
 limit_gpu_mem(1)
 
 
 def main():
+    colorama.init(autoreset=True)
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
@@ -49,6 +44,7 @@ def main():
             print(bad_filename)
         i += 1
     print(s)
+
 
 if __name__ == '__main__':
     main()

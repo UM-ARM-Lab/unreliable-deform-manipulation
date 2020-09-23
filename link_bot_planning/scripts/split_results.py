@@ -1,15 +1,17 @@
 #!/usr/bin/env python
-
-from copy import deepcopy
-import json
-import pathlib
 import argparse
 import gzip
+import json
+import pathlib
+from copy import deepcopy
+
+import colorama
 
 from link_bot_pycommon.args import my_formatter
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_subdir', help='results directory', type=pathlib.Path)
 

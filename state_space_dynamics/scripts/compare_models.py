@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 import argparse
-import json
 import gzip
+import json
 import pathlib
 import time
 
-from matplotlib import cm
+import colorama
 import numpy as np
 from colorama import Fore, Style
+from matplotlib import cm
 from tabulate import tabulate
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
 from link_bot_pycommon.pycommon import paths_from_json
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, remove_batch
@@ -44,7 +45,7 @@ def load_dataset_and_models(args):
 
 def generate(args):
     base_folder = pathlib.Path('results') / 'compare_models' / \
-        '{}-{}-{}'.format(args.nickname, args.mode, int(time.time()))
+                  '{}-{}-{}'.format(args.nickname, args.mode, int(time.time()))
     base_folder.mkdir(parents=True)
     print("Using output directory: {}".format(base_folder))
 
@@ -180,6 +181,8 @@ def viz(data_filename, fps, no_plot, save):
 
 
 def main():
+    colorama.init(autoreset=True)
+
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     subparsers = parser.add_subparsers()
     gen_parser = subparsers.add_parser('generate')

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import colorama
 import rospy
 import traceback
 import numpy as np
@@ -17,6 +18,7 @@ limit_gpu_mem(7.5)
 
 
 def main():
+    colorama.init(autoreset=True)
     np.set_printoptions(precision=6, suppress=True, linewidth=250)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)

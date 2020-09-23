@@ -1,28 +1,22 @@
 #!/usr/bin/env python
-import threading
-from time import sleep
-
 import argparse
 import gzip
-from geometry_msgs.msg import Point
-import ros_numpy
-import rospy
 import json
-from typing import Dict
 import pathlib
 
+import colorama
 import numpy as np
 
-from link_bot_planning.my_planner import MyPlannerStatus
-from link_bot_planning.results_utils import labeling_params_from_planner_params
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest
-from link_bot_pycommon.args import my_formatter, int_range_arg
+import ros_numpy
+import rospy
+from geometry_msgs.msg import Point
+from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_np_arrays
+from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
     parser.add_argument("--trial-idx", type=int, help='which plan to show', default=0)

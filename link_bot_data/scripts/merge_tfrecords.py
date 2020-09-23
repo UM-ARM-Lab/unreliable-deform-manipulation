@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-
 import argparse
 import json
-import os
 import pathlib
-import re
 import shutil
 
-from colorama import Fore
+import colorama
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("indirs", nargs="*", type=pathlib.Path)
     parser.add_argument("outdir", type=pathlib.Path)

@@ -2,12 +2,14 @@
 import argparse
 import pathlib
 
+import colorama
 import tensorflow as tf
 from colorama import Fore, Style
 from google.protobuf.json_format import MessageToDict
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_dir', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train')

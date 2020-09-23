@@ -2,10 +2,11 @@
 import argparse
 import pathlib
 
+import colorama
 import numpy as np
-import rospy
 import tensorflow as tf
 
+import rospy
 from link_bot_classifiers import train_test_classifier
 from moonshine.gpu_config import limit_gpu_mem
 
@@ -31,11 +32,14 @@ def test_main(args):
 def eval_main(args):
     train_test_classifier.eval_main(**vars(args))
 
+
 def eval_ensemble_main(args):
     train_test_classifier.eval_ensemble_main(**vars(args))
 
 
 def main():
+    colorama.init(autoreset=True)
+
     rospy.init_node("train_test_classifier")
 
     np.set_printoptions(linewidth=250, precision=4, suppress=True)

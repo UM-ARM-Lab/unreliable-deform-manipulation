@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-import pathlib
-
-import shutil
-import gzip
-import json
 import argparse
+import pathlib
+import shutil
 
+import colorama
 from colorama import Fore
 
 from link_bot_pycommon.args import my_formatter
 
 
 def main():
+    colorama.init(autoreset=True)
+
     # Copies without overwriting by incrementing index, and merges json file
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('subdir', type=pathlib.Path, help="subdir")

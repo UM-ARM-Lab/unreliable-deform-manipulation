@@ -335,9 +335,9 @@ class FullStackRunner:
 
 
 def main():
+    colorama.init(autoreset=True)
     tf.get_logger().setLevel(logging.ERROR)
 
-    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("full_stack_param", type=pathlib.Path)
     parser.add_argument("--from-logfile", type=pathlib.Path)

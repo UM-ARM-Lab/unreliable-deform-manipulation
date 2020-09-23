@@ -4,20 +4,21 @@ import gzip
 import json
 import pathlib
 
+import colorama
 import numpy as np
-import rospy
 
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
-from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from link_bot_pycommon.serialization import dummy_proof_write
-from moonshine.gpu_config import limit_gpu_mem
+import rospy
 from link_bot_classifiers.recovery_policy_utils import load_generic_model
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(0.1)
 
 
 def main():
+    colorama.init(autoreset=True)
+
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("infile", help="json.gz file describing the test cases", type=pathlib.Path)
     parser.add_argument("recovery_model_dir", help="recovery model dir", type=pathlib.Path)

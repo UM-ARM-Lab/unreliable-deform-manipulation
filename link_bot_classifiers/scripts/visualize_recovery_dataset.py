@@ -1,31 +1,28 @@
 #!/usr/bin/env python
-from progressbar import progressbar
-from time import sleep
-import tensorflow as tf
-import json
-import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
 import argparse
 import pathlib
-import rospy
+from time import sleep
 
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
-from moonshine.moonshine_utils import listify
-from moonshine.gpu_config import limit_gpu_mem
-from visualization_msgs.msg import MarkerArray, Marker
-from link_bot_data.visualization import rviz_arrow
+import colorama
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from matplotlib import cm
+from progressbar import progressbar
+
+import rospy
+from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import log_scale_0_to_1
-from link_bot_data.recovery_dataset import RecoveryDataset
-
+from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
+from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
 
 
 def main():
+    colorama.init(autoreset=True)
+
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200, precision=5)
     parser = argparse.ArgumentParser()

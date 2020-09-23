@@ -1,20 +1,22 @@
 #!/usr/bin/env python
-
-import rospy
-from time import sleep
-from gazebo_msgs.srv import SetModelState
-import geometry_msgs
-from tf import transformations
-from gazebo_msgs.srv import SetModelStateRequest
-import tf2_ros
-import numpy as np
-import json
-from link_bot_pycommon.pycommon import default_if_none
 import argparse
+import json
 import pathlib
+from time import sleep
+
+import colorama
+
+import geometry_msgs
+import rospy
+import tf2_ros
+from gazebo_msgs.srv import SetModelState
+from gazebo_msgs.srv import SetModelStateRequest
+from link_bot_pycommon.pycommon import default_if_none
+from tf import transformations
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("info", type=pathlib.Path)
 

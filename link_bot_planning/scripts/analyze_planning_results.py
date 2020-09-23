@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-
 import argparse
 import gzip
 import json
 import pathlib
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import orjson
@@ -116,6 +116,8 @@ def metrics_main(args):
 
 
 def main():
+    colorama.init(autoreset=True)
+
     rospy.init_node("analyse_planning_results")
     np.set_printoptions(suppress=True, precision=4, linewidth=180)
     plt.style.use('paper')

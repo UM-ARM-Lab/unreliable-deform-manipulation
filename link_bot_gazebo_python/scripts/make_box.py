@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 import argparse
 import pathlib
 
+import colorama
 from lxml import etree
 
 from link_bot_pycommon.args import my_formatter
@@ -10,6 +10,7 @@ from link_bot_pycommon.inertia_matrices import box
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('mass', type=float, help='mass')
     parser.add_argument('width', type=float, help='x')

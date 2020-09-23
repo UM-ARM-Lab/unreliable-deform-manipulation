@@ -1,12 +1,14 @@
 #!/usr/bin/env python
-
 import argparse
+
+import colorama
 
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.inertia_matrices import sphere, cylinder, box
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     subparsers = parser.add_subparsers()
     box_parser = subparsers.add_parser('box', help='box')

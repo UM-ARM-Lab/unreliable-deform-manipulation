@@ -1,23 +1,25 @@
 #!/usr/bin/env python
-import pathlib
-import numpy as np
-from colorama import Fore
-import rospy
-from time import sleep
 import argparse
 import gzip
-from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.moonshine_utils import numpify, listify
-from link_bot_classifiers import classifier_utils
-from state_space_dynamics import model_utils
-from moonshine.gpu_config import limit_gpu_mem
-
 import json
+import pathlib
+from time import sleep
+
+import colorama
+import numpy as np
+from colorama import Fore
+
+import rospy
+from link_bot_classifiers import classifier_utils
+from moonshine.gpu_config import limit_gpu_mem
+from moonshine.moonshine_utils import numpify, listify
+from state_space_dynamics import model_utils
 
 limit_gpu_mem(7)
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("results_dir", type=pathlib.Path, help='dir containing *_metrics.json.gz')
     parser.add_argument("plan_idx", type=int)
@@ -98,7 +100,7 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
         start_t = rng.randint(0, T - 2)
 
         # sample a end index
-        end_t = rng.randint(min(start_t, T - 2), min(start_t + 10, T-1))
+        end_t = rng.randint(min(start_t, T - 2), min(start_t + 10, T - 1))
 
         # interpolate the grippers
         start_state = predicted_states[start_t]
@@ -130,7 +132,7 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
             interpolated_states.append(states[-1])
         if accept_shortcut:
             actions = actions[:start_t] + interpolated_actions + actions[end_t:]
-            predicted_states = predicted_states[:start_t] + interpolated_states + predicted_states[end_t+1:]
+            predicted_states = predicted_states[:start_t] + interpolated_states + predicted_states[end_t + 1:]
 
             # for t, s_t in enumerate(predicted_states):
             #     scenario.plot_state_rviz(s_t, idx=t, label='smoothed', color='#00ff0099')

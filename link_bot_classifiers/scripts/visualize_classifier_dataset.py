@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import colorama
 import argparse
 import pathlib
 from time import perf_counter
@@ -21,6 +22,8 @@ limit_gpu_mem(1)
 
 
 def main():
+    colorama.init(autoreset=True)
+
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=200, precision=3)
     parser = argparse.ArgumentParser()
@@ -146,7 +149,6 @@ def visualize_dataset(args, classifier_dataset):
     total_dt = perf_counter() - t0
 
     if args.display_type == 'stdev':
-
         print(f"p={stats.f_oneway(stdevs_for_negative, stdevs_for_positive)[1]}")
 
         plt.figure()

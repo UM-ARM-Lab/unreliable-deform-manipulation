@@ -3,10 +3,11 @@ import argparse
 import logging
 import pathlib
 
-import rospy
+import colorama
 import tensorflow as tf
 from colorama import Fore
 
+import rospy
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.filesystem_utils import mkdir_and_ask
@@ -16,6 +17,7 @@ limit_gpu_mem(6)
 
 
 def main():
+    colorama.init(autoreset=True)
     rospy.init_node("make_classifier_dataset")
 
     tf.get_logger().setLevel(logging.ERROR)

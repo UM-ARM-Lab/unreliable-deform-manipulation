@@ -1,17 +1,20 @@
 #!/usr/bin/env python
-
-from time import sleep, time
-import rospy
-import pathlib
 import argparse
+import pathlib
+from time import sleep, time
+
+import colorama
+
 import actionlib
 import rosbag
-
-from control_msgs.msg import FollowJointTrajectoryAction
+import rospy
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
+from control_msgs.msg import FollowJointTrajectoryAction
 
 
 def main():
+    colorama.init(autoreset=True)
+
     rospy.init_node('follow_joint_trajectory_client')
 
     parser = argparse.ArgumentParser()

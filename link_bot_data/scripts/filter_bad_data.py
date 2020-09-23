@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import colorama
 
 import argparse
 import pathlib
@@ -18,6 +19,7 @@ from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 
 
 def main():
+    colorama.init(autoreset=True)
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=5)
 

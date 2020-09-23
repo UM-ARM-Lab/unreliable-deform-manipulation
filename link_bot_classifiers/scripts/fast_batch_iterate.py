@@ -3,6 +3,7 @@ import argparse
 import pathlib
 from time import perf_counter
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
@@ -16,6 +17,7 @@ limit_gpu_mem(1)
 
 
 def main():
+    colorama.init(autoreset=True)
     rospy.init_node("fast_batch_iterate")
 
     plt.style.use("slides")

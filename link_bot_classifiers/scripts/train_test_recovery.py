@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import colorama
 import argparse
 import pathlib
 
@@ -21,6 +22,8 @@ def eval_main(args):
 
 
 def main():
+    colorama.init(autoreset=True)
+
     np.set_printoptions(linewidth=250, precision=4, suppress=True, threshold=10000)
     parser = argparse.ArgumentParser()
 

@@ -1,16 +1,18 @@
 #!/usr/bin/env python
-import rosservice
 import argparse
+
+import colorama
+
 import rospy
-from gazebo_msgs.msg import LinkStates
+import rosservice
+from gazebo_msgs.srv import SetLinkState
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from peter_msgs.srv import WorldControl, WorldControlRequest, GetJointState, GetJointStateRequest
+from peter_msgs.srv import WorldControl, GetJointState, GetJointStateRequest
 from std_srvs.srv import Empty, EmptyRequest
-from gazebo_msgs.srv import GetLinkState, GetLinkStateRequest, SetLinkState, SetLinkStateRequest
-import rosbag
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("bagfile")
 

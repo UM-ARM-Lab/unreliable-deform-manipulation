@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-from __future__ import print_function, division
-
 import argparse
 import json
 import pathlib
 
+import colorama
 import numpy as np
-import rospy
 
+import rospy
 from link_bot_data import base_collect_dynamics_data
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_service_provider import get_service_provider
@@ -17,6 +16,8 @@ limit_gpu_mem(0.1)
 
 
 def main():
+    colorama.init(autoreset=True)
+
     np.set_printoptions(precision=4, suppress=True, linewidth=220, threshold=5000)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)

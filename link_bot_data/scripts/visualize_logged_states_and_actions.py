@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-
 import argparse
 import json
 import pathlib
 
+import colorama
 import matplotlib.pyplot as plt
 
-from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.get_scenario import get_scenario
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('logfile', type=pathlib.Path)
 

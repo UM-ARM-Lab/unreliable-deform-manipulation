@@ -1,15 +1,19 @@
 #!/usr/bin/env python
-import numpy as np
-import ros_numpy
-from geometry_msgs.msg import Point
-import pathlib
-import rospy
 import argparse
 import json
+import pathlib
+
+import colorama
+import numpy as np
+
+import ros_numpy
+import rospy
+from geometry_msgs.msg import Point
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("actions", type=pathlib.Path, help='actions json')
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 import argparse
 import pathlib
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -36,6 +36,7 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
 
 
 def main():
+    colorama.init(autoreset=True)
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=5)
 

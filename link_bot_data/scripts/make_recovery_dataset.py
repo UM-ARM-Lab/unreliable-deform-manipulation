@@ -6,6 +6,7 @@ import pathlib
 import rospy
 import tensorflow as tf
 from colorama import Fore
+import colorama
 
 from link_bot_data.recovery_actions_utils import make_recovery_dataset
 from link_bot_pycommon.args import my_formatter
@@ -16,6 +17,8 @@ limit_gpu_mem(7.5)
 
 
 def main():
+    colorama.init(autoreset=True)
+
     tf.get_logger().setLevel(logging.ERROR)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('dataset_dir', type=pathlib.Path, help='dataset directory')

@@ -1,16 +1,19 @@
 #!/usr/bin/env python
-import time
-import json
 import argparse
+import json
 import pathlib
+import time
 
+import colorama
+
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.serialization import dummy_proof_write
-from link_bot_gazebo_python.gazebo_services import GazeboServices
 
 
 def main():
+    colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("recovery_dataset_dir", type=pathlib.Path,
                         help='the hparams.json file for the recovery dataset')

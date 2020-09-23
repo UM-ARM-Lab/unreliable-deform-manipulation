@@ -1,17 +1,16 @@
 #!/usr/bin/env python
-import threading
-from time import sleep
-
 import argparse
 import gzip
-import rospy
 import json
-from typing import Dict
 import pathlib
+import threading
+from time import sleep
+from typing import Dict
 
+import colorama
 import numpy as np
 
-from link_bot_planning.my_planner import MyPlannerStatus
+import rospy
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
@@ -20,6 +19,7 @@ from moonshine.moonshine_utils import numpify
 
 
 def main():
+    colorama.init(autoreset=True)
     np.set_printoptions(linewidth=250, precision=3, suppress=True)
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')

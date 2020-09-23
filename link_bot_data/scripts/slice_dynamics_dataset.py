@@ -1,24 +1,21 @@
 #!/usr/bin/env python
-
 import argparse
 import json
 import pathlib
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
-import shutil
 import tensorflow as tf
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_pycommon.animation_player import Player
-from link_bot_pycommon.args import my_formatter
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import numpify, add_batch, remove_batch
+from link_bot_pycommon.args import my_formatter
 
 
 def main():
+    colorama.init(autoreset=True)
     plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=5)
 
