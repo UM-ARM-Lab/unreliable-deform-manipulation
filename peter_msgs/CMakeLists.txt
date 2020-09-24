@@ -8,42 +8,34 @@ catkin_python_setup()
 add_message_files(
         FILES
         Action.msg
-        Points.msg
+        AnimationControl.msg
         IntPoint2D.msg
         LabelStatus.msg
-        LinkBotAction.msg
-        ModelPose.msg
-        ModelsEnable.msg
-        ModelsPoses.msg
-        NamedPoint.msg
-        NamedPoints.msg
+        Points.msg
         ReconstructionInputs.msg
         SubspaceDescription.msg
         Vector2.msg
         WheelSpeeds.msg
-        AnimationControl.msg
 )
 
 add_service_files(
         FILES
         ComputeOccupancy.srv
-        GrippersTrajectory.srv
-        ExecuteAction.srv
-        GetDualGripperPoints.srv
         GetBool.srv
+        GetDualGripperPoints.srv
         GetFloat32.srv
+        GetJointState.srv
         GetPosition3D.srv
         GetRopeState.srv
-        GetJointState.srv
+        GrippersTrajectory.srv
         LinkBotReset.srv
         LinkBotState.srv
-        LinkBotTrajectory.srv
         Position3DAction.srv
         Position3DDeltaAction.srv
         Position3DEnable.srv
         Reconstruction.srv
-        SetRopeState.srv
         SetDualGripperPoints.srv
+        SetRopeState.srv
         StateSpaceDescription.srv
         WorldControl.srv
 )
