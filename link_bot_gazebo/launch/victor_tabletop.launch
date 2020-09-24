@@ -1,5 +1,5 @@
 <launch>
-    <arg name="gui"         default="true"/>
+    <arg name="gui" default="true"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
         <arg name="world" value="sim/victor_tabletop.world"/>
@@ -13,9 +13,9 @@
     </include>
 
     <node pkg="timed_roslaunch"
-        type="timed_roslaunch.sh"
-        args="10 physical_robot_3d_rope_shim robot_shim.launch use_victor:=true"
-        name="timed_roslaunch"
-        output="screen">
+          type="timed_roslaunch.sh"
+          args="10 physical_robot_3d_rope_shim robot_shim.launch use_victor:=true"
+          name="timed_roslaunch"
+          output="screen">
     </node>
 </launch>
