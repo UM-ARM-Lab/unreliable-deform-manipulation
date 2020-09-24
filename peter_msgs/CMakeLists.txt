@@ -8,6 +8,7 @@ catkin_python_setup()
 add_message_files(
         FILES
         Action.msg
+        Points.msg
         IntPoint2D.msg
         LabelStatus.msg
         LinkBotAction.msg
@@ -26,7 +27,7 @@ add_message_files(
 add_service_files(
         FILES
         ComputeOccupancy.srv
-        DualGripperTrajectory.srv
+        GrippersTrajectory.srv
         ExecuteAction.srv
         GetDualGripperPoints.srv
         GetBool.srv

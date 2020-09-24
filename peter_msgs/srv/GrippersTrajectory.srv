@@ -1,0 +1,4 @@
+peter_msgs/Points[] grippers
+float64 speed  # meters per second
+---
+bool merged_trajectory_empty
