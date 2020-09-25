@@ -21,6 +21,7 @@ add_message_files(
 add_service_files(
         FILES
         ComputeOccupancy.srv
+        DualGripperTrajectory.srv
         GetBool.srv
         GetDualGripperPoints.srv
         GetFloat32.srv
