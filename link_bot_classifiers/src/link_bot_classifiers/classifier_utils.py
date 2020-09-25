@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_classifiers.collision_checker_classifier import CollisionCheckerClassifier
+from link_bot_classifiers.gripper_distance_classifier import GripperDistanceClassifier
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_classifiers.none_classifier import NoneClassifier
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -25,5 +26,7 @@ def load_generic_model(model_dirs: List[pathlib.Path], scenario: Optional[Experi
         return CollisionCheckerClassifier(model_dirs, scenario=scenario)
     elif model_type == 'none':
         return NoneClassifier(model_dirs, scenario=scenario)
+    elif model_type == 'gripper_distance':
+        return GripperDistanceClassifier(model_dirs, scenario=scenario)
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

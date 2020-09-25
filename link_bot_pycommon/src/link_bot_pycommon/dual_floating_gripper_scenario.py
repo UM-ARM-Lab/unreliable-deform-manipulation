@@ -122,6 +122,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.move_group_client = None
 
+    def get_environment(self, params: Dict, **kwargs):
+        return {}
+
     def hard_reset(self):
         self.reset_srv(EmptyRequest())
 
@@ -293,77 +296,18 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return object_poses
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
-        # # move the objects out of the way
-        object_reset_poses = {k: (np.ones(3) * 10, np.array([0, 0, 0, 1])) for k in data_collection_params['objects']}
-        self.set_object_poses(object_reset_poses)
-
-        # Let go of rope
-        release = SetBoolRequest()
-        release.data = False
-        self.grasping_rope_srv(release)
-
-        # reset rope to home/starting configuration
-        self.reset_rope(data_collection_params)
-        self.settle()
-
-        # reet robot
-        self.reset_robot(data_collection_params)
-
-        # replace the objects in a new random configuration
-        if 'scene' not in data_collection_params:
-            rospy.logwarn("No scene specified... I assume you want tabletop.")
-            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
-        elif data_collection_params['scene'] == 'tabletop':
-            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
-        elif data_collection_params['scene'] == 'car2':
-            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
-        elif data_collection_params['scene'] == 'car':
-            random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
-        else:
-            raise NotImplementedError()
-        self.set_object_poses(random_object_poses)
-
-        # re-grasp rope
-        grasp = SetBoolRequest()
-        grasp.data = True
-        self.grasping_rope_srv(grasp)
-
-        # wait a second so that the rope can drape on the objects
-        self.settle()
-
-        if 'gripper1_action_sample_extent' in data_collection_params:
-            gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
-        else:
-            gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-        gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
-        gripper1_bbox_msg.header.frame_id = 'world'
-        self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
-
-        if 'gripper2_action_sample_extent' in data_collection_params:
-            gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
-        else:
-            gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-        gripper2_bbox_msg = extent_array_to_bbox(gripper1_extent)
-        gripper2_bbox_msg.header.frame_id = 'world'
-        self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
-
-        gripper1_position = env_rng.uniform(gripper1_extent[:, 0], gripper1_extent[:, 1])
-        gripper2_position = env_rng.uniform(gripper2_extent[:, 0], gripper2_extent[:, 1])
-        return_action = {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position
-        }
-        self.execute_action(return_action)
-        self.settle()
+        pass
 
     def execute_action(self, action: Dict):
         target_gripper1_point = ros_numpy.msgify(Point, action['gripper1_position'])
+
         target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = DualGripperTrajectoryRequest()
         req.settling_time_seconds = 0.03
         req.gripper1_points.append(target_gripper1_point)
         req.gripper2_points.append(target_gripper2_point)
+
         while True:
             try:
                 _ = self.action_srv(req)
@@ -811,76 +755,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         def _state_sampler_allocator(state_space):
             return DualGripperStateSampler(state_space,
                                            scenario=self,
-                                           extent=planner_params['extent'],
-                                           rng=state_sampler_rng,
-                                           plot=plot)
-
-        state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
-
-        return state_space
-
-    def make_ompl_state_space1(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
-        state_space = ob.CompoundStateSpace()
-
-        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
-
-        gripper1_subspace = ob.RealVectorStateSpace(3)
-        gripper1_bounds = ob.RealVectorBounds(3)
-        # these bounds are not used for sampling
-        gripper1_bounds.setLow(0, min_x)
-        gripper1_bounds.setHigh(0, max_x)
-        gripper1_bounds.setLow(1, min_y)
-        gripper1_bounds.setHigh(1, max_y)
-        gripper1_bounds.setLow(2, min_z)
-        gripper1_bounds.setHigh(2, max_z)
-        gripper1_subspace.setBounds(gripper1_bounds)
-        gripper1_subspace.setName("gripper1")
-        state_space.addSubspace(gripper1_subspace, weight=1)
-
-        gripper2_subspace = ob.RealVectorStateSpace(3)
-        gripper2_bounds = ob.RealVectorBounds(3)
-        # these bounds are not used for sampling
-        gripper2_bounds.setLow(0, min_x)
-        gripper2_bounds.setHigh(0, max_x)
-        gripper2_bounds.setLow(1, min_y)
-        gripper2_bounds.setHigh(1, max_y)
-        gripper2_bounds.setLow(2, min_z)
-        gripper2_bounds.setHigh(2, max_z)
-        gripper2_subspace.setBounds(gripper2_bounds)
-        gripper2_subspace.setName("gripper2")
-        state_space.addSubspace(gripper2_subspace, weight=1)
-
-        rope_subspace = ob.RealVectorStateSpace(DualFloatingGripperRopeScenario.n_links * 3)
-        rope_bounds = ob.RealVectorBounds(DualFloatingGripperRopeScenario.n_links * 3)
-        # these bounds are not used for sampling
-        rope_bounds.setLow(-1000)
-        rope_bounds.setHigh(1000)
-        rope_subspace.setBounds(rope_bounds)
-        rope_subspace.setName("rope")
-        state_space.addSubspace(rope_subspace, weight=1)
-
-        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
-        stdev_subspace = ob.RealVectorStateSpace(1)
-        stdev_bounds = ob.RealVectorBounds(1)
-        stdev_bounds.setLow(-1000)
-        stdev_bounds.setHigh(1000)
-        stdev_subspace.setBounds(stdev_bounds)
-        stdev_subspace.setName("stdev")
-        state_space.addSubspace(stdev_subspace, weight=0)
-
-        # extra subspace component for the number of diverged steps
-        num_diverged_subspace = ob.RealVectorStateSpace(1)
-        num_diverged_bounds = ob.RealVectorBounds(1)
-        num_diverged_bounds.setLow(-1000)
-        num_diverged_bounds.setHigh(1000)
-        num_diverged_subspace.setBounds(num_diverged_bounds)
-        num_diverged_subspace.setName("stdev")
-        state_space.addSubspace(num_diverged_subspace, weight=0)
-
-        def _state_sampler_allocator(state_space):
-            return DualGripperStateSampler(state_space,
-                                           scenario=self,
-                                           extent=planner_params['extent'],
+                                           extent=planner_params['state_sampler_extent'],
                                            rng=state_sampler_rng,
                                            plot=plot)
 

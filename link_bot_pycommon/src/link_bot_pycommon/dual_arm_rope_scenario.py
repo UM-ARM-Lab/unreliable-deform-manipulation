@@ -5,12 +5,15 @@ import numpy as np
 import actionlib
 import ros_numpy
 import rospy
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.grid_utils import extent_array_to_bbox
 from link_bot_pycommon.moveit_utils import make_moveit_action_goal
+from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
 from peter_msgs.srv import GetDualGripperPointsRequest, GetJointStateRequest, GetRopeStateRequest, GetJointState
 from sensor_msgs.msg import JointState
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, SetBoolRequest
 
 
 class DualArmRopeScenario(DualFloatingGripperRopeScenario):
@@ -20,6 +23,8 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.joint_states_srv = rospy.ServiceProxy("joint_states", GetJointState)
         self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
+
+        self.service_provider = GazeboServices()
 
     def reset_robot(self, data_collection_params: Dict):
         if data_collection_params['scene'] == 'tabletop':
@@ -113,3 +118,75 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
     def simple_name(self):
         return "dual_arm"
+
+    def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
+        # # move the objects out of the way
+        object_reset_poses = {k: (np.ones(3) * 10, np.array([0, 0, 0, 1])) for k in data_collection_params['objects']}
+        self.set_object_poses(object_reset_poses)
+
+        # Let go of rope
+        release = SetBoolRequest()
+        release.data = False
+        self.grasping_rope_srv(release)
+
+        # reset rope to home/starting configuration
+        self.reset_rope(data_collection_params)
+        self.settle()
+
+        # reet robot
+        self.reset_robot(data_collection_params)
+
+        # replace the objects in a new random configuration
+        if 'scene' not in data_collection_params:
+            rospy.logwarn("No scene specified... I assume you want tabletop.")
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+        elif data_collection_params['scene'] == 'tabletop':
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+        elif data_collection_params['scene'] == 'car2':
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+        elif data_collection_params['scene'] == 'car':
+            random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
+        else:
+            raise NotImplementedError()
+        self.set_object_poses(random_object_poses)
+
+        # re-grasp rope
+        grasp = SetBoolRequest()
+        grasp.data = True
+        self.grasping_rope_srv(grasp)
+
+        # wait a second so that the rope can drape on the objects
+        self.settle()
+
+        if 'gripper1_action_sample_extent' in data_collection_params:
+            gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
+        else:
+            gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
+        gripper1_bbox_msg.header.frame_id = 'world'
+        self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
+
+        if 'gripper2_action_sample_extent' in data_collection_params:
+            gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
+        else:
+            gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        gripper2_bbox_msg = extent_array_to_bbox(gripper1_extent)
+        gripper2_bbox_msg.header.frame_id = 'world'
+        self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
+
+        gripper1_position = env_rng.uniform(gripper1_extent[:, 0], gripper1_extent[:, 1])
+        gripper2_position = env_rng.uniform(gripper2_extent[:, 0], gripper2_extent[:, 1])
+        return_action = {
+            'gripper1_position': gripper1_position,
+            'gripper2_position': gripper2_position
+        }
+        self.execute_action(return_action)
+        self.settle()
+
+    def get_environment(self, params : Dict, **kwargs):
+        # FIXME: implement
+        res = params.get("res", 0.01)
+        return get_environment_for_extents_3d(extent=params['extent'],
+                                              res=res,
+                                              service_provider=self.service_provider,
+                                              robot_name=self.robot_name())

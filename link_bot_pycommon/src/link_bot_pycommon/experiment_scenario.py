@@ -288,6 +288,9 @@ class ExperimentScenario:
         label_t = self.index_label_time(example, t)
         self.plot_is_close(label_t)
 
+    def get_environment(self, params : Dict, **kwargs):
+        raise NotImplementedError()
+
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
     x_range = xyz_range['x']

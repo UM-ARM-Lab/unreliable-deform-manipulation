@@ -154,8 +154,14 @@ class PlanAndExecute:
     def get_environment(self):
         # get the environment, which here means anything which is assumed constant during planning
         # This includes the occupancy map but can also include things like the initial state of the tether
+        # using the res from the classifier data collection params is a bad idea
+        try:
+            res = self.planner.classifier_model.data_collection_params['res']
+        except Exception:
+            res = 0.02
+        # the fact that a fwd model owns the scenario is also maybe a bad design???
         return get_environment_for_extents_3d(extent=self.planner_params['extent'],
-                                              res=self.planner.classifier_model.data_collection_params['res'],
+                                              res=res,
                                               service_provider=self.service_provider,
                                               robot_name=self.planner.fwd_model.scenario.robot_name())
 
@@ -190,7 +196,6 @@ class PlanAndExecute:
             time_since_start = time.perf_counter() - start_time
 
             if planning_result.status == MyPlannerStatus.Failure:
-                # this run won't count if we return false, the environment will be randomized, then we'll try again
                 raise RuntimeError("planning failed -- is the start state out of bounds?")
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:

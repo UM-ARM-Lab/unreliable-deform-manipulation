@@ -1,8 +1,9 @@
 <launch>
     <arg name="gui" default="true"/>
+    <arg name="world" default="sim/victor_tabletop.world"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
-        <arg name="world" value="sim/victor_tabletop.world"/>
+        <arg name="world" value="$(arg world)"/>
         <arg name="use_victor" value="true"/>
         <arg name="use_val" value="false"/>
         <arg name="verbose" value="false"/>
