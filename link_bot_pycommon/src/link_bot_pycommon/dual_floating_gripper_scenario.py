@@ -9,19 +9,20 @@ from matplotlib import colors
 
 import actionlib
 import rospy
+from arm_robots_msgs.msg import Points
+from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_to_bbox
+from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_to_bbox, extent_array_to_bbox
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify
 from moveit_msgs.msg import MoveGroupAction
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, SetRopeState, \
-    SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
+from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
 from std_srvs.srv import Empty, EmptyRequest, SetBool
 from tf import transformations
@@ -107,7 +108,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def __init__(self):
         super().__init__()
         self.last_action = None
-        self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
+        self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", GrippersTrajectory)
         self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
         self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
@@ -232,6 +233,21 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             max_gripper_d = default_if_none(data_collection_params['max_distance_between_grippers'], 1000)
             too_far = np.linalg.norm(gripper1_position - gripper2_position) > max_gripper_d
 
+            if 'gripper1_action_sample_extent' in data_collection_params:
+                gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
+            else:
+                gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+            gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
+            gripper1_bbox_msg.header.frame_id = 'world'
+            self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
+
+            if 'gripper2_action_sample_extent' in data_collection_params:
+                gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
+            else:
+                gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+            gripper2_bbox_msg = extent_array_to_bbox(gripper2_extent)
+            gripper2_bbox_msg.header.frame_id = 'world'
+            self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
             if not out_of_bounds and not too_far:
                 self.last_action = action
                 return action
@@ -299,20 +315,27 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         pass
 
     def execute_action(self, action: Dict):
-        target_gripper1_point = ros_numpy.msgify(Point, action['gripper1_position'])
+        target_left_gripper_point = ros_numpy.msgify(Point, action['gripper1_position'])
 
-        target_gripper2_point = ros_numpy.msgify(Point, action['gripper2_position'])
+        target_right_gripper_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
-        req = DualGripperTrajectoryRequest()
-        req.settling_time_seconds = 0.03
-        req.gripper1_points.append(target_gripper1_point)
-        req.gripper2_points.append(target_gripper2_point)
+        req = GrippersTrajectoryRequest()
+        req.speed = 0.1
+        left_gripper_points = Points()
+        left_gripper_points.points.append(target_left_gripper_point)
+        right_gripper_points = Points()
+        right_gripper_points.points.append(target_right_gripper_point)
+        req.grippers.append(left_gripper_points)
+        req.grippers.append(right_gripper_points)
+        req.group_name = "both_arms"
+        req.tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
 
         while True:
             try:
                 _ = self.action_srv(req)
                 break
-            except Exception:
+            except Exception as e:
+                print(e)
                 input("Did you forget to start the shim?")
                 pass
 
@@ -577,7 +600,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             return self.distance_grippers_and_any_point_goal(state, goal)
         else:
             raise NotImplementedError()
-
 
     def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         if actually_at_goal:
@@ -950,7 +972,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.action_viz_pub.publish(msg)
 
-
     @staticmethod
     def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):
         for i in range(3):
@@ -1179,6 +1200,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_allocator))
 
         return control_space
+
 
 class DualGripperControlSampler(oc.ControlSampler):
     def __init__(self,

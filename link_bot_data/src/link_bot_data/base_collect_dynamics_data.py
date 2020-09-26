@@ -30,7 +30,6 @@ class DataCollector:
         self.verbose = verbose
         self.scenario_name = scenario_name
         self.scenario = get_scenario(scenario_name)
-        self.scenario = get_scenario(scenario_name)
 
         if seed is None:
             self.seed = np.random.randint(0, 100)

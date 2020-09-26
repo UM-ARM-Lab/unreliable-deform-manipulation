@@ -1,17 +1,18 @@
 from typing import Dict
 
 import numpy as np
+import ros_numpy
 
 import actionlib
-import ros_numpy
 import rospy
+from arc_utilities.ros_helpers import Listener
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from link_bot_pycommon.grid_utils import extent_array_to_bbox
 from link_bot_pycommon.moveit_utils import make_moveit_action_goal
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
-from peter_msgs.srv import GetDualGripperPointsRequest, GetJointStateRequest, GetRopeStateRequest, GetJointState
+from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty, SetBoolRequest
 
@@ -20,7 +21,9 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
     def __init__(self):
         super().__init__()
-        self.joint_states_srv = rospy.ServiceProxy("joint_states", GetJointState)
+        # TODO: robot_name?
+        robot_name = 'victor'
+        self.joint_states_listener = Listener(f"{robot_name}/joint_states", JointState)
         self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
 
@@ -53,8 +56,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
                 self.hard_reset()
 
     def get_state(self):
-        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
-        joints_res = self.joint_states_srv(GetJointStateRequest())
+        joint_state = self.joint_states_listener.get()
         while True:
             try:
                 rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -75,12 +77,13 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             rope_velocity_vector.append(v.y)
             rope_velocity_vector.append(v.z)
 
+        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
             'link_bot': np.array(rope_state_vector, np.float32),
-            'joint_positions': joints_res.joint_state.position,
-            'joint_names': joints_res.joint_state.name,
+            'joint_positions': joint_state.position,
+            'joint_names': joint_state.name,
         }
 
     def states_description(self) -> Dict:
@@ -111,9 +114,9 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             self.joint_states_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joints_res = self.joint_states_srv(GetJointStateRequest())
+        joint_state = self.joint_states_listener.get()
         return {
-            'joint_names': joints_res.joint_state.name
+            'joint_names': joint_state.name
         }
 
     def simple_name(self):
@@ -139,7 +142,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         # replace the objects in a new random configuration
         if 'scene' not in data_collection_params:
             rospy.logwarn("No scene specified... I assume you want tabletop.")
-            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
+            andom_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'tabletop':
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'car2':
@@ -183,7 +186,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.execute_action(return_action)
         self.settle()
 
-    def get_environment(self, params : Dict, **kwargs):
+    def get_environment(self, params: Dict, **kwargs):
         # FIXME: implement
         res = params.get("res", 0.01)
         return get_environment_for_extents_3d(extent=params['extent'],

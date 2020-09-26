@@ -55,7 +55,7 @@ class BaseServices:
         return rospy.ServiceProxy(service_name, service_type)
 
     def restore_from_bag(self, bagfile_name):
-        raise NotImplementedError()
+        pass
 
     def step(self, steps: int = 1):
         step = WorldControlRequest()
