@@ -3,11 +3,11 @@ from typing import Dict, Optional, List
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+import ros_numpy
 import tensorflow as tf
 from matplotlib import colors
 
 import actionlib
-import ros_numpy
 import rospy
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
@@ -15,7 +15,7 @@ from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox, extent_to_bbox
+from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_to_bbox
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify
@@ -23,7 +23,7 @@ from moveit_msgs.msg import MoveGroupAction
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, SetRopeState, \
     SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
-from std_srvs.srv import Empty, EmptyRequest, SetBool, SetBoolRequest
+from std_srvs.srv import Empty, EmptyRequest, SetBool
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
@@ -460,87 +460,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return "dual_floating"
 
     @staticmethod
-    def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):
-        for i in range(3):
-            state_out[0][i] = np.float64(state_np['gripper1'][i])
-        for i in range(3):
-            state_out[1][i] = np.float64(state_np['gripper2'][i])
-        for i in range(DualFloatingGripperRopeScenario.n_links * 3):
-            state_out[2][i] = np.float64(state_np['link_bot'][i])
-        state_out[3][0] = np.float64(state_np['stdev'][0])
-        state_out[4][0] = np.float64(state_np['num_diverged'][0])
-
-    @staticmethod
-    def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
-        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
-        for i in range(3):
-            state_out[0][i] = np.float64(state_np['gripper1'][i])
-        for i in range(3):
-            state_out[1][i] = np.float64(state_np['gripper2'][i])
-        for j in range(DualFloatingGripperRopeScenario.n_links):
-            for i in range(3):
-                state_out[2 + j][i] = np.float64(rope_points[j][i])
-        state_out[DualFloatingGripperRopeScenario.n_links + 2][0] = np.float64(state_np['stdev'][0])
-        state_out[DualFloatingGripperRopeScenario.n_links + 3][0] = np.float64(state_np['num_diverged'][0])
-
-    @staticmethod
-    def ompl_state_to_numpy1(ompl_state: ob.CompoundState):
-        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
-        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
-        rope = []
-        for i in range(DualFloatingGripperRopeScenario.n_links):
-            rope.append(ompl_state[2][3 * i + 0])
-            rope.append(ompl_state[2][3 * i + 1])
-            rope.append(ompl_state[2][3 * i + 2])
-        rope = np.array(rope)
-        return {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
-            'link_bot': rope,
-            'stdev': np.array([ompl_state[3][0]]),
-            'num_diverged': np.array([ompl_state[4][0]]),
-        }
-
-    @staticmethod
-    def ompl_state_to_numpy(ompl_state: ob.CompoundState):
-        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
-        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
-        rope = []
-        for i in range(DualFloatingGripperRopeScenario.n_links):
-            rope.append(ompl_state[2 + i][0])
-            rope.append(ompl_state[2 + i][1])
-            rope.append(ompl_state[2 + i][2])
-        rope = np.array(rope)
-        return {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
-            'link_bot': rope,
-            'stdev': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 2][0]]),
-            'num_diverged': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 3][0]]),
-        }
-
-    @staticmethod
-    def ompl_control_to_numpy(ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
-        state_np = DualFloatingGripperRopeScenario.ompl_state_to_numpy(ompl_state)
-        current_gripper1_position = state_np['gripper1']
-        current_gripper2_position = state_np['gripper2']
-
-        rotation_matrix_1 = transformations.euler_matrix(0, ompl_control[0][0], ompl_control[0][1])
-        gripper1_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * ompl_control[0][2]
-        gripper1_delta_position = gripper1_delta_position_homo[:3]
-
-        rotation_matrix_2 = transformations.euler_matrix(0, ompl_control[1][0], ompl_control[1][1])
-        gripper2_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * ompl_control[1][2]
-        gripper2_delta_position = gripper2_delta_position_homo[:3]
-
-        target_gripper1_position = current_gripper1_position + gripper1_delta_position
-        target_gripper2_position = current_gripper2_position + gripper2_delta_position
-        return {
-            'gripper1_position': target_gripper1_position,
-            'gripper2_position': target_gripper2_position,
-        }
-
-    @staticmethod
     def sample_gripper_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_threshold'], res=environment['res'])
@@ -659,153 +578,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         else:
             raise NotImplementedError()
 
-    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
-                         plot: bool):
-        if 'type' not in goal or goal['type'] == 'midpoint':
-            return RopeMidpointGoalRegion(si=si,
-                                          scenario=self,
-                                          rng=rng,
-                                          threshold=params['goal_threshold'],
-                                          goal=goal,
-                                          plot=plot)
-        elif goal['type'] == 'any_point':
-            return RopeAnyPointGoalRegion(si=si,
-                                          scenario=self,
-                                          rng=rng,
-                                          threshold=params['goal_threshold'],
-                                          goal=goal,
-                                          plot=plot)
-        elif goal['type'] == 'grippers':
-            return DualGripperGoalRegion(si=si,
-                                         scenario=self,
-                                         rng=rng,
-                                         threshold=params['goal_threshold'],
-                                         goal=goal,
-                                         plot=plot)
-        elif goal['type'] == 'grippers_and_point':
-            return RopeAndGrippersGoalRegion(si=si,
-                                             scenario=self,
-                                             rng=rng,
-                                             threshold=params['goal_threshold'],
-                                             goal=goal,
-                                             plot=plot)
-        else:
-            raise NotImplementedError()
-
-    def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
-        state_space = ob.CompoundStateSpace()
-
-        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
-
-        gripper1_subspace = ob.RealVectorStateSpace(3)
-        gripper1_bounds = ob.RealVectorBounds(3)
-        gripper1_bounds.setLow(0, min_x)
-        gripper1_bounds.setHigh(0, max_x)
-        gripper1_bounds.setLow(1, min_y)
-        gripper1_bounds.setHigh(1, max_y)
-        gripper1_bounds.setLow(2, min_z)
-        gripper1_bounds.setHigh(2, max_z)
-        gripper1_subspace.setBounds(gripper1_bounds)
-        gripper1_subspace.setName("gripper1")
-        state_space.addSubspace(gripper1_subspace, weight=1)
-
-        gripper2_subspace = ob.RealVectorStateSpace(3)
-        gripper2_bounds = ob.RealVectorBounds(3)
-        gripper2_bounds.setLow(0, min_x)
-        gripper2_bounds.setHigh(0, max_x)
-        gripper2_bounds.setLow(1, min_y)
-        gripper2_bounds.setHigh(1, max_y)
-        gripper2_bounds.setLow(2, min_z)
-        gripper2_bounds.setHigh(2, max_z)
-        gripper2_subspace.setBounds(gripper2_bounds)
-        gripper2_subspace.setName("gripper2")
-        state_space.addSubspace(gripper2_subspace, weight=1)
-
-        for i in range(DualFloatingGripperRopeScenario.n_links):
-            rope_point_subspace = ob.RealVectorStateSpace(3)
-            rope_point_bounds = ob.RealVectorBounds(3)
-            rope_point_bounds.setLow(0, min_x)
-            rope_point_bounds.setHigh(0, max_x)
-            rope_point_bounds.setLow(1, min_y)
-            rope_point_bounds.setHigh(1, max_y)
-            rope_point_bounds.setLow(2, min_z)
-            rope_point_bounds.setHigh(2, max_z)
-            rope_point_subspace.setBounds(rope_point_bounds)
-            rope_point_subspace.setName(f"rope_{i}")
-            state_space.addSubspace(rope_point_subspace, weight=1)
-
-        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
-        stdev_subspace = ob.RealVectorStateSpace(1)
-        stdev_bounds = ob.RealVectorBounds(1)
-        stdev_bounds.setLow(-1000)
-        stdev_bounds.setHigh(1000)
-        stdev_subspace.setBounds(stdev_bounds)
-        stdev_subspace.setName("stdev")
-        state_space.addSubspace(stdev_subspace, weight=0)
-
-        # extra subspace component for the number of diverged steps
-        num_diverged_subspace = ob.RealVectorStateSpace(1)
-        num_diverged_bounds = ob.RealVectorBounds(1)
-        num_diverged_bounds.setLow(-1000)
-        num_diverged_bounds.setHigh(1000)
-        num_diverged_subspace.setBounds(num_diverged_bounds)
-        num_diverged_subspace.setName("stdev")
-        state_space.addSubspace(num_diverged_subspace, weight=0)
-
-        def _state_sampler_allocator(state_space):
-            return DualGripperStateSampler(state_space,
-                                           scenario=self,
-                                           extent=planner_params['state_sampler_extent'],
-                                           rng=state_sampler_rng,
-                                           plot=plot)
-
-        state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
-
-        return state_space
-
-    def make_ompl_control_space(self, state_space, rng: np.random.RandomState, action_params: Dict):
-        control_space = oc.CompoundControlSpace(state_space)
-
-        gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
-        gripper1_control_bounds = ob.RealVectorBounds(3)
-        # Pitch
-        gripper1_control_bounds.setLow(0, -np.pi)
-        gripper1_control_bounds.setHigh(0, np.pi)
-        # Yaw
-        gripper1_control_bounds.setLow(1, -np.pi)
-        gripper1_control_bounds.setHigh(1, np.pi)
-        # Displacement
-        max_d = action_params['max_distance_gripper_can_move']
-        gripper1_control_bounds.setLow(2, 0)
-        gripper1_control_bounds.setHigh(2, max_d)
-        gripper1_control_space.setBounds(gripper1_control_bounds)
-        control_space.addSubspace(gripper1_control_space)
-
-        gripper2_control_space = oc.RealVectorControlSpace(state_space, 3)
-        gripper2_control_bounds = ob.RealVectorBounds(3)
-        # Pitch
-        gripper2_control_bounds.setLow(0, -np.pi)
-        gripper2_control_bounds.setHigh(0, np.pi)
-        # Yaw
-        gripper2_control_bounds.setLow(1, -np.pi)
-        gripper2_control_bounds.setHigh(1, np.pi)
-        # Displacement
-        max_d = action_params['max_distance_gripper_can_move']
-        gripper2_control_bounds.setLow(2, 0)
-        gripper2_control_bounds.setHigh(2, max_d)
-
-        gripper2_control_space.setBounds(gripper2_control_bounds)
-        control_space.addSubspace(gripper2_control_space)
-
-        def _allocator(cs):
-            return DualGripperControlSampler(cs, scenario=self, rng=rng, action_params=action_params)
-
-        # I override the sampler here so I can use numpy RNG to make things more deterministic.
-        # ompl does not allow resetting of seeds, which causes problems when evaluating multiple
-        # planning queries in a row.
-        control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_allocator))
-
-        return control_space
 
     def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         if actually_at_goal:
@@ -1178,6 +950,235 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         self.action_viz_pub.publish(msg)
 
+
+    @staticmethod
+    def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):
+        for i in range(3):
+            state_out[0][i] = np.float64(state_np['gripper1'][i])
+        for i in range(3):
+            state_out[1][i] = np.float64(state_np['gripper2'][i])
+        for i in range(DualFloatingGripperRopeScenario.n_links * 3):
+            state_out[2][i] = np.float64(state_np['link_bot'][i])
+        state_out[3][0] = np.float64(state_np['stdev'][0])
+        state_out[4][0] = np.float64(state_np['num_diverged'][0])
+
+    @staticmethod
+    def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
+        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
+        for i in range(3):
+            state_out[0][i] = np.float64(state_np['gripper1'][i])
+        for i in range(3):
+            state_out[1][i] = np.float64(state_np['gripper2'][i])
+        for j in range(DualFloatingGripperRopeScenario.n_links):
+            for i in range(3):
+                state_out[2 + j][i] = np.float64(rope_points[j][i])
+        state_out[DualFloatingGripperRopeScenario.n_links + 2][0] = np.float64(state_np['stdev'][0])
+        state_out[DualFloatingGripperRopeScenario.n_links + 3][0] = np.float64(state_np['num_diverged'][0])
+
+    @staticmethod
+    def ompl_state_to_numpy1(ompl_state: ob.CompoundState):
+        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
+        rope = []
+        for i in range(DualFloatingGripperRopeScenario.n_links):
+            rope.append(ompl_state[2][3 * i + 0])
+            rope.append(ompl_state[2][3 * i + 1])
+            rope.append(ompl_state[2][3 * i + 2])
+        rope = np.array(rope)
+        return {
+            'gripper1': gripper1,
+            'gripper2': gripper2,
+            'link_bot': rope,
+            'stdev': np.array([ompl_state[3][0]]),
+            'num_diverged': np.array([ompl_state[4][0]]),
+        }
+
+    @staticmethod
+    def ompl_state_to_numpy(ompl_state: ob.CompoundState):
+        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
+        rope = []
+        for i in range(DualFloatingGripperRopeScenario.n_links):
+            rope.append(ompl_state[2 + i][0])
+            rope.append(ompl_state[2 + i][1])
+            rope.append(ompl_state[2 + i][2])
+        rope = np.array(rope)
+        return {
+            'gripper1': gripper1,
+            'gripper2': gripper2,
+            'link_bot': rope,
+            'stdev': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 2][0]]),
+            'num_diverged': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 3][0]]),
+        }
+
+    @staticmethod
+    def ompl_control_to_numpy(ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
+        state_np = DualFloatingGripperRopeScenario.ompl_state_to_numpy(ompl_state)
+        current_gripper1_position = state_np['gripper1']
+        current_gripper2_position = state_np['gripper2']
+
+        rotation_matrix_1 = transformations.euler_matrix(0, ompl_control[0][0], ompl_control[0][1])
+        gripper1_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * ompl_control[0][2]
+        gripper1_delta_position = gripper1_delta_position_homo[:3]
+
+        rotation_matrix_2 = transformations.euler_matrix(0, ompl_control[1][0], ompl_control[1][1])
+        gripper2_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * ompl_control[1][2]
+        gripper2_delta_position = gripper2_delta_position_homo[:3]
+
+        target_gripper1_position = current_gripper1_position + gripper1_delta_position
+        target_gripper2_position = current_gripper2_position + gripper2_delta_position
+        return {
+            'gripper1_position': target_gripper1_position,
+            'gripper2_position': target_gripper2_position,
+        }
+
+    def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
+                         plot: bool):
+        if 'type' not in goal or goal['type'] == 'midpoint':
+            return RopeMidpointGoalRegion(si=si,
+                                          scenario=self,
+                                          rng=rng,
+                                          threshold=params['goal_threshold'],
+                                          goal=goal,
+                                          plot=plot)
+        elif goal['type'] == 'any_point':
+            return RopeAnyPointGoalRegion(si=si,
+                                          scenario=self,
+                                          rng=rng,
+                                          threshold=params['goal_threshold'],
+                                          goal=goal,
+                                          plot=plot)
+        elif goal['type'] == 'grippers':
+            return DualGripperGoalRegion(si=si,
+                                         scenario=self,
+                                         rng=rng,
+                                         threshold=params['goal_threshold'],
+                                         goal=goal,
+                                         plot=plot)
+        elif goal['type'] == 'grippers_and_point':
+            return RopeAndGrippersGoalRegion(si=si,
+                                             scenario=self,
+                                             rng=rng,
+                                             threshold=params['goal_threshold'],
+                                             goal=goal,
+                                             plot=plot)
+        else:
+            raise NotImplementedError()
+
+    def make_ompl_state_space(self, planner_params, state_sampler_rng: np.random.RandomState, plot: bool):
+        state_space = ob.CompoundStateSpace()
+
+        min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
+
+        gripper1_subspace = ob.RealVectorStateSpace(3)
+        gripper1_bounds = ob.RealVectorBounds(3)
+        gripper1_bounds.setLow(0, min_x)
+        gripper1_bounds.setHigh(0, max_x)
+        gripper1_bounds.setLow(1, min_y)
+        gripper1_bounds.setHigh(1, max_y)
+        gripper1_bounds.setLow(2, min_z)
+        gripper1_bounds.setHigh(2, max_z)
+        gripper1_subspace.setBounds(gripper1_bounds)
+        gripper1_subspace.setName("gripper1")
+        state_space.addSubspace(gripper1_subspace, weight=1)
+
+        gripper2_subspace = ob.RealVectorStateSpace(3)
+        gripper2_bounds = ob.RealVectorBounds(3)
+        gripper2_bounds.setLow(0, min_x)
+        gripper2_bounds.setHigh(0, max_x)
+        gripper2_bounds.setLow(1, min_y)
+        gripper2_bounds.setHigh(1, max_y)
+        gripper2_bounds.setLow(2, min_z)
+        gripper2_bounds.setHigh(2, max_z)
+        gripper2_subspace.setBounds(gripper2_bounds)
+        gripper2_subspace.setName("gripper2")
+        state_space.addSubspace(gripper2_subspace, weight=1)
+
+        for i in range(DualFloatingGripperRopeScenario.n_links):
+            rope_point_subspace = ob.RealVectorStateSpace(3)
+            rope_point_bounds = ob.RealVectorBounds(3)
+            rope_point_bounds.setLow(0, min_x)
+            rope_point_bounds.setHigh(0, max_x)
+            rope_point_bounds.setLow(1, min_y)
+            rope_point_bounds.setHigh(1, max_y)
+            rope_point_bounds.setLow(2, min_z)
+            rope_point_bounds.setHigh(2, max_z)
+            rope_point_subspace.setBounds(rope_point_bounds)
+            rope_point_subspace.setName(f"rope_{i}")
+            state_space.addSubspace(rope_point_subspace, weight=1)
+
+        # extra subspace component for the variance, which is necessary to pass information from propagate to constraint checker
+        stdev_subspace = ob.RealVectorStateSpace(1)
+        stdev_bounds = ob.RealVectorBounds(1)
+        stdev_bounds.setLow(-1000)
+        stdev_bounds.setHigh(1000)
+        stdev_subspace.setBounds(stdev_bounds)
+        stdev_subspace.setName("stdev")
+        state_space.addSubspace(stdev_subspace, weight=0)
+
+        # extra subspace component for the number of diverged steps
+        num_diverged_subspace = ob.RealVectorStateSpace(1)
+        num_diverged_bounds = ob.RealVectorBounds(1)
+        num_diverged_bounds.setLow(-1000)
+        num_diverged_bounds.setHigh(1000)
+        num_diverged_subspace.setBounds(num_diverged_bounds)
+        num_diverged_subspace.setName("stdev")
+        state_space.addSubspace(num_diverged_subspace, weight=0)
+
+        def _state_sampler_allocator(state_space):
+            return DualGripperStateSampler(state_space,
+                                           scenario=self,
+                                           extent=planner_params['state_sampler_extent'],
+                                           rng=state_sampler_rng,
+                                           plot=plot)
+
+        state_space.setStateSamplerAllocator(ob.StateSamplerAllocator(_state_sampler_allocator))
+
+        return state_space
+
+    def make_ompl_control_space(self, state_space, rng: np.random.RandomState, action_params: Dict):
+        control_space = oc.CompoundControlSpace(state_space)
+
+        gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
+        gripper1_control_bounds = ob.RealVectorBounds(3)
+        # Pitch
+        gripper1_control_bounds.setLow(0, -np.pi)
+        gripper1_control_bounds.setHigh(0, np.pi)
+        # Yaw
+        gripper1_control_bounds.setLow(1, -np.pi)
+        gripper1_control_bounds.setHigh(1, np.pi)
+        # Displacement
+        max_d = action_params['max_distance_gripper_can_move']
+        gripper1_control_bounds.setLow(2, 0)
+        gripper1_control_bounds.setHigh(2, max_d)
+        gripper1_control_space.setBounds(gripper1_control_bounds)
+        control_space.addSubspace(gripper1_control_space)
+
+        gripper2_control_space = oc.RealVectorControlSpace(state_space, 3)
+        gripper2_control_bounds = ob.RealVectorBounds(3)
+        # Pitch
+        gripper2_control_bounds.setLow(0, -np.pi)
+        gripper2_control_bounds.setHigh(0, np.pi)
+        # Yaw
+        gripper2_control_bounds.setLow(1, -np.pi)
+        gripper2_control_bounds.setHigh(1, np.pi)
+        # Displacement
+        max_d = action_params['max_distance_gripper_can_move']
+        gripper2_control_bounds.setLow(2, 0)
+        gripper2_control_bounds.setHigh(2, max_d)
+
+        gripper2_control_space.setBounds(gripper2_control_bounds)
+        control_space.addSubspace(gripper2_control_space)
+
+        def _allocator(cs):
+            return DualGripperControlSampler(cs, scenario=self, rng=rng, action_params=action_params)
+
+        # I override the sampler here so I can use numpy RNG to make things more deterministic.
+        # ompl does not allow resetting of seeds, which causes problems when evaluating multiple
+        # planning queries in a row.
+        control_space.setControlSamplerAllocator(oc.ControlSamplerAllocator(_allocator))
+
+        return control_space
 
 class DualGripperControlSampler(oc.ControlSampler):
     def __init__(self,
