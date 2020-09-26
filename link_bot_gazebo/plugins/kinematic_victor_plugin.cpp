@@ -157,18 +157,18 @@ void KinematicVictorPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     set_dual_gripper_points_srv_ = ros_node_.serviceClient<peter_msgs::SetDualGripperPoints>("set_dual_gripper_points");
 
     left_arm_motion_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::MotionStatus>("left_arm/motion_status", 1);
+        ros_node_.advertise<victor_hardware_interface_msgs::MotionStatus>("left_arm/motion_status", 1);
     right_arm_motion_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::MotionStatus>("right_arm/motion_status", 1);
+        ros_node_.advertise<victor_hardware_interface_msgs::MotionStatus>("right_arm/motion_status", 1);
     left_gripper_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("left_arm/gripper_status", 1);
+        ros_node_.advertise<victor_hardware_interface_msgs::Robotiq3FingerStatus>("left_arm/gripper_status", 1);
     right_gripper_status_pub_ =
-        ros_node_.advertise<victor_hardware_interface::Robotiq3FingerStatus>("right_arm/gripper_status", 1);
-    auto left_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface::MotionCommand>(
+        ros_node_.advertise<victor_hardware_interface_msgs::Robotiq3FingerStatus>("right_arm/gripper_status", 1);
+    auto left_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface_msgs::MotionCommand>(
         "left_arm/motion_command", 1, boost::bind(&KinematicVictorPlugin::OnLeftArmMotionCommand, this, _1),
         ros::VoidPtr(), &queue_);
     left_arm_motion_command_sub_ = ros_node_.subscribe(left_arm_motion_command_sub_options);
-    auto right_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface::MotionCommand>(
+    auto right_arm_motion_command_sub_options = ros::SubscribeOptions::create<victor_hardware_interface_msgs::MotionCommand>(
         "right_arm/motion_command", 1, boost::bind(&KinematicVictorPlugin::OnRightArmMotionCommand, this, _1),
         ros::VoidPtr(), &queue_);
     right_arm_motion_command_sub_ = ros_node_.subscribe(right_arm_motion_command_sub_options);
@@ -229,19 +229,19 @@ void KinematicVictorPlugin::PublishJointStates()
 
 void KinematicVictorPlugin::PublishLeftGripperStatus()
 {
-  victor_hardware_interface::Robotiq3FingerStatus status;
+  victor_hardware_interface_msgs::Robotiq3FingerStatus status;
   left_gripper_status_pub_.publish(status);
 }
 
 void KinematicVictorPlugin::PublishRightGripperStatus()
 {
-  victor_hardware_interface::Robotiq3FingerStatus status;
+  victor_hardware_interface_msgs::Robotiq3FingerStatus status;
   right_gripper_status_pub_.publish(status);
 }
 
 void KinematicVictorPlugin::PublishLeftArmMotionStatus()
 {
-  victor_hardware_interface::MotionStatus left_arm_motion_status;
+  victor_hardware_interface_msgs::MotionStatus left_arm_motion_status;
   std::vector<double *> joint_angles{
     &left_arm_motion_status.measured_joint_position.joint_1, &left_arm_motion_status.measured_joint_position.joint_2,
     &left_arm_motion_status.measured_joint_position.joint_3, &left_arm_motion_status.measured_joint_position.joint_4,
@@ -270,7 +270,7 @@ void KinematicVictorPlugin::PublishLeftArmMotionStatus()
 
 void KinematicVictorPlugin::PublishRightArmMotionStatus()
 {
-  victor_hardware_interface::MotionStatus right_arm_motion_status;
+  victor_hardware_interface_msgs::MotionStatus right_arm_motion_status;
   std::vector<double *> joint_angles{
     &right_arm_motion_status.measured_joint_position.joint_1, &right_arm_motion_status.measured_joint_position.joint_2,
     &right_arm_motion_status.measured_joint_position.joint_3, &right_arm_motion_status.measured_joint_position.joint_4,
@@ -296,7 +296,7 @@ void KinematicVictorPlugin::PublishRightArmMotionStatus()
   right_arm_motion_status_pub_.publish(right_arm_motion_status);
 }
 
-void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg)
+void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interface_msgs::MotionCommandConstPtr &msg)
 {
   std::lock_guard lock(ros_mutex_);
 
@@ -321,7 +321,7 @@ void KinematicVictorPlugin::OnLeftArmMotionCommand(const victor_hardware_interfa
   }
 }
 
-void KinematicVictorPlugin::OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg)
+void KinematicVictorPlugin::OnRightArmMotionCommand(const victor_hardware_interface_msgs::MotionCommandConstPtr &msg)
 {
   std::lock_guard lock(ros_mutex_);
 

@@ -36,6 +36,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  record: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
                  test_scenes_dir: Optional[pathlib.Path] = None,
+                 save_test_scenes_dir: Optional[pathlib.Path] = None,
                  ):
         super().__init__(planner,
                          trials=trials,
@@ -43,6 +44,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          planner_params=planner_params,
                          service_provider=service_provider,
                          test_scenes_dir=test_scenes_dir,
+                         save_test_scenes_dir=save_test_scenes_dir,
                          no_execution=no_execution)
         self.record = record
         self.planner_config_name = planner_config_name
@@ -135,6 +137,7 @@ def evaluate_planning_method(comparison_idx: int,
                              no_execution: bool = False,
                              timeout: Optional[int] = None,
                              test_scenes_dir: Optional[pathlib.Path] = None,
+                             save_test_scenes_dir: Optional[pathlib.Path] = None,
                              ):
     # override some arguments
     if timeout is not None:
@@ -161,6 +164,7 @@ def evaluate_planning_method(comparison_idx: int,
         comparison_item_idx=comparison_idx,
         goal=planner_params['fixed_goal'],
         test_scenes_dir=test_scenes_dir,
+        save_test_scenes_dir=save_test_scenes_dir,
         record=record,
         no_execution=no_execution
     )
@@ -176,6 +180,7 @@ def planning_evaluation(root: pathlib.Path,
                         no_execution: bool = False,
                         timeout: Optional[int] = None,
                         test_scenes_dir: Optional[pathlib.Path] = None,
+                        save_test_scenes_dir: Optional[pathlib.Path] = None,
                         ):
     ou.setLogLevel(ou.LOG_ERROR)
 
@@ -193,13 +198,14 @@ def planning_evaluation(root: pathlib.Path,
                 evaluate_planning_method(comparison_idx=comparison_idx,
                                          planner_params=planner_params,
                                          trials=trials,
-                                         test_scenes_dir=test_scenes_dir,
                                          planner_config_name=planner_config_name,
                                          common_output_directory=common_output_directory,
                                          verbose=verbose,
                                          record=record,
                                          no_execution=no_execution,
                                          timeout=timeout,
+                                         test_scenes_dir=test_scenes_dir,
+                                         save_test_scenes_dir=save_test_scenes_dir,
                                          )
             except Exception as e:
                 traceback.print_exc()
@@ -208,10 +214,12 @@ def planning_evaluation(root: pathlib.Path,
             evaluate_planning_method(comparison_idx=comparison_idx,
                                      planner_params=planner_params,
                                      trials=trials,
-                                     test_scenes_dir=test_scenes_dir,
                                      planner_config_name=planner_config_name,
                                      verbose=verbose,
-                                     common_output_directory=common_output_directory)
+                                     common_output_directory=common_output_directory,
+                                     test_scenes_dir=test_scenes_dir,
+                                     save_test_scenes_dir=save_test_scenes_dir,
+                                     )
         rospy.loginfo(f"Results written to {common_output_directory}")
 
     return common_output_directory

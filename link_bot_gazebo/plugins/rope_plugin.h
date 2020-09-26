@@ -2,7 +2,6 @@
 
 #include <peter_msgs/GetBool.h>
 #include <peter_msgs/GetRopeState.h>
-#include <peter_msgs/NamedPoints.h>
 #include <peter_msgs/SetRopeState.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>

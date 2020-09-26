@@ -35,14 +35,14 @@
     "use_recovery": false
   },
   "fwd_model_dir": [
-    "dy_trials/sim_dual_1599289247_0/September_05_06-32-09_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_1/September_05_07-25-25_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_2/September_05_08-18-41_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_3/September_05_09-12-12_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_4/September_05_10-05-52_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_5/September_05_10-58-56_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_6/September_05_11-52-30_3d78a1f2a3/best_checkpoint",
-    "dy_trials/sim_dual_1599289247_7/September_05_12-46-21_3d78a1f2a3/best_checkpoint"
+    "dy_trials/sim_dual_1601004553_0/September_24_23-29-13_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_1/September_25_00-15-16_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_2/September_25_01-01-01_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_3/September_25_01-46-49_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_4/September_25_02-32-39_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_5/September_25_03-18-28_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_6/September_25_04-04-17_1e9c3d5831/best_checkpoint",
+    "dy_trials/sim_dual_1601004553_7/September_25_04-50-08_1e9c3d5831/best_checkpoint"
   ],
   "classifier_model_dir": "cl_trials/gripper_distance_baseline/gd",
   "accept_threshold": 0.5,

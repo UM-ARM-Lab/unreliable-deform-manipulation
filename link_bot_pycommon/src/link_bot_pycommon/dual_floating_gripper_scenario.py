@@ -15,7 +15,7 @@ from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox
+from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox, extent_to_bbox
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify
@@ -1232,6 +1232,11 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
         self.extent = np.array(extent).reshape(3, 2)
         self.rng = rng
         self.plot = plot
+
+        bbox_msg = extent_to_bbox(extent)
+        bbox_msg.header.frame_id = 'world'
+        self.sampler_extents_bbox_pub = rospy.Publisher('sampler_extents', BoundingBox, queue_size=10, latch=True)
+        self.sampler_extents_bbox_pub.publish(bbox_msg)
 
     def sample_point_for_R3_subspace(self, subspace, subspace_state_out):
         bounds = subspace.getBounds()

@@ -7,9 +7,9 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <tf2_ros/transform_listener.h>
-#include <victor_hardware_interface/MotionCommand.h>
-#include <victor_hardware_interface/MotionStatus.h>
-#include <victor_hardware_interface/Robotiq3FingerStatus.h>
+#include <victor_hardware_interface_msgs/MotionCommand.h>
+#include <victor_hardware_interface_msgs/MotionStatus.h>
+#include <victor_hardware_interface_msgs/Robotiq3FingerStatus.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -36,8 +36,8 @@ public:
   void PublishLeftGripperStatus();
   void PublishRightGripperStatus();
 
-  void OnLeftArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
-  void OnRightArmMotionCommand(const victor_hardware_interface::MotionCommandConstPtr &msg);
+  void OnLeftArmMotionCommand(const victor_hardware_interface_msgs::MotionCommandConstPtr &msg);
+  void OnRightArmMotionCommand(const victor_hardware_interface_msgs::MotionCommandConstPtr &msg);
   void FollowJointTrajectory(const TrajServer::GoalConstPtr &goal);
 
   void TeleportGrippers();

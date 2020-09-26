@@ -2,6 +2,8 @@
 
 #include <ignition/math.hh>
 
+// FIXME: move these to arc_utilities
+
 /** \brief Computes the signed shorted angle between y2 and y1. Check CommonTest.cpp to see examples
  *
  * @param y1 the second angle in the subtraction

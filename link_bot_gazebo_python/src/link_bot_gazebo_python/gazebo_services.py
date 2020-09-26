@@ -4,7 +4,6 @@ import rosbag
 import roslaunch
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest, SetLinkState, SetLinkStateRequest
 from link_bot_pycommon.base_services import BaseServices
-from peter_msgs.srv import WorldControlRequest
 
 
 class GazeboServices(BaseServices):
@@ -35,9 +34,7 @@ class GazeboServices(BaseServices):
                     set_req.link_state.twist = twist
                     self.set_link_state(set_req)
 
-            step = WorldControlRequest()
-            step.steps = 1
-            self.world_control(step)
+            self.step()
 
     def launch(self, params, gui: bool = False):
         launch_file_name = params['launch']

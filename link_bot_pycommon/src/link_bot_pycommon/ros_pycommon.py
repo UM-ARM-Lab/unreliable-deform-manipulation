@@ -1,13 +1,10 @@
-from typing import Dict, List
-
 import numpy as np
 
 import rospy
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.grid_utils import extent_to_center, extent_to_env_shape
-from peter_msgs.msg import LinkBotAction
-from peter_msgs.srv import ComputeOccupancyRequest, LinkBotTrajectoryRequest, Position3DEnable, GetPosition3D, Position3DAction
+from peter_msgs.srv import ComputeOccupancyRequest, Position3DEnable, GetPosition3D, Position3DAction
 from std_srvs.srv import Empty
 
 
@@ -30,8 +27,8 @@ def get_occupancy(service_provider,
     request.center.z = center_z
     request.robot_name = robot_name
     request.request_new = True
-    from time import  perf_counter
-    t0 = perf_counter()
+    # from time import perf_counter
+    # t0 = perf_counter()
     response = service_provider.compute_occupancy(request)
     # print('time to compute occupancy', perf_counter() - t0)
     grid = np.array(response.grid).reshape([env_w_cols, env_h_rows, env_c_channels])
@@ -102,30 +99,6 @@ def get_occupancy_data(env_h_m: float,
     origin = np.array(response.origin)
     full_env_data = grid_utils.OccupancyData(data=grid, resolution=res, origin=origin)
     return full_env_data
-
-
-def make_trajectory_execution_request(dt, actions):
-    req = LinkBotTrajectoryRequest()
-    for action in actions:
-        action_msg = LinkBotAction()
-        action_msg.max_time_per_step = dt
-        action_msg.gripper1_delta_pos.x = action[0]
-        action_msg.gripper1_delta_pos.y = action[1]
-        req.gripper1_traj.append(action_msg)
-
-    return req
-
-
-def trajectory_execution_response_to_numpy(trajectory_execution_result) -> List[Dict[str, np.ndarray]]:
-    actual_path = []
-    for objects in trajectory_execution_result.actual_path:
-        state = {}
-        for object in objects.objects:
-            np_config = object.state_vector
-            state[object.name] = np_config
-        actual_path.append(state)
-
-    return actual_path
 
 
 def make_movable_object_services(object_name):

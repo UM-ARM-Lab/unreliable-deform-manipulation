@@ -1,12 +1,11 @@
+from time import sleep
 from typing import Dict
 
 import rospy
-from time import sleep
 from arm_video_recorder.srv import TriggerVideoRecording, TriggerVideoRecordingRequest
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from geometry_msgs.msg import Pose
-from peter_msgs.srv import ComputeOccupancy, WorldControl
-from std_srvs.srv import Empty
+from peter_msgs.srv import ComputeOccupancy, WorldControl, WorldControlRequest
 
 
 class BaseServices:
@@ -57,3 +56,8 @@ class BaseServices:
 
     def restore_from_bag(self, bagfile_name):
         raise NotImplementedError()
+
+    def step(self, steps: int = 1):
+        step = WorldControlRequest()
+        step.steps = steps
+        self.world_control(step)

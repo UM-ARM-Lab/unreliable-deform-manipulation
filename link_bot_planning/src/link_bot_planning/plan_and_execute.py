@@ -10,11 +10,16 @@ import tensorflow as tf
 from colorama import Fore
 from dataclasses_json import dataclass_json
 
+import rosbag
 import rospy
+from arc_utilities.ros_helpers import Listener
+from gazebo_msgs.msg import LinkStates
+from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers import recovery_policy_utils
 from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.grid_utils import extent_to_bbox
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 
 
@@ -58,6 +63,7 @@ class PlanAndExecute:
                  service_provider: BaseServices,
                  no_execution: bool,
                  test_scenes_dir: Optional[pathlib.Path] = None,
+                 save_test_scenes_dir: Optional[pathlib.Path] = None,
                  ):
         self.planner = planner
         self.trials = trials
@@ -69,6 +75,7 @@ class PlanAndExecute:
         self.goal_rng = np.random.RandomState(0)
         self.recovery_rng = np.random.RandomState(0)
         self.test_scenes_dir = test_scenes_dir
+        self.save_test_scenes_dir = save_test_scenes_dir
         if self.planner_params['recovery']['use_recovery']:
             recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
             self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
@@ -79,11 +86,15 @@ class PlanAndExecute:
 
         self.n_failures = 0
 
-        # # Debugging
-        # self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
-        # bbox_msg = extent_to_bbox(planner_params['goal_extent'])
-        # bbox_msg.header.frame_id = 'world'
-        # self.goal_bbox_pub.publish(bbox_msg)
+        # for saving snapshots of the world
+        self.link_states_listener = Listener("gazebo/link_states", LinkStates)
+
+        # Debugging
+        if self.verbose >= 2:
+            self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
+            bbox_msg = extent_to_bbox(planner_params['goal_extent'])
+            bbox_msg.header.frame_id = 'world'
+            self.goal_bbox_pub.publish(bbox_msg)
 
     def run(self):
         self.planner.scenario.randomization_initialization()
@@ -104,6 +115,15 @@ class PlanAndExecute:
             else:
                 self.randomize_environment()
                 rospy.loginfo(Fore.GREEN + f"Randomizing Environment")
+            if self.save_test_scenes_dir is not None:
+                # Gazebo specific
+                self.service_provider.step(10)
+                links_states = self.link_states_listener.get()
+                self.save_test_scenes_dir.mkdir(exist_ok=True, parents=True)
+                bagfile_name = self.save_test_scenes_dir / f'scene_{trial_idx:04d}.bag'
+                rospy.loginfo(bagfile_name)
+                with rosbag.Bag(bagfile_name, 'w') as bag:
+                    bag.write('links_states', links_states)
 
             self.plan_and_execute(trial_idx)
 

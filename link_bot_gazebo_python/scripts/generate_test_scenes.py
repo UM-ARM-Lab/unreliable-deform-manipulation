@@ -8,7 +8,7 @@ import tensorflow as tf
 
 import rosbag
 import rospy
-from arc_utilities.src.arc_utilities.ros_helpers import Listener
+from arc_utilities.ros_helpers import Listener
 from gazebo_msgs.msg import LinkStates
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario

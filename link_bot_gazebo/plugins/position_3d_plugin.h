@@ -1,10 +1,7 @@
 #pragma once
 
 #include <geometry_msgs/Pose.h>
-#include <peter_msgs/GetObject.h>
 #include <peter_msgs/GetPosition3D.h>
-#include <peter_msgs/ModelsEnable.h>
-#include <peter_msgs/ModelsPoses.h>
 #include <peter_msgs/Position3DAction.h>
 #include <peter_msgs/Position3DEnable.h>
 #include <ros/callback_queue.h>
@@ -40,8 +37,6 @@ public:
   bool OnSet(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
 
   bool GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res);
-
-  bool GetObjectCallback(peter_msgs::GetObjectRequest &req, peter_msgs::GetObjectResponse &res);
 
 private:
   void QueueThread();

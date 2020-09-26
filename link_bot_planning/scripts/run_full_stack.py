@@ -354,7 +354,10 @@ def main():
 
     fsr = FullStackRunner(full_stack_params, launch=args.launch)
     fsr.gui = args.gui
-    included_steps = args.steps.split(",")
+    if args.steps is not None:
+        included_steps = args.steps.split(",")
+    else:
+        included_steps = None
 
     if args.from_logfile:
         with args.from_logfile.open("r") as logfile:
@@ -369,63 +372,63 @@ def main():
         runlog = {}
 
     seed = full_stack_params['seed']
-    if 'collect_dynamics_data_1' not in runlog:
+    if 'collect_dynamics_data_1' not in runlog and (included_steps is None or 'collect_dynamics_data_1' in included_steps):
         collect_dynamics_data_1_out = fsr.collect_dynamics_data_1(runlog, seed)
         runlog['collect_dynamics_data_1'] = collect_dynamics_data_1_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'collect_dynamics_data_2' not in runlog:
+    if 'collect_dynamics_data_2' not in runlog and (included_steps is None or 'collect_dynamics_data_2' in included_steps):
         collect_dynamics_data_2_out = fsr.collect_dynamics_data_2(runlog, seed)
         runlog['collect_dynamics_data_2'] = collect_dynamics_data_2_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'learn_dynamics' not in runlog:
+    if 'learn_dynamics' not in runlog and (included_steps is None or 'learn_dynamics' in included_steps):
         learn_dynamics_out = fsr.learn_dynamics(runlog, seed)
         runlog['learn_dynamics'] = learn_dynamics_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'learn_full_dynamics' not in runlog:
+    if 'learn_full_dynamics' not in runlog and (included_steps is None or 'learn_full_dynamics' in included_steps):
         learn_full_dynamics_out = fsr.learn_full_dynamics(runlog, seed)
         runlog['learn_full_dynamics'] = learn_full_dynamics_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'make_classifier_dataset' not in runlog:
+    if 'make_classifier_dataset' not in runlog and (included_steps is None or 'make_classifier_dataset' in included_steps):
         make_classifier_dataset_out = fsr.make_classifier_dataset(runlog, seed)
         runlog['make_classifier_dataset'] = make_classifier_dataset_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'learn_classifier' not in runlog:
+    if 'learn_classifier' not in runlog and (included_steps is None or 'learn_classifier' in included_steps):
         learn_classifier_out = fsr.learn_classifier(runlog, seed)
         runlog['learn_classifier'] = learn_classifier_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'make_recovery_dataset' not in runlog:
+    if 'make_recovery_dataset' not in runlog and (included_steps is None or 'make_recovery_datastet' in included_steps):
         make_recovery_dataset_out = fsr.make_recovery_dataset(runlog, seed)
         runlog['make_recovery_dataset'] = make_recovery_dataset_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'learn_recovery' not in runlog:
+    if 'learn_recovery' not in runlog and (included_steps is None or 'learn_recovery' in included_steps):
         learn_recovery_out = fsr.learn_recovery(runlog, seed)
         runlog['learn_recovery'] = learn_recovery_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'planning_evaluation' not in runlog or 'planning_evaluation' in included_steps:
+    if 'planning_evaluation' not in runlog and (included_steps is None or 'planning_evaluation' in included_steps):
         planning_evaluation_out = fsr.planning_evaluation(runlog, seed)
         runlog['planning_evaluation'] = planning_evaluation_out
         with logfile_name.open("w") as logfile:

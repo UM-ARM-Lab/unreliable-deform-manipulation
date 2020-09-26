@@ -2,7 +2,6 @@
 
 #include <peter_msgs/DualGripperTrajectory.h>
 #include <peter_msgs/GetDualGripperPoints.h>
-#include <peter_msgs/GetObject.h>
 #include <peter_msgs/SetDualGripperPoints.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
