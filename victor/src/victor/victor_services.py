@@ -45,7 +45,9 @@ class VictorServices(BaseServices):
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         # set the robot into impedance mode
-        self.victor.set_control_mode(ControlMode.JOINT_IMPEDANCE)
+        success = self.victor.set_control_mode(ControlMode.JOINT_IMPEDANCE)
+        if not success:
+            raise RuntimeError("Failed to switch into impedance mode")
         # self.victor.set_right_gripper(gripper_closed_positions)
         # self.victor.set_left_gripper(gripper_closed_positions)
         pass
