@@ -64,7 +64,7 @@ def metrics_main(args):
         for metric in metrics:
             metric.setup_method(method_name, metadata)
 
-        # TODO: parallelize this
+        # NOTE: even though this is slow, parallelizing is not easy because "scenario" cannot be pickled
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
