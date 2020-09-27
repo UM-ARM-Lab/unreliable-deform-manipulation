@@ -22,7 +22,7 @@ def brief_row_stats(metric_data):
 def dict_to_pvalue_table(data_dict: Dict, table_format: str = 'fancy_grid', fmt: str = '{:5.3f}'):
     """
     uses a one-sided T-test
-    :param data_dict: A dictionary of "rial_name(str): values(list/array)
+    :param data_dict: A dictionary of method_name(str): values(list/array)
     :param table_format:
     :param fmt:
     :return:

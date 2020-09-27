@@ -12,43 +12,14 @@ from colorama import Style, Fore
 from tabulate import tabulate
 
 import rospy
+from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.filesystem_utils import get_all_subfolders
 from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
-
-
-def make_cell(text, tablefmt):
-    if isinstance(text, list):
-        if tablefmt == 'latex_raw':
-            return "\\makecell{" + "\\\\".join(text) + "}"
-        else:
-            return "\n".join(text)
-    else:
-        return text
-
-
-def make_header():
-    return ["Name", "Dynamics", "Classifier", "min", "max", "mean", "median", "std"]
-
-
-def make_row(planner_params, metric_data, tablefmt):
-    table_config = planner_params['table_config']
-    row = [
-        make_cell(table_config["nickname"], tablefmt),
-        make_cell(table_config["dynamics"], tablefmt),
-        make_cell(table_config["classifier"], tablefmt),
-    ]
-    row.extend(row_stats(metric_data))
-    return row
+from link_bot_pycommon.metric_utils import dict_to_pvalue_table
 
 
 def metrics_main(args):
-    headers = ['']
-    aggregate_metrics = {
-        'Final Execution To Goal Error': [],
-        'total_time': [],
-    }
-
     with args.analysis_params.open('r') as analysis_params_file:
         analysis_params = json.load(analysis_params_file)
 
@@ -56,155 +27,92 @@ def metrics_main(args):
     first_results_dir = args.results_dirs[0]
     print(f"Writing analysis to {first_results_dir}")
 
-    execution_to_goal_errors_comparisons = {}
-    max_error = analysis_params["max_error"]
-    errors_thresholds = np.linspace(0.01, max_error, analysis_params["n_error_bins"])
-    print('-' * 90)
-    if not args.no_plot:
-        execution_success_fig, execution_success_ax = plt.subplots(figsize=(16, 10))
-        execution_success_ax.set_xlabel("Task Error Threshold")
-        execution_success_ax.set_ylabel("Success Rate")
-        execution_success_ax.set_ylim([-0.1, 100.5])
-
-    all_subfolders = get_all_subfolders(args)
-
-    if args.final:
-        table_format = 'latex_raw'
-        for subfolder_idx, subfolder in enumerate(all_subfolders):
-            print("{}) {}".format(subfolder_idx, subfolder))
-        sort_order = input(Fore.CYAN + "Enter the desired table order:\n" + Fore.RESET)
-        all_subfolders = [all_subfolders[int(i)] for i in sort_order.split(' ')]
-    else:
-        table_format = 'fancy_grid'
-
     # For saving metrics since this script is kind of slow
     table_outfile = open(first_results_dir / 'tables.txt', 'w')
 
-    prop_cycle = plt.rcParams['axes.prop_cycle']
-    colors = prop_cycle.by_key()['color']
+    metrics = [
+        FinalExecutionToGoalError(args, analysis_params, first_results_dir),
+        # TotalTime(analysis_params),
+        NRecoveryActions(args, analysis_params, first_results_dir),
+        NPlanningAttempts(args, analysis_params, first_results_dir),
+    ]
+
+    subfolders = get_all_subfolders(args)
+
+    if args.final:
+        table_format = 'latex_raw'
+        for subfolder_idx, subfolder in enumerate(subfolders):
+            print("{}) {}".format(subfolder_idx, subfolder))
+        sort_order = input(Fore.CYAN + "Enter the desired table order:\n" + Fore.RESET)
+        subfolders_ordered = [subfolders[int(i)] for i in sort_order.split(' ')]
+    else:
+        table_format = 'fancy_grid'
+        subfolders_ordered = subfolders
+
     legend_names = []
-    for color, subfolder in zip(colors, all_subfolders):
+    for subfolder in subfolders_ordered:
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
-        N = len(metrics_filenames)
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata_str = metadata_file.read()
         metadata = json.loads(metadata_str)
-        planner_params = metadata['planner_params']
-        goal_threshold = planner_params['goal_threshold']
         scenario = get_scenario(metadata['scenario'])
-        table_config = planner_params['table_config']
-        nickname = table_config['nickname']
-        legend_nickname = " ".join(nickname) if isinstance(nickname, list) else nickname
-        legend_names.append(legend_nickname)
+        method_name = subfolder.name
+        legend_method_name = ""  # FIXME: how to specify this?
+        legend_names.append(legend_method_name)
 
-        ###############################################################################################
+        for metric in metrics:
+            metric.setup_method(method_name, metadata)
 
-        final_execution_to_goal_errors = []
-        total_times = []
-        n_recovery = 0
         # TODO: parallelize this
-        from time import perf_counter
-        t0 = perf_counter()
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
             # orjson is twice as fast, and yes it really matters here.
             datum = orjson.loads(data_str.decode("utf-8"))
-            total_time = datum['total_time']
-            total_times.append(total_time)
 
-            goal = datum['goal']
-            final_actual_state = datum['end_state']
-            final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
+            for metric in metrics:
+                metric.aggregate_trial(method_name, scenario, datum)
 
-            final_execution_to_goal_errors.append(final_execution_to_goal_error)
+        for metric in metrics:
+            metric.convert_to_numpy_arrays()
 
-            steps = datum['steps']
-            for step in steps:
-                if step['type'] == 'executed_recovery':
-                    n_recovery += 1
-        print(perf_counter() - t0)
+    for metric in metrics:
+        metric.enumerate_methods()
 
-        ###############################################################################################
-
-        n_for_metrics = len(final_execution_to_goal_errors)
-        final_execution_to_goal_errors = np.array(final_execution_to_goal_errors)
-        success_percentage = np.count_nonzero(final_execution_to_goal_errors < goal_threshold) / n_for_metrics * 100
-
-        summary_data = {
-            'n_examples': N,
-            'n_recovery_actions': n_recovery,
-            'success_percentage': success_percentage
-        }
-        print(Fore.GREEN + f"{legend_nickname}" + Fore.RESET)
-        print(summary_data)
-        table_outfile.write(f"{legend_nickname}")
-        table_outfile.write(json.dumps(summary_data, indent=2))
-
-        if not args.no_plot:
-            # Execution Success Plot
-            execution_successes = []
-            for threshold in errors_thresholds:
-                success_percentage_at_threshold = np.count_nonzero(
-                    final_execution_to_goal_errors < threshold) / n_for_metrics * 100
-                execution_successes.append(success_percentage_at_threshold)
-            execution_success_ax.plot(errors_thresholds, execution_successes,
-                                      label=legend_nickname, linewidth=5, color=color)
-
-        execution_to_goal_errors_comparisons[str(subfolder.name)] = final_execution_to_goal_errors
-        headers.append(str(subfolder.name))
-
-        aggregate_metrics['Final Execution To Goal Error'].append(
-            make_row(planner_params, final_execution_to_goal_errors, table_format))
-        aggregate_metrics['total_time'].append(
-            make_row(planner_params, total_times, table_format))
-
-    if not args.no_plot:
-        execution_success_ax.axvline(goal_threshold, color='k', linestyle='--')
-
-        execution_success_ax.legend()
-
-    for metric_name, table_data in aggregate_metrics.items():
-        print(Style.BRIGHT + metric_name + Style.NORMAL)
+    for metric in metrics:
+        table_header, table_data = metric.make_table(table_format)
+        print(Style.BRIGHT + metric.name + Style.NORMAL)
         table = tabulate(table_data,
-                         headers=make_header(),
+                         headers=table_header,
                          tablefmt=table_format,
                          floatfmt='6.4f',
                          numalign='center',
                          stralign='left')
         print(table)
         print()
-        table_outfile.write(metric_name)
+        table_outfile.write(metric.name)
         table_outfile.write('\n')
         table_outfile.write(table)
         table_outfile.write('\n')
-    pvalue_table_title = "p-value matrix (goal vs execution)"
-    pvalue_table = dict_to_pvalue_table(execution_to_goal_errors_comparisons, table_format=table_format)
-    print(Style.BRIGHT + pvalue_table_title + Style.NORMAL)
-    print(pvalue_table)
-    table_outfile.write(pvalue_table_title)
-    table_outfile.write('\n')
-    table_outfile.write(pvalue_table)
-    table_outfile.write('\n')
+
+    for metric in metrics:
+        pvalue_table_title = f"p-value matrix [{metric.name}]"
+        pvalue_table = dict_to_pvalue_table(metric.values, table_format=table_format)
+        print(Style.BRIGHT + pvalue_table_title + Style.NORMAL)
+        print(pvalue_table)
+        table_outfile.write(pvalue_table_title)
+        table_outfile.write('\n')
+        table_outfile.write(pvalue_table)
+        table_outfile.write('\n')
+
+    for metric in metrics:
+        metric.make_figure()
+        metric.finish_figure()
+        metric.save_figure()
+
     if not args.no_plot:
-        save_unconstrained_layout(execution_success_fig, first_results_dir / "execution_success.png")
         plt.show()
-
-
-def save_unconstrained_layout(fig, filename, dpi=300):
-    fig.set_constrained_layout(False)
-    fig.savefig(filename, bbox_inches='tight', dpi=100)
-
-
-def get_all_subfolders(args):
-    all_subfolders = []
-    for results_dir in args.results_dirs:
-        subfolders = results_dir.iterdir()
-        for subfolder in subfolders:
-            if subfolder.is_dir():
-                all_subfolders.append(subfolder)
-    return all_subfolders
 
 
 def main():

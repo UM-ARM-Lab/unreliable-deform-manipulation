@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
 
-from link_bot_classifiers.visualization import state_image_to_cmap, paste_over
+from link_bot_pycommon.matplotlib_utils import state_image_to_cmap, paste_over
 
 
 class Test(TestCase):
@@ -62,7 +62,7 @@ class Test(TestCase):
         expected_image[2, 2] = 1
         np.testing.assert_allclose(out_image, expected_image)
 
-    def test_paste_over(self):
+    def test_paste_over2(self):
         i1 = np.zeros([3, 3, 3], dtype=np.float32)
         i1[0, 1] = 1
         i1[1, 1] = 0.5
