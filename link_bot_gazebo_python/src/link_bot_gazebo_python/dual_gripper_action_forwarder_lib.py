@@ -8,7 +8,10 @@ from geometry_msgs.msg import Point
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, GetDualGripperPointsRequest
 
 
-def interpolate_dual_gripper_trajectory(step_size, get_response, start_end_trajectory_request: GrippersTrajectoryRequest):
+def interpolate_dual_gripper_trajectory(step_size: float, get_response, start_end_trajectory_request: GrippersTrajectoryRequest):
+    """
+    arg: step_size meters
+    """
     current_gripper1_point = ros_numpy.numpify(get_response.gripper1)
     target_gripper1_point = ros_numpy.numpify(start_end_trajectory_request.grippers[0].points[0])
 
@@ -19,11 +22,11 @@ def interpolate_dual_gripper_trajectory(step_size, get_response, start_end_traje
     gripper2_displacement = current_gripper2_point - target_gripper2_point
 
     distance = max(np.linalg.norm(gripper1_displacement), np.linalg.norm(gripper2_displacement))
-    settling_time_seconds = distance / start_end_trajectory_request.speed
 
     waypoint_traj_req = DualGripperTrajectoryRequest()
-    waypoint_traj_req.settling_time_seconds = settling_time_seconds
     n_steps = max(np.int64(distance / step_size), 5)
+    settling_time_seconds = step_size / start_end_trajectory_request.speed
+    waypoint_traj_req.settling_time_seconds = settling_time_seconds
     for gripper1_waypoint in np.linspace(current_gripper1_point, target_gripper1_point, n_steps):
         waypoint_traj_req.gripper1_points.append(ros_numpy.msgify(Point, gripper1_waypoint))
     for gripper2_waypoint in np.linspace(current_gripper2_point, target_gripper2_point, n_steps):

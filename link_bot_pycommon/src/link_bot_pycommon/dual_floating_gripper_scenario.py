@@ -9,6 +9,7 @@ from matplotlib import colors
 
 import actionlib
 import rospy
+from arc_utilities.ros_helpers import Listener
 from arm_robots_msgs.msg import Points
 from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
@@ -20,10 +21,11 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_to_bbox, extent_array_to_bbox
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from moonshine.moonshine_utils import numpify
+from moonshine.moonshine_utils import numpify, remove_batch
 from moveit_msgs.msg import MoveGroupAction
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
+from sensor_msgs.msg import Image
 from std_srvs.srv import Empty, EmptyRequest, SetBool
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
@@ -102,11 +104,25 @@ def sample_rope(rng, p, n_links, kd: float):
     return rope
 
 
+IMAGE_H = 60
+IMAGE_W = 80
+crop_region = {
+    'min_y': 10,
+    'min_x': 10,
+    'max_y': 470,
+    'max_x': 630,
+}
+
+
 class DualFloatingGripperRopeScenario(Base3DScenario):
     n_links = 25
 
     def __init__(self):
         super().__init__()
+        self.color_image_listener = Listener("/camera/color/image_raw", Image)
+        self.depth_image_listener = Listener("/camera/depth/image_raw", Image)
+        self.state_color_viz_pub = rospy.Publisher("state_color_viz", Image, queue_size=10, latch=True)
+        self.state_depth_viz_pub = rospy.Publisher("state_depth_viz", Image, queue_size=10, latch=True)
         self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", GrippersTrajectory)
         self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
@@ -133,11 +149,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
 
     def on_before_data_collection(self):
-        gripper1_position = np.array([0, 0, 1.0])
-        gripper2_position = np.array([0.5, 0, 1.0])
+        gripper1_position = np.array([1.0, 0.2, 1.0])
+        gripper2_position = np.array([1.0, -0.2, 1.0])
         init_action = {
             'gripper1_position': gripper1_position,
             'gripper2_position': gripper2_position,
+            'speed': 0.25,
         }
         self.execute_action(init_action)
 
@@ -440,6 +457,31 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return gripper_position1, gripper_position2
 
     def get_state(self):
+        # make color + depth image
+        color = ros_numpy.numpify(self.color_image_listener.get(block_until_data=False))
+        depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
+        color_depth = np.concatenate([color, depth], axis=2)
+
+        box = tf.convert_to_tensor([crop_region['min_y'] / color.shape[0],
+                                    crop_region['min_x'] / color.shape[1],
+                                    crop_region['max_y'] / color.shape[0],
+                                    crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
+        # this operates on a batch
+        color_depth_cropped = tf.image.crop_and_resize(image=tf.expand_dims(color_depth, axis=0),
+                                                       boxes=tf.expand_dims(box, axis=0),
+                                                       box_indices=[0],
+                                                       crop_size=[IMAGE_H, IMAGE_W])
+        color_depth_cropped = remove_batch(color_depth_cropped)
+
+        def _debug_show_image(_color_depth_cropped):
+            import matplotlib.pyplot as plt
+            plt.imshow(tf.cast(_color_depth_cropped[:, :, :3], tf.int32))
+            plt.show()
+
+        # BEGIN DEBUG
+        # _debug_show_image(color_depth_cropped)
+        # END DEBUG
+
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
         while True:
             try:
@@ -465,6 +507,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
             'link_bot': np.array(rope_state_vector, np.float32),
+            'color_depth_image': color_depth_cropped,
         }
 
     @staticmethod
@@ -473,6 +516,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'gripper1': 3,
             'gripper2': 3,
             'link_bot': DualFloatingGripperRopeScenario.n_links * 3,
+            'color_depth_image': IMAGE_H * IMAGE_W * 4,
         }
 
     @staticmethod
@@ -956,6 +1000,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         msg.markers.append(lines)
         msg.markers.append(midpoint_sphere)
         self.state_viz_pub.publish(msg)
+
+        color = state['color_depth_image'][:, :, :3].numpy().astype(np.uint8)
+        color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
+        self.state_color_viz_pub.publish(color_viz_msg)
+
+        depth = state['color_depth_image'][:, :, 3].numpy().astype(np.float32)
+        depth_viz_msg = ros_numpy.msgify(Image, depth, encoding="32FC1")
+        self.state_depth_viz_pub.publish(depth_viz_msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}
