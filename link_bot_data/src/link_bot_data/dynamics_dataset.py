@@ -114,8 +114,12 @@ class DynamicsDataset(BaseDataset):
         # dataset = dataset.map(_add_time)
 
         scenario_metadata = self.hparams['scenario_metadata']
+
         def _add_scenario_metadata(example: Dict):
             example.update(scenario_metadata)
             return example
+
         dataset = dataset.map(_add_scenario_metadata)
+
+
         return dataset

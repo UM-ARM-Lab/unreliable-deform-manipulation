@@ -5,16 +5,17 @@
     link_bot
     gripper1
     gripper2
-    color_depth_image
   ]
+  obs_key: color_depth_image
   action_keys: [
     gripper1_position
     gripper2_position
   ]
   fc_layer_sizes: [
-    1024
-    1024
+    64
+    64
   ]
+  z_dim: 32
   learning_rate: 0.001
   epochs: 1
 }
