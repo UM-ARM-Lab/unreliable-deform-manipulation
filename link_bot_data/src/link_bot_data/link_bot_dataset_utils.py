@@ -173,6 +173,7 @@ def data_directory(outdir: pathlib.Path, *names):
 
 
 PREDICTED_PREFIX = 'predicted/'
+POSITIVE_PREFIX = 'positive/'
 
 
 def remove_predicted(k: str):
@@ -184,6 +185,10 @@ def remove_predicted(k: str):
 
 def remove_predicted_from_dict(d: Dict):
     return {remove_predicted(k): v for k, v in d.items()}
+
+
+def add_positive(feature_name):
+    return POSITIVE_PREFIX + feature_name
 
 
 def add_predicted(feature_name):

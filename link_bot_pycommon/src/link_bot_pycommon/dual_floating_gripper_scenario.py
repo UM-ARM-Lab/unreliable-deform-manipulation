@@ -104,12 +104,12 @@ def sample_rope(rng, p, n_links, kd: float):
     return rope
 
 
-IMAGE_H = 60
-IMAGE_W = 80
+IMAGE_H = 90
+IMAGE_W = 120
 crop_region = {
     'min_y': 10,
     'min_x': 10,
-    'max_y': 470,
+    'max_y': 450,
     'max_x': 630,
 }
 

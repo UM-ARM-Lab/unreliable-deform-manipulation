@@ -22,7 +22,6 @@ class ImageCondDynamics(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
-        self.initial_epoch = 0
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)

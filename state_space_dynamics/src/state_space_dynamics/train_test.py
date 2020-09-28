@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import json
 import pathlib
 import time
 from typing import List, Optional
 
+import hjson
 import numpy as np
 import tensorflow as tf
 
@@ -37,7 +37,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Model
     ###############
-    model_hparams = json.load((model_hparams).open('r'))
+    model_hparams = hjson.load((model_hparams).open('r'))
     model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = batch_size
     model_hparams['seed'] = seed
