@@ -71,6 +71,34 @@ class ResultsMetric:
             self.method_indices[k] = i
 
 
+class BoxplotOverTrialsPerMethod(ResultsMetric):
+    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path, name: str):
+        super().__init__(args, analysis_params, results_dir, name)
+        self.ax.set_xlabel("Method")
+        self.ax.set_ylabel(self.name)
+
+    def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
+        return trial_datum['total_time']
+
+    def add_to_figure(self, values: List, method_name: str, color):
+        x = self.method_indices[method_name]
+        self.ax.boxplot(values,
+                        positions=[x],
+                        patch_artist=True,
+                        boxprops=dict(facecolor=color, color=color),
+                        capprops=dict(color=color),
+                        whiskerprops=dict(color=color),
+                        medianprops=dict(color=color))
+
+    def get_table_header(self):
+        return ["Name", self.name]
+
+    def finish_figure(self):
+        # don't a legend for these plots
+        readable_keys = [k.replace("_", " ") for k in self.values.keys()]
+        self.ax.set_xticklabels(readable_keys)
+
+
 class FinalExecutionToGoalError(ResultsMetric):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
         super().__init__(args, analysis_params, results_dir, "final execution to goal distance")
@@ -97,7 +125,8 @@ class FinalExecutionToGoalError(ResultsMetric):
         for threshold in self.errors_thresholds:
             success_rate_at_threshold = np.count_nonzero(values < threshold) / len(values) * 100
             success_rate_at_thresholds.append(success_rate_at_threshold)
-        self.ax.plot(self.errors_thresholds, success_rate_at_thresholds, label=method_name, color=color)
+        readable_method_name = method_name.replace("_", " ")
+        self.ax.plot(self.errors_thresholds, success_rate_at_thresholds, label=readable_method_name, color=color)
         self.ax.axvline(self.goal_threshold, color='k', linestyle='--')
 
     def get_table_header(self):
@@ -113,11 +142,9 @@ class FinalExecutionToGoalError(ResultsMetric):
         return row
 
 
-class NRecoveryActions(ResultsMetric):
+class NRecoveryActions(BoxplotOverTrialsPerMethod):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
         super().__init__(args, analysis_params, results_dir, "Recovery Actions")
-        self.ax.set_xlabel("Method")
-        self.ax.set_ylabel("Number of Recovery Actions")
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         steps = trial_datum['steps']
@@ -127,46 +154,19 @@ class NRecoveryActions(ResultsMetric):
                 n_recovery += 1
         return n_recovery
 
-    def add_to_figure(self, values: List, method_name: str, color):
-        x = self.method_indices[method_name]
-        self.ax.boxplot(values,
-                        positions=[x],
-                        patch_artist=True,
-                        boxprops=dict(facecolor=color, color=color),
-                        capprops=dict(color=color),
-                        whiskerprops=dict(color=color),
-                        medianprops=dict(color=color))
 
-    def get_table_header(self):
-        return ["Name", "N Recovery Action"]
-
-    def finish_figure(self):
-        self.ax.set_xticklabels(self.values.keys())
-        self.ax.legend()
-
-
-class NPlanningAttempts(ResultsMetric):
+class NPlanningAttempts(BoxplotOverTrialsPerMethod):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
         super().__init__(args, analysis_params, results_dir, "Planning Attempts")
-        self.ax.set_xlabel("Method")
-        self.ax.set_ylabel("Number of Planning Attempts")
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return len(trial_datum['steps'])
 
-    def add_to_figure(self, values: List, method_name: str, color):
-        x = self.method_indices[method_name]
-        self.ax.boxplot(values,
-                        positions=[x],
-                        patch_artist=True,
-                        boxprops=dict(facecolor=color, color=color),
-                        capprops=dict(color=color),
-                        whiskerprops=dict(color=color),
-                        medianprops=dict(color=color))
 
-    def get_table_header(self):
-        return ["Name", "N Recovery Action"]
+class TotalTime(BoxplotOverTrialsPerMethod):
+    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
+        super().__init__(args, analysis_params, results_dir, "Total Time")
+        self.ax.set_ylabel("Total Time")
 
-    def finish_figure(self):
-        self.ax.set_xticklabels(self.values.keys())
-        self.ax.legend()
+    def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
+        return trial_datum['total_time']

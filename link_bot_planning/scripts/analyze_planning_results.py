@@ -12,7 +12,7 @@ from colorama import Style, Fore
 from tabulate import tabulate
 
 import rospy
-from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts
+from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.filesystem_utils import get_all_subfolders
 from link_bot_pycommon.get_scenario import get_scenario
@@ -32,8 +32,8 @@ def metrics_main(args):
 
     metrics = [
         FinalExecutionToGoalError(args, analysis_params, first_results_dir),
-        # TotalTime(analysis_params),
         NRecoveryActions(args, analysis_params, first_results_dir),
+        TotalTime(args, analysis_params, first_results_dir),
         NPlanningAttempts(args, analysis_params, first_results_dir),
     ]
 
