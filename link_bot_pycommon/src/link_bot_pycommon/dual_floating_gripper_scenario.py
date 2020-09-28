@@ -132,6 +132,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def randomization_initialization(self):
         self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
 
+    def on_before_data_collection(self):
+        gripper1_position = np.array([0, 0, 1.0])
+        gripper2_position = np.array([0.5, 0, 1.0])
+        init_action = {
+            'gripper1_position': gripper1_position,
+            'gripper2_position': gripper2_position,
+        }
+        self.execute_action(init_action)
+
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
 
@@ -181,6 +190,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         actions = {
             'gripper1_position': gripper1_position,
             'gripper2_position': gripper2_position,
+            'speed': action_params['speed'],
         }
         return actions
 
@@ -225,6 +235,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 'gripper2_position': gripper2_position,
                 'gripper1_delta_position': gripper1_delta_position,
                 'gripper2_delta_position': gripper2_delta_position,
+                'speed': action_params['speed'],
             }
             out_of_bounds = DualFloatingGripperRopeScenario.grippers_out_of_bounds(gripper1_position,
                                                                                    gripper2_position,
@@ -320,7 +331,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         target_right_gripper_point = ros_numpy.msgify(Point, action['gripper2_position'])
 
         req = GrippersTrajectoryRequest()
-        req.speed = 0.1
+        req.speed = action['speed']
         left_gripper_points = Points()
         left_gripper_points.points.append(target_left_gripper_point)
         right_gripper_points = Points()
@@ -470,6 +481,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return {
             'gripper1_position': 3,
             'gripper2_position': 3,
+            'speed': 1,
         }
 
     @staticmethod

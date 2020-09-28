@@ -133,13 +133,14 @@ class DataCollector:
             'states_description': self.scenario.states_description(),
             'action_description': self.scenario.actions_description(),
             'scenario': self.scenario_name,
+            'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
         }
-        dataset_hparams['scenario_metadata'] = self.scenario.dynamics_dataset_metadata()
         with (full_output_directory / 'hparams.json').open('w') as dataset_hparams_file:
             json.dump(dataset_hparams, dataset_hparams_file, indent=2)
         record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
         self.scenario.randomization_initialization()
+        self.scenario.on_before_data_collection()
 
         t0 = perf_counter()
 

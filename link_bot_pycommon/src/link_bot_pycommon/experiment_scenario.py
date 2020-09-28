@@ -291,6 +291,9 @@ class ExperimentScenario:
     def get_environment(self, params : Dict, **kwargs):
         raise NotImplementedError()
 
+    def on_before_data_collection(self):
+        pass
+
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
     x_range = xyz_range['x']
