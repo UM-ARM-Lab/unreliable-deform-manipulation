@@ -206,13 +206,13 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
                                  full_env: np.ndarray,
                                  full_env_origin: np.ndarray,
                                  res: float,
-                                 start_states: Dict[str, np.ndarray],
+                                 start_state: Dict[str, np.ndarray],
                                  actions: tf.Variable) -> List[Dict]:
         """
         :param full_env:        (H, W)
         :param full_env_origin: (2)
         :param res:             scalar
-        :param start_states:          each value in the dictionary should be of shape (batch, n_state)
+        :param start_state:          each value in the dictionary should be of shape (batch, n_state)
         :param actions:        (T, 2)
         :return: states:       each value in the dictionary should be a of shape [batch, T+1, n_state)
         """
@@ -229,7 +229,7 @@ class ObstacleNNWrapper(BaseDynamicsFunction):
             'full_env/res': tf.convert_to_tensor(res, dtype=tf.float32),
         }
 
-        for state_key, v in start_states.items():
+        for state_key, v in start_state.items():
             # handles conversion from double -> float
             start_state = tf.convert_to_tensor(v, dtype=tf.float32)
             start_state_with_time_dim = tf.expand_dims(start_state, axis=0)

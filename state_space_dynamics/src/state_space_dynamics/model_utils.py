@@ -2,6 +2,7 @@ import pathlib
 from typing import Tuple, List
 
 from link_bot_pycommon.get_scenario import get_scenario
+from my_cfm.cfm import CFMLatentDynamics
 from shape_completion_training.model.filepath_tools import load_trial
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.image_cond_dyn import ImageCondDynamicsWrapper
@@ -21,6 +22,9 @@ def load_generic_model(model_dirs: List[pathlib.Path]) -> Tuple[BaseDynamicsFunc
         return nn, representative_model_dir.parts[1:]
     elif model_type == 'ImageCondDyn':
         nn = ImageCondDynamicsWrapper(model_dirs, batch_size=1, scenario=scenario)
+        return nn, representative_model_dir.parts[1:]
+    elif model_type == 'CFM':
+        nn = CFMLatentDynamics(model_dirs, batch_size=1, scenario=scenario)
         return nn, representative_model_dir.parts[1:]
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

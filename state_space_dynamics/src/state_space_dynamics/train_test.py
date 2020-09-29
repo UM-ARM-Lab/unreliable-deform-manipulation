@@ -96,8 +96,7 @@ def compute_classifier_threshold(dataset_dirs: List[pathlib.Path],
 
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
-    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
-                                                    trials_directory=trials_directory)
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
     model = state_space_dynamics.get_model(params['model_class'])
     net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
 
@@ -134,8 +133,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
 
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
-    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
-                                                    trials_directory=trials_directory)
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
     model = state_space_dynamics.get_model(params['model_class'])
     net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
 
@@ -176,8 +174,7 @@ def viz_main(dataset_dirs: List[pathlib.Path],
 
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
-    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
-                                                    trials_directory=trials_directory)
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
     model = state_space_dynamics.get_model(params['model_class'])
     net = model(hparams=params, batch_size=1, scenario=test_dataset.scenario)
 

@@ -1,11 +1,9 @@
 from typing import Dict, List
 
 import numpy as np
-import rospy
 from matplotlib import cm
-from std_msgs.msg import Float32
-from visualization_msgs.msg import MarkerArray, Marker
 
+import rospy
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from jsk_recognition_msgs.msg import BoundingBox
@@ -17,7 +15,9 @@ from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl, WorldControlRequest
+from std_msgs.msg import Float32
 from tf import transformations
+from visualization_msgs.msg import MarkerArray, Marker
 
 
 class Base3DScenario(ExperimentScenario):
@@ -296,3 +296,6 @@ class Base3DScenario(ExperimentScenario):
             res = self.get_model_state_srv(get_req)
             poses[object_name] = res
         return poses
+
+    def compute_label(self, s_: Dict, s_t_pred: Dict, labeling_params: Dict):
+        raise NotImplementedError()

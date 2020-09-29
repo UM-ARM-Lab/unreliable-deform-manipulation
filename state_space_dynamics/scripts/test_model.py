@@ -78,7 +78,7 @@ def visualize(scenario, environment, actual_states_lists, actions, predicted_sta
         for actual_states, predicted_states in zip(actual_states_list, predicted_states_list):
             scenario.plot_environment_rviz(environment)
 
-            anim = RvizAnimationController(time_steps, start_playing=False)
+            anim = RvizAnimationController(time_steps)
 
             while not anim.done:
                 t = anim.t()

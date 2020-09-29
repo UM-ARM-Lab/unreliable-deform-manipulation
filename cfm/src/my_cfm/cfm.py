@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -8,51 +8,35 @@ from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 
 class CFMNetwork(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
-        self.scenario = scenario
 
-        self.observation_key = self.hparams['obs_key']
+        self.obs_keys = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
-        self.dataset_states_description = self.hparams['dynamics_dataset_hparams']['states_description']
-        self.dataset_actions_description = self.hparams['dynamics_dataset_hparams']['action_description']
 
-        self.encoder = Encoder(z_dim=self.hparams['z_dim'])
-        self.predictor = LocallyLinearPredictor(z_dim=self.hparams['z_dim'], hidden_sizes=self.hparams['fc_layer_sizes'])
-
-    def address_nans(self, example):
-        new_example = {k: v for k, v in example.items()}
-        # use a default values to replace NaN
-        observation = example[self.observation_key]
-        observation = tf.clip_by_value(observation, [[[[0, 0, 0, 0]]]], [[[[255, 255, 255, 3]]]])
-        new_example[self.observation_key] = observation
-        return new_example
+        self.encoder = Encoder(hparams, batch_size, scenario)
+        self.predictor = LocallyLinearPredictor(hparams, batch_size, scenario)
 
     def normalize_observation(self, example):
-        new_example = {k: v for k, v in example.items()}
-        observation = example[self.observation_key] / tf.constant([[[255.0, 255.0, 255.0, 3.0]]])
-        spatial_mean = tf.reduce_mean(tf.reduce_mean(observation, axis=2, keepdims=True), axis=2, keepdims=True)
-        new_example[self.observation_key] = observation - spatial_mean
-        return new_example
-
-    def preprocess_no_gradient(self, example):
-        new_example = self.address_nans(example)
-        new_example = self.normalize_observation(new_example)
-        return new_example
+        raise NotImplementedError()
 
     def make_pairs(self, example):
-        observation = example[self.observation_key]
-        observation_pos = example[add_next(self.observation_key)]
+        observation = example[self.obs_keys]
+        observation_pos = example[add_next(self.obs_keys)]
         return observation, observation_pos
 
     def get_positive_pairs(self, example):
-        observation = example[self.observation_key]
+        observation = example[self.obs_keys]
         return observation[:, :-1], observation[:, 1:]
+
+    def preprocess_no_gradient(self, example):
+        return example
 
     @tf.function
     def call(self, example, training=False, **kwargs):
@@ -90,6 +74,7 @@ class CFMNetwork(MyKerasModel):
         # Subtracting a large positive values should make the loss for diagonal elements be 0
         # which means we don't want to separate the representation of z from z_next
         neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
+        # neg_dists_masked = neg_dists
 
         pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
 
@@ -102,19 +87,15 @@ class CFMNetwork(MyKerasModel):
         }
 
 
-class CFMWrapper(BaseDynamicsFunction):
+class Encoder(MyKerasModel):
 
-    @staticmethod
-    def get_net_class():
-        return CFMNetwork
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(hparams=hparams, batch_size=batch_size)
+        self.state_keys = self.hparams['state_keys']
+        self.action_keys = self.hparams['action_keys']
+        self.obs_keys = self.hparams['action_keys']
 
-
-class Encoder(tf.keras.Model):
-
-    def __init__(self, z_dim):
-        super().__init__()
-
-        self.z_dim = z_dim
+        self.z_dim = self.hparams['z_dim']
         self.model = Sequential([
             layers.Conv2D(filters=64, kernel_size=3),
             layers.LeakyReLU(0.2),
@@ -133,7 +114,7 @@ class Encoder(tf.keras.Model):
             layers.LeakyReLU(0.2),
             # 256 x 4 x 4
         ], name='encoder')
-        self.out = layers.Dense(z_dim)
+        self.out = layers.Dense(self.z_dim)
 
     @tf.function
     def call(self, x, **kwargs):
@@ -146,18 +127,30 @@ class Encoder(tf.keras.Model):
         return x
 
 
-class LocallyLinearPredictor(tf.keras.layers.Layer):
+class CFMFilter(BaseFilterFunction):
 
-    def __init__(self,
-                 z_dim: int,
-                 hidden_sizes: List[int]):
-        super().__init__()
-        self.z_dim = z_dim
+    @staticmethod
+    def get_net_class():
+        return Encoder
+
+
+class LocallyLinearPredictor(MyKerasModel):
+
+    def compute_loss(self, dataset_element, outputs):
+        raise NotImplementedError()
+
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(hparams=hparams, batch_size=batch_size)
+        self.observation_key = self.hparams['obs_key']
+        self.state_keys = self.hparams['state_keys']
+        self.action_keys = self.hparams['action_keys']
+
+        self.z_dim = self.hparams['z_dim']
 
         my_layers = []
-        for h in hidden_sizes:
+        for h in self.hparams['fc_layer_sizes']:
             my_layers.append(layers.Dense(h, activation="relu"))
-        my_layers.append(layers.Dense(z_dim * z_dim, activation=None))
+        my_layers.append(layers.Dense(self.z_dim * self.z_dim, activation=None))
 
         self.model = Sequential(my_layers)
 
@@ -170,3 +163,10 @@ class LocallyLinearPredictor(tf.keras.layers.Layer):
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
         z_pred = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
         return z_pred
+
+
+class CFMLatentDynamics(BaseDynamicsFunction):
+
+    @staticmethod
+    def get_net_class():
+        return LocallyLinearPredictor

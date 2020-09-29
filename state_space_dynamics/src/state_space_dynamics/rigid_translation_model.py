@@ -34,7 +34,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
             out_states = self.propagate_differentiable(full_env=full_env,
                                                        full_env_origin=full_env_origin,
                                                        res=res,
-                                                       start_states=start_states,
+                                                       start_state=start_states,
                                                        actions=actions)
             out_states = sequence_of_dicts_to_dict_of_sequences(out_states)
             for k in self.states_keys:
@@ -42,9 +42,9 @@ class RigidTranslationModel(BaseDynamicsFunction):
         predictions = {k: tf.stack(predictions[k], axis=0) for k in predictions.keys()}
         return predictions
 
-    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> List[Dict]:
+    def propagate_differentiable(self, environment: Dict, start_state: Dict, actions: List[Dict]) -> List[Dict]:
         del environment  # unused
-        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
+        net_inputs = {k: tf.expand_dims(start_state[k], axis=0) for k in self.state_keys}
         net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs = add_batch(net_inputs)
         net_inputs = make_dict_tf_float32(net_inputs)
@@ -57,7 +57,7 @@ class RigidTranslationModel(BaseDynamicsFunction):
         return predictions
         actions = tf.convert_to_tensor(actions, dtype=tf.float32)
         s_t = {}
-        for k, s_0_k in start_states.items():
+        for k, s_0_k in start_state.items():
             s_t[k] = tf.convert_to_tensor(s_0_k, dtype=tf.float32)
         predictions = [s_t]
         for t in range(actions.shape[0]):

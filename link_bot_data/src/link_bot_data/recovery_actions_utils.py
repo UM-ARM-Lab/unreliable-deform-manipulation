@@ -222,7 +222,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
 
             # Predict
             mean_dynamics_predictions, _ = fwd_model.propagate_differentiable_batched(environment=None,
-                                                                                      states=start_states_tiled,
+                                                                                      state=start_states_tiled,
                                                                                       actions=_random_actions_dict)
 
             # Check classifier

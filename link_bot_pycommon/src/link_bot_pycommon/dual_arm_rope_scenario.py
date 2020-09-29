@@ -1,9 +1,9 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
-import ros_numpy
 
 import actionlib
+import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
 from link_bot_gazebo_python.gazebo_services import GazeboServices
@@ -122,6 +122,9 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
     def simple_name(self):
         return "dual_arm"
 
+    def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
+        raise NotImplementedError()
+
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         # # move the objects out of the way
         object_reset_poses = {k: (np.ones(3) * 10, np.array([0, 0, 0, 1])) for k in data_collection_params['objects']}
@@ -142,13 +145,13 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         # replace the objects in a new random configuration
         if 'scene' not in data_collection_params:
             rospy.logwarn("No scene specified... I assume you want tabletop.")
-            andom_object_poses = self.random_new_object_poses(env_rng, objects_params)
+            random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'tabletop':
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'car2':
             random_object_poses = self.random_new_object_poses(env_rng, objects_params)
         elif data_collection_params['scene'] == 'car':
-            random_object_poses = self.initial_obstacle_poses_with_noise(env_rng, self.obstacles)
+            raise NotImplementedError()
         else:
             raise NotImplementedError()
         self.set_object_poses(random_object_poses)

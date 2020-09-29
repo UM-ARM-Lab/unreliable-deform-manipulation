@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
-import shutil
+from typing import Dict
 
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 
 
@@ -30,34 +29,12 @@ def main():
     rospy.init_node("resize_freespace_env")
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+resized')
-    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
-    # load the dataset
-    dataset = DynamicsDataset([args.dataset_dir])
+    def _process_example(dataset: DynamicsDataset, example: Dict):
+        example['env'] = np.zeros([args.rows, args.cols, args.channels], dtype=np.float32)
+        yield example
 
-    in_hparams = args.dataset_dir / 'hparams.json'
-    out_hparams = outdir / 'hparams.json'
-    outdir.mkdir(exist_ok=True)
-    shutil.copy(in_hparams, out_hparams)
-
-    total_count = 0
-    for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode)
-        full_output_directory = outdir / mode
-        full_output_directory.mkdir(parents=True, exist_ok=True)
-
-        for i, example in enumerate(tf_dataset):
-            example['env'] = np.zeros([args.rows, args.cols, args.channels], dtype=np.float32)
-
-            # otherwise add it to the dataset
-            features = {k: float_tensor_to_bytes_feature(v) for k, v in example.items()}
-            example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-            example = example_proto.SerializeToString()
-            record_filename = "example_{:09d}.tfrecords".format(total_count)
-            full_filename = full_output_directory / record_filename
-            with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                writer.write(example)
-            total_count += 1
+    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example)
 
 
 if __name__ == '__main__':

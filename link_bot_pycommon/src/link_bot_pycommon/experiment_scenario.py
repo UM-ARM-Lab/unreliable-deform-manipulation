@@ -1,11 +1,11 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 
 import rospy
 from geometry_msgs.msg import Vector3
 from link_bot_data.link_bot_dataset_utils import add_predicted
-from moonshine.moonshine_utils import numpify, remove_batch, add_batch
+from moonshine.moonshine_utils import numpify
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -60,8 +60,7 @@ class ExperimentScenario:
     def local_environment_center_differentiable(state):
         raise NotImplementedError()
 
-    @staticmethod
-    def plot_goal_rviz(ax, goal, color, label=None, **kwargs):
+    def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         raise NotImplementedError()
 
     def plot_environment_rviz(self, data: Dict):
@@ -93,10 +92,6 @@ class ExperimentScenario:
     def batch_full_distance(self, s1: Dict, s2: Dict):
         """ this is not the distance metric used in planning """
         raise NotImplementedError()
-
-    def full_distance(self, s1: Dict, s2: Dict):
-        """ this is not the distance metric used in planning """
-        return remove_batch(self.batch_distance(add_batch(s1), add_batch(s2)))
 
     def __repr__(self):
         raise NotImplementedError()
@@ -288,11 +283,17 @@ class ExperimentScenario:
         label_t = self.index_label_time(example, t)
         self.plot_is_close(label_t)
 
-    def get_environment(self, params : Dict, **kwargs):
+    def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()
 
     def on_before_data_collection(self):
         pass
+
+    def trajopt_distance_to_goal_differentiable(self, final_state, goal):
+        raise NotImplementedError()
+
+    def trajopt_distance_differentiable(self, s1, s2):
+        raise NotImplementedError()
 
 
 def sample_object_position(env_rng, xyz_range: Dict) -> Dict:

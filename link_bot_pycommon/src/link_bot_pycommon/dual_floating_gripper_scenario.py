@@ -1,13 +1,13 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
-import ros_numpy
 import tensorflow as tf
 from matplotlib import colors
 
 import actionlib
+import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
 from arm_robots_msgs.msg import Points
@@ -138,6 +138,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.robot_reset_rng = np.random.RandomState(0)
 
         self.move_group_client = None
+
+    def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
+        raise NotImplementedError()
+
+    def trajopt_distance_differentiable(self, s1, s2):
+        raise NotImplementedError()
 
     def get_environment(self, params: Dict, **kwargs):
         return {}
@@ -329,16 +335,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def robot_name():
         return "kinematic_rope"
 
-    def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
-        object_poses = {}
-        for obj, pose in self.start_object_poses.items():
-            noisy_position = [pose.pose.position.x + env_rng.uniform(-0.05, 0.05),
-                              pose.pose.position.y + env_rng.uniform(-0.05, 0.05),
-                              pose.pose.position.z + env_rng.uniform(-0.05, 0.05)]
-
-            object_poses[obj] = (noisy_position, ros_numpy.numpify(pose.pose.orientation))
-        return object_poses
-
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         pass
 
@@ -460,6 +456,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         # make color + depth image
         color = ros_numpy.numpify(self.color_image_listener.get(block_until_data=False))
         depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
+
+        # NaN Depths means out of range, so clip to the max range
+        depth = np.clip(depth, 0, 3)
+
         color_depth = np.concatenate([color, depth], axis=2)
 
         box = tf.convert_to_tensor([crop_region['min_y'] / color.shape[0],
@@ -634,8 +634,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def batch_full_distance(self, s1: Dict, s2: Dict):
         return np.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=1)
 
-    @staticmethod
-    def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
+    def compute_label(self, actual: Dict, predicted: Dict, labeling_params: Dict):
         # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
         # done when making the classifier dataset
         actual_rope = np.array(actual["link_bot"])

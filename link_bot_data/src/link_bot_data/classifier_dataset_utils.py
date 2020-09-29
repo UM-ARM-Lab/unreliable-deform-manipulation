@@ -141,7 +141,7 @@ def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
             actions_from_start_t = {k: example[k][:, start_t:prediction_end_t - 1] for k in fwd_model.action_keys}
 
             predictions_from_start_t, _ = fwd_model.propagate_differentiable_batched(environment={},
-                                                                                     states=actual_states_from_start_t,
+                                                                                     state=actual_states_from_start_t,
                                                                                      actions=actions_from_start_t)
             prediction_actual = PredictionActualExample(example=example,
                                                         actions=actions_from_start_t,

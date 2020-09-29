@@ -9,6 +9,7 @@ from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, add_batch, remove_batch, \
     dict_of_sequences_to_sequence_of_dicts_tf, numpify
 from shape_completion_training.model.filepath_tools import load_trial
+from shape_completion_training.my_keras_model import MyKerasModel
 
 
 class BaseDynamicsFunction:
@@ -30,7 +31,7 @@ class BaseDynamicsFunction:
 
         net_class_name = self.get_net_class()
 
-        self.nets = []
+        self.nets: List[MyKerasModel] = []
         for model_dir in model_dirs:
             net = net_class_name(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
             ckpt = tf.train.Checkpoint(model=net)
@@ -55,7 +56,7 @@ class BaseDynamicsFunction:
             example['batch_size'] = example[self.state_keys[0]].shape[0]
         if 'sequence_length' not in example:
             example['sequence_length'] = example[self.action_keys[0]].shape[1] + 1  # only used by Image Cond Dyn
-        predictions = [net(example, training=training) for net in self.nets]
+        predictions = [net(net.preprocess_no_gradient(example), training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_prediction = {state_key: tf.math.reduce_mean(predictions_dict[state_key], axis=0) for state_key in
                            self.state_keys}
@@ -69,10 +70,10 @@ class BaseDynamicsFunction:
         mean_predictions, stdev_predictions = self.propagate_differentiable(environment, start_states, actions)
         return numpify(mean_predictions), numpify(stdev_predictions)
 
-    def propagate_differentiable(self, environment: Dict, start_states: Dict, actions: List[Dict]) -> Tuple[
+    def propagate_differentiable(self, environment: Dict, start_state: Dict, actions: List[Dict]) -> Tuple[
         List[Dict], List[Dict]]:
         # add time dimension of size 1
-        net_inputs = {k: tf.expand_dims(start_states[k], axis=0) for k in self.state_keys}
+        net_inputs = {k: tf.expand_dims(start_state[k], axis=0) for k in self.state_keys}
         net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs.update(environment)
         net_inputs = add_batch(net_inputs)
@@ -87,8 +88,8 @@ class BaseDynamicsFunction:
         stdev_predictions = dict_of_sequences_to_sequence_of_dicts_tf(stdev_predictions)
         return mean_predictions, stdev_predictions
 
-    def propagate_differentiable_batched(self, environment: Dict, states: Dict, actions: Dict) -> Tuple[Dict, Dict]:
-        net_inputs = states
+    def propagate_differentiable_batched(self, environment: Dict, state: Dict, actions: Dict) -> Tuple[Dict, Dict]:
+        net_inputs = state
         net_inputs.update(actions)
         net_inputs.update(environment)
         net_inputs = make_dict_tf_float32(net_inputs)
