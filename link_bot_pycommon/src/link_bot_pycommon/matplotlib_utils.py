@@ -2,9 +2,9 @@ import numpy as np
 from matplotlib import cm
 
 
-def save_unconstrained_layout(fig, filename, dpi=300):
+def save_unconstrained_layout(fig, filename, dpi=250):
     fig.set_constrained_layout(False)
-    fig.savefig(filename, bbox_inches='tight', dpi=100)
+    fig.savefig(filename, bbox_inches='tight', dpi=dpi, transparent=True)
 
 
 def state_image_to_cmap(state_image: np.ndarray, cmap=cm.viridis, binary_threshold=0.1):

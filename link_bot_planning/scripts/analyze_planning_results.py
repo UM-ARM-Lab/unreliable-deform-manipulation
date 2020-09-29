@@ -5,6 +5,7 @@ import json
 import pathlib
 
 import colorama
+import hjson
 import matplotlib.pyplot as plt
 import numpy as np
 import orjson
@@ -21,7 +22,7 @@ from link_bot_pycommon.metric_utils import dict_to_pvalue_table
 
 def metrics_main(args):
     with args.analysis_params.open('r') as analysis_params_file:
-        analysis_params = json.load(analysis_params_file)
+        analysis_params = hjson.load(analysis_params_file)
 
     # The default for where we write results
     first_results_dir = args.results_dirs[0]
@@ -57,20 +58,26 @@ def metrics_main(args):
             metadata_str = metadata_file.read()
         metadata = json.loads(metadata_str)
         scenario = get_scenario(metadata['scenario'])
-        method_name = subfolder.name
+        method_name = metadata['method_name']
         legend_method_name = ""  # FIXME: how to specify this?
         legend_names.append(legend_method_name)
 
         for metric in metrics:
             metric.setup_method(method_name, metadata)
 
-        # NOTE: even though this is slow, parallelizing is not easy because "scenario" cannot be pickled
+        # TODO: parallelize this
+        datums = []
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
+            if args.debug and plan_idx > 3:
+                break
             with gzip.open(metrics_filename, 'rb') as metrics_file:
                 data_str = metrics_file.read()
             # orjson is twice as fast, and yes it really matters here.
             datum = orjson.loads(data_str.decode("utf-8"))
+            datums.append(datum)
 
+        # NOTE: even though this is slow, parallelizing is not easy because "scenario" cannot be pickled
+        for datum in datums:
             for metric in metrics:
                 metric.aggregate_trial(method_name, scenario, datum)
 
@@ -127,6 +134,7 @@ def main():
     parser.add_argument('analysis_params', type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--final', action='store_true')
+    parser.add_argument('--debug', action='store_true', help='will only run on a few examples to speed up debugging')
     parser.set_defaults(func=metrics_main)
 
     args = parser.parse_args()

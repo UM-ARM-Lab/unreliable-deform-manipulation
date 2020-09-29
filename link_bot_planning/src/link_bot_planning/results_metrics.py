@@ -19,8 +19,6 @@ class ResultsMetric:
         self.values = {}
         self.method_indices = {}
 
-        self.fig, self.ax = plt.subplots(figsize=(16, 10))
-
     def setup_method(self, method_name: str, metadata: Dict):
         self.values[method_name] = []
 
@@ -52,9 +50,8 @@ class ResultsMetric:
 
     def make_figure(self):
         # Methods need to have consistent colors across different plots
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
-        for (method_name, values_for_method), color in zip(self.values.items(), colors):
+        for method_name, values_for_method in self.values.items():
+            color = self.params["colors"][method_name]
             self.add_to_figure(method_name=method_name, values=values_for_method, color=color)
 
     def add_to_figure(self, method_name: str, values: List, color):
@@ -74,6 +71,7 @@ class ResultsMetric:
 class BoxplotOverTrialsPerMethod(ResultsMetric):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path, name: str):
         super().__init__(args, analysis_params, results_dir, name)
+        self.fig, self.ax = plt.subplots(figsize=(26, 20))
         self.ax.set_xlabel("Method")
         self.ax.set_ylabel(self.name)
 
@@ -95,13 +93,13 @@ class BoxplotOverTrialsPerMethod(ResultsMetric):
 
     def finish_figure(self):
         # don't a legend for these plots
-        readable_keys = [k.replace("_", " ") for k in self.values.keys()]
-        self.ax.set_xticklabels(readable_keys)
+        self.ax.set_xticklabels(self.values.keys())
 
 
 class FinalExecutionToGoalError(ResultsMetric):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "final execution to goal distance")
+        super().__init__(args, analysis_params, results_dir, "Final Execution to Goal Distance")
+        self.fig, self.ax = plt.subplots(figsize=(16, 10))
         max_error = self.params["max_error"]
         self.errors_thresholds = np.linspace(0.01, max_error, self.params["n_error_bins"])
         self.ax.set_xlabel("Task Error Threshold")
@@ -125,9 +123,8 @@ class FinalExecutionToGoalError(ResultsMetric):
         for threshold in self.errors_thresholds:
             success_rate_at_threshold = np.count_nonzero(values < threshold) / len(values) * 100
             success_rate_at_thresholds.append(success_rate_at_threshold)
-        readable_method_name = method_name.replace("_", " ")
-        self.ax.plot(self.errors_thresholds, success_rate_at_thresholds, label=readable_method_name, color=color)
-        self.ax.axvline(self.goal_threshold, color='k', linestyle='--')
+        self.ax.plot(self.errors_thresholds, success_rate_at_thresholds, label=method_name, color=color)
+        self.ax.axvline(self.goal_threshold, color='#aaaaaa', linestyle='--')
 
     def get_table_header(self):
         return ["Name", "Dynamics", "Classifier", "min", "max", "mean", "median", "std"]
