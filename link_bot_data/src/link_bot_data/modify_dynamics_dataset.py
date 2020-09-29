@@ -15,6 +15,7 @@ def modify_dynamics_dataset(dataset_dir: pathlib.Path, outdir: pathlib.Path, pro
     # load the dataset
     dataset = DynamicsDataset([dataset_dir])
 
+    outdir.mkdir(exist_ok=True, parents=False)
     in_hparams = dataset_dir / 'hparams.json'
     out_hparams = outdir / 'hparams.json'
     shutil.copy(in_hparams, out_hparams)

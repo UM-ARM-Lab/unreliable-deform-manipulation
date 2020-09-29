@@ -6,8 +6,7 @@ from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, add_batch, remove_batch, \
-    dict_of_sequences_to_sequence_of_dicts_tf, numpify
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, add_batch, remove_batch, numpify
 from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
@@ -46,7 +45,6 @@ class BaseFilterFunction:
 
             self.state_keys = net.state_keys
             self.obs_keys = net.obs_keys
-            self.action_keys = net.action_keys
 
     def filter_from_example(self, example, training: bool = False):
         """ This is the function that all other filter functions eventually call """
@@ -57,7 +55,7 @@ class BaseFilterFunction:
         mean_state = {state_key: tf.math.reduce_mean(filtered_states_dict[state_key], axis=0) for state_key in self.state_keys}
         stdev_state = {state_key: tf.math.reduce_std(filtered_states_dict[state_key], axis=0) for state_key in self.state_keys}
         all_stdevs = tf.concat(list(stdev_state.values()), axis=2)
-        mean_state['stdev'] = tf.reduce_sum(all_stdevs, axis=2, keepdims=True)
+        mean_state['stdev'] = tf.reduce_sum(all_stdevs, axis=-1, keepdims=True)
         return mean_state, stdev_state
 
     def filter(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
@@ -65,24 +63,23 @@ class BaseFilterFunction:
         return numpify(mean_state), numpify(stdev_state)
 
     def filter_differentiable(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
-        # add time dimension of size 1
-        net_inputs = {k: tf.expand_dims(state[k], axis=0) for k in self.state_keys}
-        net_inputs.update({k: tf.expand_dims(observation[k], axis=0) for k in self.obs_keys})
-        net_inputs.update(environment)
+        net_inputs = environment
+        net_inputs.update(observation)
+        if state is not None:
+            net_inputs.update(state)
         net_inputs = add_batch(net_inputs)
         net_inputs = make_dict_tf_float32(net_inputs)
 
         mean_state, stdev_state = self.filter_from_example(net_inputs, training=False)
         mean_state = remove_batch(mean_state)
         stdev_state = remove_batch(stdev_state)
-        mean_state = dict_of_sequences_to_sequence_of_dicts_tf(mean_state)
-        stdev_state = dict_of_sequences_to_sequence_of_dicts_tf(stdev_state)
         return mean_state, stdev_state
 
     def filter_differentiable_batched(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
-        net_inputs = state
+        net_inputs = environment
         net_inputs.update(observation)
-        net_inputs.update(environment)
+        if state is not None:
+            net_inputs.update(state)
         net_inputs = make_dict_tf_float32(net_inputs)
         mean_predictions, stdev_predictions = self.filter_from_example(net_inputs, training=False)
         return mean_predictions, stdev_predictions

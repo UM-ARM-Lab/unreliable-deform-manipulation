@@ -109,6 +109,8 @@ def flatten_concat_pairs(ex_pos, ex_neg):
 
 def batch_tf_dataset(dataset: tf.data.Dataset, batch_size: int, drop_remainder: bool = True):
     def _add_batch(example: Dict):
+        for v in example.values():
+            v.is_batched = True
         example['batch_size'] = tf.cast(batch_size, tf.int64)
         return example
 
@@ -194,6 +196,7 @@ def add_positive(feature_name):
 
 def add_next(feature_name):
     return NEXT_PREFIX + feature_name
+
 
 def add_predicted(feature_name):
     return PREDICTED_PREFIX + feature_name

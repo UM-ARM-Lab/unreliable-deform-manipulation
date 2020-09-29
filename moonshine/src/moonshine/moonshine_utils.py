@@ -185,6 +185,7 @@ def remove_batch_single(x):
     elif isinstance(x, float):
         return x
     elif isinstance(x, tf.Tensor):
+        x.is_batched = False
         if len(x.shape) == 0:
             return x
         else:
@@ -199,7 +200,9 @@ def add_batch_single(x, batch_axis=0):
     elif isinstance(x, list) and isinstance(x[0], dict):
         return [(add_batch_single(v)) for v in x]
     elif isinstance(x, tf.Tensor):
-        return tf.expand_dims(x, axis=batch_axis)
+        x = tf.expand_dims(x, axis=batch_axis)
+        x.is_batched = True
+        return x
     elif isinstance(x, dict):
         return {k: add_batch_single(v) for k, v in x.items()}
     else:
@@ -226,3 +229,7 @@ def gather_dict(d: Dict, indices, axis: int = 0):
     :return:
     """
     return {k: tf.gather(v, indices, axis=axis) for k, v in d.items()}
+
+
+# Monkey patch the EagerTensor type
+tf.Tensor.is_batched = False

@@ -4,7 +4,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
-from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -23,35 +22,47 @@ class CFMNetwork(MyKerasModel):
         self.encoder = Encoder(hparams, batch_size, scenario)
         self.predictor = LocallyLinearPredictor(hparams, batch_size, scenario)
 
-    def normalize_observation(self, example):
-        raise NotImplementedError()
+    def normalize(self, example):
+        # Rescale to -1 to 1
+        new_example = example
+        for k in self.obs_keys:
+            min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+            max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+            normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+            new_example[k] = normalized_observation
 
-    def make_pairs(self, example):
-        observation = example[self.obs_keys]
-        observation_pos = example[add_next(self.obs_keys)]
-        return observation, observation_pos
+        for k in self.action_keys:
+            min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
+            max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
+            normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+            new_example[k] = normalized_action
+
+        return new_example
 
     def get_positive_pairs(self, example):
-        observation = example[self.obs_keys]
-        return observation[:, :-1], observation[:, 1:]
+        obs = {k: example[k][:, :-1] for k in self.obs_keys}
+        obs_pos = {k: example[k][:, 1:] for k in self.obs_keys}
+        return obs, obs_pos
 
     def preprocess_no_gradient(self, example):
-        return example
+        return self.normalize(example)
 
     @tf.function
     def call(self, example, training=False, **kwargs):
         observation, observation_pos = self.get_positive_pairs(example)
-        a = tf.concat([example[k] for k in self.action_keys], axis=-1)
 
         # forward pass
         z, z_pos = self.encoder(observation), self.encoder(observation_pos)  # b x z_dim
-        z_next = self.predictor({'z': z, 'a': a})
+        pred_inputs = z
+        pred_inputs['z_pos'] = z_pos['z']
+        for k in self.action_keys:
+            pred_inputs[k] = example[k]
+        z_next = self.predictor(pred_inputs)
 
-        return {
-            'z': z,
-            'z_pos': z_pos,
-            'z_next': z_next,
-        }
+        output = z
+        output.update(z_pos)
+        output.update(z_next)
+        return output
 
     def compute_loss(self, example, outputs):
         z = outputs['z']
@@ -93,7 +104,7 @@ class Encoder(MyKerasModel):
         super().__init__(hparams=hparams, batch_size=batch_size)
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
-        self.obs_keys = self.hparams['action_keys']
+        self.obs_keys = self.hparams['obs_keys']
 
         self.z_dim = self.hparams['z_dim']
         self.model = Sequential([
@@ -117,14 +128,17 @@ class Encoder(MyKerasModel):
         self.out = layers.Dense(self.z_dim)
 
     @tf.function
-    def call(self, x, **kwargs):
-        x = self.model(x)
+    def call(self, observation: Dict, **kwargs):
+        o = tf.concat([observation[k] for k in self.obs_keys], axis=-1)
+        h = self.model(o)
         # NOTE: [:-3] gets all but the last 3 dimensions, which are the H, W, and C of the tensor
         # doing this specifically allows x to have multiple "batch" dimensions,
         # which is useful to treating [batch, time, ...] as all just batch dimensions
-        x = tf.reshape(x, x.shape.as_list()[:-3] + [-1])
-        x = self.out(x)
-        return x
+        h = tf.reshape(h, h.shape.as_list()[:-3] + [-1])
+        z = self.out(h)
+        return {
+            'z': z
+        }
 
 
 class CFMFilter(BaseFilterFunction):
@@ -136,12 +150,9 @@ class CFMFilter(BaseFilterFunction):
 
 class LocallyLinearPredictor(MyKerasModel):
 
-    def compute_loss(self, dataset_element, outputs):
-        raise NotImplementedError()
-
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
-        self.observation_key = self.hparams['obs_key']
+        self.observation_key = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
 
@@ -156,13 +167,19 @@ class LocallyLinearPredictor(MyKerasModel):
 
     @tf.function
     def call(self, inputs, **kwargs):
+        a = tf.concat([inputs[k] for k in self.action_keys], axis=-1)
+
         z = inputs['z']
-        a = inputs['a']
         x = tf.concat((z, a), axis=-1)
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
-        z_pred = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
-        return z_pred
+        z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
+        return {
+            'z_next': z_next
+        }
+
+    def compute_loss(self, dataset_element, outputs):
+        raise NotImplementedError()
 
 
 class CFMLatentDynamics(BaseDynamicsFunction):

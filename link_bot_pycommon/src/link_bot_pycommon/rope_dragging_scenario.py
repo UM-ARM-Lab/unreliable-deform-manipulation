@@ -554,7 +554,7 @@ class RopeDraggingScenario(Base3DScenario):
     def index_action_time(self, action, t):
         action_t = {}
         for feature_name in ['gripper_position']:
-            if action[feature_name].ndim == 2:
+            if action[feature_name].is_batched:
                 if t < action[feature_name].shape[0]:
                     action_t[feature_name] = action[feature_name][t]
                 else:

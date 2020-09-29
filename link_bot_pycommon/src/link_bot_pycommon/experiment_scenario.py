@@ -196,6 +196,14 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def observations_description() -> Dict:
+        raise NotImplementedError()
+
+    @staticmethod
+    def observation_features_description() -> Dict:
+        raise NotImplementedError()
+
+    @staticmethod
     def actions_description() -> Dict:
         raise NotImplementedError()
 
@@ -210,35 +218,55 @@ class ExperimentScenario:
         state_t = {}
         for feature_name in self.states_description().keys():
             if add_predicted(feature_name) in state:
-                if state[add_predicted(feature_name)].ndim == 2:
-                    state_t[feature_name] = state[add_predicted(feature_name)][t]
-                else:
+                if state[add_predicted(feature_name)].is_batched:
                     state_t[feature_name] = state[add_predicted(feature_name)][:, t]
+                else:
+                    state_t[feature_name] = state[add_predicted(feature_name)][t]
         return state_t
+
+    def index_observation_features_time(self, observation_features, t):
+        observation_features_t = {}
+        for feature_name in self.observation_features_description().keys():
+            if feature_name in observation_features:
+                if observation_features[feature_name].is_batched:
+                    observation_features_t[feature_name] = observation_features[feature_name][:, t]
+                else:
+                    observation_features_t[feature_name] = observation_features[feature_name][t]
+        return observation_features_t
+
+    def index_observation_time(self, observation, t):
+        observation_t = {}
+        for feature_name in self.observations_description().keys():
+            if feature_name in observation:
+                if observation[feature_name].is_batched:
+                    observation_t[feature_name] = observation[feature_name][:, t]
+                else:
+                    observation_t[feature_name] = observation[feature_name][t]
+        return observation_t
 
     def index_state_time(self, state, t):
         state_t = {}
         for feature_name in self.states_description().keys():
             if feature_name in state:
-                if state[feature_name].ndim == 2:
-                    state_t[feature_name] = state[feature_name][t]
-                else:
+                if state[feature_name].is_batched:
                     state_t[feature_name] = state[feature_name][:, t]
+                else:
+                    state_t[feature_name] = state[feature_name][t]
         return state_t
 
     def index_action_time(self, action, t):
         action_t = {}
         for feature_name in self.actions_description().keys():
-            if action[feature_name].ndim == 2:
-                if t < action[feature_name].shape[0]:
-                    action_t[feature_name] = action[feature_name][t]
-                else:
-                    action_t[feature_name] = action[feature_name][t - 1]
-            else:
+            if action[feature_name].is_batched:
                 if t < action[feature_name].shape[1]:
                     action_t[feature_name] = action[feature_name][:, t]
                 else:
                     action_t[feature_name] = action[feature_name][:, t - 1]
+            else:
+                if t < action[feature_name].shape[0]:
+                    action_t[feature_name] = action[feature_name][t]
+                else:
+                    action_t[feature_name] = action[feature_name][t - 1]
         return action_t
 
     @staticmethod
@@ -247,7 +275,7 @@ class ExperimentScenario:
             # it makes no sense to have a label at t=0, labels are for transitions/sequences
             # the plotting function that consumes this should use None correctly
             return None
-        if example['is_close'].ndim == 2:
+        if example['is_close'].is_batched:
             return example['is_close'][:, t]
         else:
             return example['is_close'][t]

@@ -511,12 +511,23 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         }
 
     @staticmethod
+    def observations_description() -> Dict:
+        return {
+            'gripper1': 3,
+            'gripper2': 3,
+            'color_depth_image': IMAGE_H * IMAGE_W * 4,
+        }
+
+    @staticmethod
     def states_description() -> Dict:
+        return {}
+
+    @staticmethod
+    def observation_features_description() -> Dict:
         return {
             'gripper1': 3,
             'gripper2': 3,
             'link_bot': DualFloatingGripperRopeScenario.n_links * 3,
-            'color_depth_image': IMAGE_H * IMAGE_W * 4,
         }
 
     @staticmethod
