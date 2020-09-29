@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
-from link_bot_data.link_bot_dataset_utils import add_next, add_positive
+from link_bot_data.link_bot_dataset_utils import add_next
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -26,52 +26,38 @@ class CFMNetwork(MyKerasModel):
         self.predictor = LocallyLinearPredictor(z_dim=self.hparams['z_dim'], hidden_sizes=self.hparams['fc_layer_sizes'])
 
     def address_nans(self, example):
+        new_example = {k: v for k, v in example.items()}
         # use a default values to replace NaN
         observation = example[self.observation_key]
         observation = tf.clip_by_value(observation, [[[[0, 0, 0, 0]]]], [[[[255, 255, 255, 3]]]])
-        example[self.observation_key] = observation
-        return example
+        new_example[self.observation_key] = observation
+        return new_example
 
     def normalize_observation(self, example):
+        new_example = {k: v for k, v in example.items()}
         observation = example[self.observation_key] / tf.constant([[[255.0, 255.0, 255.0, 3.0]]])
         spatial_mean = tf.reduce_mean(tf.reduce_mean(observation, axis=2, keepdims=True), axis=2, keepdims=True)
-        example[self.observation_key] = observation - spatial_mean
-        return example
+        new_example[self.observation_key] = observation - spatial_mean
+        return new_example
 
     def preprocess_no_gradient(self, example):
-        example = self.address_nans(example)
-        example = self.normalize_observation(example)
-        return example
+        new_example = self.address_nans(example)
+        new_example = self.normalize_observation(new_example)
+        return new_example
 
     def make_pairs(self, example):
         observation = example[self.observation_key]
         observation_pos = example[add_next(self.observation_key)]
         return observation, observation_pos
 
-    def add_positive_pairs(self, example):
+    def get_positive_pairs(self, example):
         observation = example[self.observation_key]
-        example[self.observation_key] = observation[:, :-1]
-        example[add_positive(self.observation_key)] = observation[:, 1:]
-        return example
+        return observation[:, :-1], observation[:, 1:]
 
-    # @tf.function
+    @tf.function
     def call(self, example, training=False, **kwargs):
-        example = self.add_positive_pairs(example)
-        observation = example[self.observation_key]
-        observation_pos = example[add_positive(self.observation_key)]
+        observation, observation_pos = self.get_positive_pairs(example)
         a = tf.concat([example[k] for k in self.action_keys], axis=-1)
-
-        # Move time into batch index so we use all transitions
-        # observation = tf.reshape(observation, [-1] + observation.shape.as_list()[2:])
-        # observation_pos = tf.reshape(observation_pos, [-1] + observation_pos.shape.as_list()[2:])
-        # a = tf.reshape(a, [-1] + a.shape.as_list()[2:])
-
-        # normalize / whiten
-        # observation = tf.image.per_image_standardization(observation)
-        # observation_pos = tf.image.per_image_standardization(observation_pos)
-
-        # also normalize actions
-        # normalized_action = (a - tf.math.reduce_mean(a)) / (tf.math.reduce_std(a) + 1e-9)
 
         # forward pass
         z, z_pos = self.encoder(observation), self.encoder(observation_pos)  # b x z_dim
@@ -101,10 +87,11 @@ class CFMNetwork(MyKerasModel):
         tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
         neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
 
-        pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
-
-        # neg_dists *= tf.one_hot(tf.range(batch_size), batch_size, on_value=float('-inf'))  # b x b+1
+        # Subtracting a large positive values should make the loss for diagonal elements be 0
+        # which means we don't want to separate the representation of z from z_next
         neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
+
+        pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
 
         dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
         log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
@@ -148,7 +135,7 @@ class Encoder(tf.keras.Model):
         ], name='encoder')
         self.out = layers.Dense(z_dim)
 
-    # @tf.function
+    @tf.function
     def call(self, x, **kwargs):
         x = self.model(x)
         # NOTE: [:-3] gets all but the last 3 dimensions, which are the H, W, and C of the tensor
@@ -174,7 +161,7 @@ class LocallyLinearPredictor(tf.keras.layers.Layer):
 
         self.model = Sequential(my_layers)
 
-    # @tf.function
+    @tf.function
     def call(self, inputs, **kwargs):
         z = inputs['z']
         a = inputs['a']
