@@ -105,15 +105,6 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
       ROS_WARN_STREAM("Using non-standard frame id " << this->frame_id_);
     }
 
-    if (!_sdf->HasElement("updatePeriod"))
-    {
-      this->publish_period_ = ros::Duration(0.0);
-    }
-    else
-    {
-      this->publish_period_ = ros::Duration(_sdf->GetElement("updatePeriod")->Get<double>());
-    }
-
     if (_sdf->HasElement("scalePrimitivesFactor"))
     {
       this->scale_primitives_factor_ = _sdf->GetElement("scalePrimitivesFactor")->Get<double>();
