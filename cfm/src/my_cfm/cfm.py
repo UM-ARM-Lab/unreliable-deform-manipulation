@@ -47,7 +47,7 @@ class CFMNetwork(MyKerasModel):
     def preprocess_no_gradient(self, example):
         return self.normalize(example)
 
-    @tf.function
+    # @tf.function
     def call(self, example, training=False, **kwargs):
         observation, observation_pos = self.get_positive_pairs(example)
 
@@ -57,17 +57,16 @@ class CFMNetwork(MyKerasModel):
         pred_inputs['z_pos'] = z_pos['z']
         for k in self.action_keys:
             pred_inputs[k] = example[k]
-        z_next = self.predictor(pred_inputs)
+        z_seq = self.predictor(pred_inputs)
 
-        output = z
+        output = z_seq
         output.update(z_pos)
-        output.update(z_next)
         return output
 
     def compute_loss(self, example, outputs):
-        z = outputs['z']
+        z = outputs['z'][:, 0]
         z_pos = outputs['z_pos']
-        z_next = outputs['z_next']
+        z_next = outputs['z'][:, 1]
         z_size = z.shape[-1]
 
         # TODO: collapse various batch dimensions
@@ -127,7 +126,7 @@ class Encoder(MyKerasModel):
         ], name='encoder')
         self.out = layers.Dense(self.z_dim)
 
-    @tf.function
+    # @tf.function
     def call(self, observation: Dict, **kwargs):
         o = tf.concat([observation[k] for k in self.obs_keys], axis=-1)
         h = self.model(o)
@@ -165,7 +164,7 @@ class LocallyLinearPredictor(MyKerasModel):
 
         self.model = Sequential(my_layers)
 
-    @tf.function
+    # @tf.function
     def call(self, inputs, **kwargs):
         a = tf.concat([inputs[k] for k in self.action_keys], axis=-1)
 
@@ -174,8 +173,9 @@ class LocallyLinearPredictor(MyKerasModel):
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
         z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
+        z_seq = tf.concat((z, z_next), axis=1)
         return {
-            'z_next': z_next
+            'z': z_seq
         }
 
     def compute_loss(self, dataset_element, outputs):

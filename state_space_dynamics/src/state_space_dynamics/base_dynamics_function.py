@@ -70,12 +70,11 @@ class BaseDynamicsFunction:
         mean_predictions, stdev_predictions = self.propagate_differentiable(environment, start_states, actions)
         return numpify(mean_predictions), numpify(stdev_predictions)
 
-    def propagate_differentiable(self, environment: Dict, start_state: Dict, actions: List[Dict]) -> Tuple[
-        List[Dict], List[Dict]]:
+    def propagate_differentiable(self, environment: Dict, start_state: Dict, actions: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
         # add time dimension of size 1
         net_inputs = {k: tf.expand_dims(start_state[k], axis=0) for k in self.state_keys}
-        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs.update(environment)
+        net_inputs.update(sequence_of_dicts_to_dict_of_tensors(actions))
         net_inputs = add_batch(net_inputs)
         net_inputs = make_dict_tf_float32(net_inputs)
         # the network returns a dictionary where each value is [T, n_state]

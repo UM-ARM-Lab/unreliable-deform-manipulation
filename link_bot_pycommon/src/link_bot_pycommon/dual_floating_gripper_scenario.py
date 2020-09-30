@@ -140,10 +140,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.move_group_client = None
 
     def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
-        raise NotImplementedError()
+        return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(final_state.values(), goal.values())])
 
     def trajopt_distance_differentiable(self, s1, s2):
-        raise NotImplementedError()
+        return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(s1.values(), s2.values())])
 
     def get_environment(self, params: Dict, **kwargs):
         return {}

@@ -317,6 +317,9 @@ class ExperimentScenario:
     def on_before_data_collection(self):
         pass
 
+    def trajopt_action_sequence_cost_differentiable(self, actions):
+        return 0.0
+
     def trajopt_distance_to_goal_differentiable(self, final_state, goal):
         raise NotImplementedError()
 

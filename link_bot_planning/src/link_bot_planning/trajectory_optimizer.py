@@ -7,6 +7,7 @@ from more_itertools import pairwise
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 
 def make_tf_variables(initial_actions):
@@ -25,12 +26,14 @@ class TrajectoryOptimizer:
     def __init__(self,
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: Optional[BaseConstraintChecker],
+                 filter_model: BaseFilterFunction,
                  scenario: ExperimentScenario,
                  params: Dict,
                  verbose: Optional[int] = 0,
                  ):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
+        self.filter_model = filter_model
         self.verbose = verbose
         self.scenario = scenario
         self.iters = params["iters"]
@@ -60,40 +63,48 @@ class TrajectoryOptimizer:
         return actions, planned_path
 
     def step(self, environment: Dict, goal: Dict, actions: List[Dict], start_state: Dict):
-        with tf.GradientTape(watch_accessed_variables=True) as tape:
+        with tf.GradientTape(watch_accessed_variables=True, persistent=True) as tape:
             # Compute the states predicted given the actions
-            predictions = self.fwd_model.propagate_differentiable(environment=environment,
-                                                                  start_state=start_state,
-                                                                  actions=actions)
+            mean_predictions, _ = self.fwd_model.propagate_differentiable(environment=environment,
+                                                                          start_state=start_state,
+                                                                          actions=actions)
 
             # Compute the constraint values predicted given the states and actions
-            constraint_costs = self.compute_constraints_cost(environment, actions, predictions)
+            constraint_costs = self.compute_constraints_cost(environment, actions, mean_predictions)
             constraint_loss = tf.reduce_sum(constraint_costs)
 
             # Compute various loss terms
-            final_state = predictions[-1]
-            goal_loss = self.scenario.trajopt_distance_to_goal_differentiable(final_state, goal)
+            final_state = mean_predictions[-1]
+            goal_state, _ = self.filter_model.filter(environment, None, goal)
 
-            distances = [self.scenario.trajopt_distance_differentiable(s1, s2) for (s1, s2) in pairwise(predictions)]
+            goal_loss = self.scenario.trajopt_distance_to_goal_differentiable(final_state, goal_state)
+
+            distances = [self.scenario.trajopt_distance_differentiable(s1, s2) for (s1, s2) in pairwise(mean_predictions)]
             length_loss = tf.reduce_sum(tf.square(distances))
 
-            action_loss = tf.reduce_sum(tf.reduce_sum(tf.square(actions), axis=1))
-            losses = [length_loss, goal_loss, constraint_loss, action_loss]
+            action_loss = self.scenario.trajopt_action_sequence_cost_differentiable(actions)
+
+            losses = tf.convert_to_tensor([length_loss, goal_loss, constraint_loss, action_loss])
             weights = tf.convert_to_tensor([self.length_alpha, self.goal_alpha, self.constraints_alpha, self.action_alpha],
                                            dtype=tf.float32)
             weighted_losses = tf.multiply(losses, weights)
             loss = tf.reduce_sum(weighted_losses, axis=0)
+            print(loss)
 
-        variables = [actions]
+        variables = []
+        for action in actions:
+            for v in action.values():
+                variables.append(v)
         gradients = tape.gradient(loss, variables)
+        print(gradients)
         self.optimizer.apply_gradients(zip(gradients, variables))
 
         losses = [weighted_losses[0], weighted_losses[1], weighted_losses[2], weighted_losses[3], loss]
-        return actions, predictions, losses, length_loss
+        return actions, mean_predictions, losses, length_loss
 
     def compute_constraints_cost(self, environment: Dict, actions, predictions):
         if self.classifier_model is None:
-            return 0
+            return 0.0
 
         constraint_costs = []
         for t in range(1, len(predictions)):

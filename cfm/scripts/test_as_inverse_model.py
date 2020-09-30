@@ -33,6 +33,7 @@ def main():
     latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
+                                  filter_model=filter_model,
                                   scenario=test_dataset.scenario,
                                   params=params)
 
@@ -42,35 +43,38 @@ def main():
     initial_actions = []
 
     for example in test_tf_dataset:
-        environment = example
-        current_observation = test_dataset.scenario.index_observation_time(example, 0)
-        start_state, _ = filter_model.filter(environment, state, current_observation)
-        for t in range(action_horizon):
-            gripper1_position = [0, 0, 0]
-            gripper2_position = [0, 0, 0]
-            initial_action = {
-                'gripper1_position': gripper1_position,
-                'gripper2_position': gripper2_position,
+        for t in range(test_dataset.sequence_length - 1):
+            environment = {}
+            current_observation = test_dataset.scenario.index_observation_time(example, t)
+            start_state, _ = filter_model.filter(environment, state, current_observation)
+            for j in range(action_horizon):
+                gripper1_position = [0, 0, 0]
+                gripper2_position = [0, 0, 0]
+                initial_action = {
+                    'gripper1_position': gripper1_position,
+                    'gripper2_position': gripper2_position,
+                }
+                initial_actions.append(initial_action)
+            goal = {
+                'color_depth_image': example['color_depth_image'][1]
             }
-            initial_actions.append(initial_action)
-        goal = {
-            'goal_obs': example['color_depth_image'][1]
-        }
-        # actions should just be a single vector with key 'a'
-        actions, planned_path = trajopt.optimize(environment=environment,
-                                                 goal=goal,
-                                                 initial_actions=initial_actions,
-                                                 start_state=start_state)
-        for t in range(action_horizon):
-            print(f"t = {t}")
-            optimized_action = actions[t]
-            true_action = {k: example[k][t] for k in latent_dynamics_model.action_keys}
-            print('optimized', optimized_action)
-            print('true', true_action)
-            total_error = 0
-            for v1, v2 in zip(optimized_action.values(), true_action.values()):
-                total_error += tf.linalg.norm(v1 - v2)
-            print(total_error)
+            # actions should just be a single vector with key 'a'
+            actions, planned_path = trajopt.optimize(environment=environment,
+                                                     goal=goal,
+                                                     initial_actions=initial_actions,
+                                                     start_state=start_state)
+            for j in range(action_horizon):
+                print(f"j = {j}")
+                optimized_action = actions[j]
+                true_action = {k: example[k][j] for k in latent_dynamics_model.action_keys}
+                print('optimized', optimized_action)
+                print('true', true_action)
+                total_error = 0
+                for v1, v2 in zip(optimized_action.values(), true_action.values()):
+                    total_error += tf.linalg.norm(v1 - v2)
+                print(total_error)
+
+            return
 
 
 if __name__ == '__main__':

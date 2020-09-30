@@ -65,7 +65,7 @@ def metrics_main(args):
         for metric in metrics:
             metric.setup_method(method_name, metadata)
 
-        # TODO: parallelize this
+        # TODO: make this faster
         datums = []
         for plan_idx, metrics_filename in enumerate(metrics_filenames):
             if args.debug and plan_idx > 3:
