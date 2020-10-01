@@ -261,7 +261,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
             if (!mesh)
             {
-              ROS_WARN_STREAM("Mesh could not be loded: " << uri);
+              ROS_WARN_STREAM("Mesh could not be loaded: " << uri);
               continue;
             }
           }
@@ -310,7 +310,6 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
           ignition::math::Vector3d scale = mesh_shape->Scale();
           const Mesh *mesh = MeshManager::Instance()->GetMesh(uri);
 
-          ROS_WARN_STREAM(" mesh scale: " << scale);
           if (!mesh)
           {
             ROS_WARN_STREAM("Shape has mesh type but mesh could not be retried from the MeshManager. Loading "

@@ -1,4 +1,7 @@
 <launch>
+    <env name="ROSCONSOLE_CONFIG_FILE"
+       value="$(find link_bot_gazebo)/custom_rosconsole.conf"/>
+
     <arg name="world" default="empty.world"/>
     <arg name="verbose" default="false"/>
     <arg name="gui" default="true"/>
@@ -7,14 +10,17 @@
     <arg name="debug_moveit" default="false"/>
     <arg name="use_victor" default="false"/>
     <arg name="use_val" default="false"/>
+    <arg name="use_sim_time" default="true"/>
 
-    <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
-    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
+    <arg name="robot_name" value="victor" if="$(arg use_victor)"/>
+    <arg name="robot_name" value="hdt_michigan" if="$(arg use_val)"/>
+
+    <param name="robot_name" value="$(arg robot_name)" type="string"/>
 
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
               args="0 0 0 0 0 0 robot_root world">
-            <param name="use_sim_time" value="false"/>
+            <param name="use_sim_time" value="$(arg use_sim_time)"/>
         </node>
     </group>
 
@@ -22,28 +28,35 @@
         <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world)"/>
         <arg name="verbose" default="$(arg verbose)"/>
         <arg name="paused" default="$(arg pause)"/>
-        <arg name="use_sim_time" value="false"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="gui" value="$(arg gui)"/>
         <arg name="debug" default="$(arg debug_gazebo)"/>
     </include>
 
     <group if="$(arg use_victor)">
-        <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
+        <!-- uploads robot description and setups up other parameters -->
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
         </include>
+
+        <!-- start the controllers -->
+        <include file="$(find victor_control)/launch/victor_control.launch"/>
+
         <include file="$(find victor_moveit_config)/launch/move_group.launch">
             <arg name="allow_trajectory_execution" value="true"/>
-            <arg name="fake_execution" value="false"/>
             <arg name="info" value="true"/>
             <arg name="debug" value="$(arg debug_moveit)"/>
         </include>
     </group>
     <group if="$(arg use_val)">
-        <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
+        <!-- uploads robot description and setups up other parameters -->
         <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
         </include>
+
+        <!-- start the controllers -->
+        <include file="$(find hdt_michigan_control)/launch/hdt_michigan_control.launch"/>
+
         <include file="$(find hdt_michigan_moveit)/launch/move_group.launch">
             <arg name="allow_trajectory_execution" value="true"/>
             <arg name="fake_execution" value="false"/>
@@ -52,4 +65,7 @@
         </include>
     </group>
 
+    <!-- spawn the robot -->
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+          args="-urdf -model $(arg robot_name) -param robot_description"/>
 </launch>

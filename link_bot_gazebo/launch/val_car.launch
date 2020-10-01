@@ -1,17 +1,16 @@
 <launch>
-    <arg name="gui"         default="true"/>
+    <arg name="gui" default="true"/>
+    <arg name="verbose" default="true"/>
+    <arg name="world" default="car.world"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
-        <arg name="world" value="dual_floating_grippers.world"/>
+        <arg name="world" value="$(arg world)"/>
         <arg name="use_victor" value="false"/>
-        <arg name="use_val" value="false"/>
-        <arg name="verbose" value="false"/>
+        <arg name="use_val" value="true"/>
+        <arg name="verbose" value="$(arg verbose)"/>
         <arg name="gui" value="$(arg gui)"/>
         <arg name="pause" value="true"/>
         <arg name="debug_gazebo" value="false"/>
         <arg name="debug_moveit" value="false"/>
     </include>
-
-    <node name="shim" type="dual_gripper_action_forwarder.py" pkg="link_bot_gazebo_python">
-    </node>
 </launch>

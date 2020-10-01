@@ -1,10 +1,15 @@
-<sdf version='1.6'>
-    <world name='default'>
-        <gui>
-            <camera name='user_camera'>
-                <pose frame=''>2.89 -2.13 2.55 0 0.56 2.34</pose>
-            </camera>
-        </gui>
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <world name="default">
+        <scene>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+            <sky>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
 
         <physics name="ode" type="ode">
             <ode>
@@ -12,23 +17,17 @@
                     <contact_max_correcting_vel>0</contact_max_correcting_vel>
                 </constraints>
             </ode>
-            <max_step_size>0.002</max_step_size>
-            <real_time_update_rate>0</real_time_update_rate>
+            <max_step_size>0.001</max_step_size>
+            <real_time_update_rate>1000</real_time_update_rate>
         </physics>
 
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
-        <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so">
-        </plugin>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
-        <model name="planning_scene">
-            <plugin name="gazebo_ros_moveit_planning_scene" filename="libgazebo_ros_moveit_planning_scene.so">
-                <topicName>gazebo/planning_scene</topicName>
-                <robotName>hdt_michigan</robotName>
-                <frameId>val_root</frameId>
-                <updatePeriod>0.1</updatePeriod>
-                <scalePrimitivesFactor>1.0</scalePrimitivesFactor>
-            </plugin>
-        </model>
+
+        <include>
+            <pose>0 0 -0.45 0 0 0</pose>
+            <uri>model://ground_plane</uri>
+        </include>
 
         <include>
             <uri>model://sun</uri>
@@ -77,6 +76,11 @@
         <include>
             <pose>-0.1 0.77 0.515 0 0 0</pose>
             <uri>model://gantry</uri>
+        </include>
+
+        <include>
+            <pose>2.0 0.0 1.0 0 0.2 3.14159</pose>
+            <uri>model://kinect</uri>
         </include>
     </world>
 </sdf>
