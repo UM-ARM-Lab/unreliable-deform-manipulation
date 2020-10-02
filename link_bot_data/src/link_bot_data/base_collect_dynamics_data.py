@@ -151,9 +151,10 @@ class DataCollector:
             action_rng = np.random.RandomState(seed)
 
             # Randomize the environment
-            if not self.params['no_objects'] and traj_idx % self.params[
-                "randomize_environment_every_n_trajectories"] == 0:
-                self.scenario.randomize_environment(env_rng, objects_params=self.params,
+            randomize = self.params["randomize_n"] and traj_idx % self.params["randomize_n"] == 0
+            if not self.params['no_objects'] and randomize:
+                self.scenario.randomize_environment(env_rng,
+                                                    objects_params=self.params,
                                                     data_collection_params=self.params)
 
             # Generate a new trajectory

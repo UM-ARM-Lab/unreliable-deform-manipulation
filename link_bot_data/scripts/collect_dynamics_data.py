@@ -6,6 +6,7 @@ import pathlib
 import colorama
 import numpy as np
 
+import moveit_commander
 import rospy
 from link_bot_data import base_collect_dynamics_data
 from link_bot_pycommon.args import my_formatter
@@ -23,6 +24,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("service_provider", choices=['victor', 'gazebo'], default='gazebo', help='victor or gazebo')
     parser.add_argument("scenario", type=str, help='scenario')
+    parser.add_argument("robot_name", type=str, help='robot_name')
     parser.add_argument("collect_dynamics_params", type=pathlib.Path, help="json file with envrionment parameters")
     parser.add_argument("n_trajs", type=int, help='how many trajectories to collect')
     parser.add_argument("nickname")
@@ -32,6 +34,7 @@ def main():
 
     args = parser.parse_args()
 
+    moveit_commander.roscpp_initialize(args=[])
     rospy.init_node('collect_dynamics_data')
 
     with args.collect_dynamics_params.open("r") as f:

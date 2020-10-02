@@ -6,6 +6,7 @@
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <std_srvs/SetBool.h>
 
 #include <gazebo/common/Events.hh>
 #include <gazebo/common/Plugin.hh>
@@ -17,10 +18,12 @@ namespace gazebo
 {
 class DualGripperPlugin : public ModelPlugin
 {
-public:
+ public:
   ~DualGripperPlugin() override;
 
   void Load(physics::ModelPtr parent, sdf::ElementPtr sdf) override;
+
+  bool OnEnable(std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res);
 
   bool OnAction(peter_msgs::DualGripperTrajectoryRequest &req, peter_msgs::DualGripperTrajectoryResponse &res);
 
@@ -28,7 +31,7 @@ public:
 
   bool OnSet(peter_msgs::SetDualGripperPointsRequest &req, peter_msgs::SetDualGripperPointsResponse &res);
 
-private:
+ private:
   void QueueThread();
 
   void PrivateQueueThread();
@@ -38,10 +41,10 @@ private:
   event::ConnectionPtr update_connection_;
   physics::ModelPtr model_;
   physics::WorldPtr world_;
-  physics::LinkPtr gripper1_;
-  physics::LinkPtr gripper2_;
+  physics::LinkPtr left_gripper_;
+  physics::LinkPtr right_gripper_;
 
-  bool interrupted_{ false };
+  bool interrupted_{false};
 
   std::unique_ptr<ros::NodeHandle> private_ros_node_;
   ros::NodeHandle ros_node_;
@@ -49,13 +52,14 @@ private:
   ros::CallbackQueue private_queue_;
   std::thread ros_queue_thread_;
   std::thread private_ros_queue_thread_;
+  ros::ServiceServer enable_service_;
   ros::ServiceServer action_service_;
   ros::ServiceServer get_service_;
   ros::ServiceServer set_service_;
   ros::Publisher joint_states_pub_;
   ros::Subscriber interrupt_sub_;
-  ros::ServiceServer get_gripper1_service_;
-  ros::ServiceServer get_gripper2_service_;
+  ros::ServiceServer get_left_gripper_service_;
+  ros::ServiceServer get_right_gripper_service_;
 };
 
 }  // namespace gazebo

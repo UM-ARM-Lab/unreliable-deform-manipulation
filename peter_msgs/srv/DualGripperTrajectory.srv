@@ -1,5 +1,5 @@
-geometry_msgs/Point[] gripper1_points
-geometry_msgs/Point[] gripper2_points
+geometry_msgs/Point[] left_gripper_points
+geometry_msgs/Point[] right_gripper_points
 float32 settling_time_seconds
 ---
 bool merged_trajectory_empty

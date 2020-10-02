@@ -7,11 +7,21 @@
 
 #include <cstdio>
 #include <gazebo/common/Time.hh>
-#include <gazebo/common/Timer.hh>
 #include <memory>
 #include <sstream>
 
-#include "enumerate.h"
+#include <arc_utilities/enumerate.h>
+
+/**
+ * This plugin offers the following ROS API
+ * Services:
+ * - set_rope_state
+ *   - type: peter_msgs::SetRopeState
+ * - get_rope_state
+ *   - type: peter_msgs::GetRopeState
+ * - rope_overstretched
+ *   - type: peter_msgs::GetBool
+ */
 
 namespace gazebo
 {
@@ -30,12 +40,12 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
   }
 
   rope_link1_ = GetLink(PLUGIN_NAME, model_, "rope_link_1");
-  gripper1_ = GetLink(PLUGIN_NAME, model_, "gripper1");
-  gripper2_ = GetLink(PLUGIN_NAME, model_, "gripper2");
-  if (gripper1_ and rope_link1_)
+  left_gripper_ = GetLink(PLUGIN_NAME, model_, "left_gripper");
+  right_gripper_ = GetLink(PLUGIN_NAME, model_, "right_gripper");
+  if (left_gripper_ and rope_link1_)
   {
-    rest_distance_between_gripper1_and_link_1_ =
-        (gripper1_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
+    rest_distance_between_left_gripper_and_link_1_ =
+        (left_gripper_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
   }
 
   auto set_state_bind = [this](auto &&req, auto &&res) { return SetRopeState(req, res); };
@@ -85,10 +95,10 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
       joint->SetPosition(1, req.joint_angles_axis2[i]);
     }
   }
-  if (gripper1_ and gripper2_)
+  if (left_gripper_ and right_gripper_)
   {
-    gripper1_->SetWorldPose({ req.gripper1.x, req.gripper1.y, req.gripper1.z, 0, 0, 0 });
-    gripper2_->SetWorldPose({ req.gripper2.x, req.gripper2.y, req.gripper2.z, 0, 0, 0 });
+    left_gripper_->SetWorldPose({ req.left_gripper.x, req.left_gripper.y, req.left_gripper.z, 0, 0, 0 });
+    right_gripper_->SetWorldPose({ req.right_gripper.x, req.right_gripper.y, req.right_gripper.z, 0, 0, 0 });
   }
   else
   {
@@ -165,12 +175,12 @@ bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::G
   (void)req;  // unused
 
   // check the distance between the position of rope_link_1 and gripper_1
-  if (not gripper1_ or not rope_link1_)
+  if (not left_gripper_ or not rope_link1_)
   {
     return false;
   }
-  auto const distance = (gripper1_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
-  res.data = distance > (rest_distance_between_gripper1_and_link_1_ * overstretching_factor_);
+  auto const distance = (left_gripper_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
+  res.data = distance > (rest_distance_between_left_gripper_and_link_1_ * overstretching_factor_);
   return true;
 }
 

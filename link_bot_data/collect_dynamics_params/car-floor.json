@@ -1,5 +1,5 @@
 {
-  "scene": "car2",
+  "scene": "car",
   "left_gripper_reset_position": [
     -0.2,
     0.1,
@@ -85,17 +85,9 @@
   "steps_per_traj": 20,
   "trajs_per_file": 1,
   "no_objects": false,
-  "objects": [
-    "box2",
-    "hook1",
-    "hook2",
-    "car_alternator",
-    "car_engine2",
-    "car_pulley"
-  ],
-  "randomize_environment_every_n_trajectories": 8,
+  "objects": [],
+  "randomize_n": null,
   "repeat_delta_gripper_motion_probability": 0.8,
-  "include_joint_states": false,
   "max_distance_gripper_can_move": 0.10,
   "max_distance_between_grippers": 0.70
 }

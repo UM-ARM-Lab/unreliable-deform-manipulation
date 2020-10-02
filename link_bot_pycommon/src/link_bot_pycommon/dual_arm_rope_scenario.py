@@ -1,62 +1,80 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 
-import actionlib
 import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
+from arm_robots.hdt_michigan import Val
+from arm_robots.victor import Victor
+from gazebo_ros_link_attacher.srv import Attach, AttachRequest
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
 from link_bot_pycommon.grid_utils import extent_array_to_bbox
-from link_bot_pycommon.moveit_utils import make_moveit_action_goal
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from moveit_msgs.msg import MoveItErrorCodes, MoveGroupAction
-from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest
+from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, SetDualGripperPoints
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty, SetBoolRequest
+
+
+def get_moveit_robot(robot_namespace: Optional[str] = None):
+    if robot_namespace is None:
+        robot_namespace = rospy.get_namespace().strip("/")
+    if robot_namespace == 'victor':
+        return Victor(robot_namespace)
+    elif robot_namespace in ['val', 'hdt_michigan']:
+        return Val(robot_namespace)
+    else:
+        raise NotImplementedError(f"robot with namespace {robot_namespace} not implemented")
+
+
+def attach_or_detach_requests():
+    robot_name = rospy.get_namespace().strip("/")
+
+    left_req = AttachRequest()
+    left_req.model_name_1 = robot_name
+    left_req.link_name_1 = "left_tool_placeholder"
+    left_req.model_name_2 = "rope_3d"
+    left_req.link_name_2 = "left_gripper"
+    left_req.anchor_position.x = 0
+    left_req.anchor_position.y = 0
+    left_req.anchor_position.z = 0
+    left_req.has_anchor_position = True
+
+    right_req = AttachRequest()
+    right_req.model_name_1 = robot_name
+    right_req.link_name_1 = "right_tool_placeholder"
+    right_req.model_name_2 = "rope_3d"
+    right_req.link_name_2 = "right_gripper"
+    right_req.anchor_position.x = 0
+    right_req.anchor_position.y = 0
+    right_req.anchor_position.z = 0
+    right_req.has_anchor_position = True
+
+    return left_req, right_req
 
 
 class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
     def __init__(self):
         super().__init__()
-        # TODO: robot_name?
-        robot_name = 'victor'
-        self.joint_states_listener = Listener(f"{robot_name}/joint_states", JointState)
+        self.service_provider = GazeboServices()  # FIXME: won't work on real robot...
+        self.joint_states_listener = Listener("joint_states", JointState)
         self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
-
-        self.service_provider = GazeboServices()
+        self.set_dual_gripper_srv = rospy.ServiceProxy("/rope_3d/set_dual_gripper_points", SetDualGripperPoints)
+        self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
+        self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
+        self.robot = get_moveit_robot()
 
     def reset_robot(self, data_collection_params: Dict):
         if data_collection_params['scene'] == 'tabletop':
-            moveit_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
-            moveit_client.wait_for_server()
-            joint_names = data_collection_params['home']['name']
-            joint_positions = data_collection_params['home']['position']
-            goal = make_moveit_action_goal(joint_names, joint_positions)
-            moveit_client.send_goal(goal)
-            moveit_client.wait_for_result()
-            result = moveit_client.get_result()
-            if result.error_code.val != MoveItErrorCodes.SUCCESS:
-                print("Error! code " + str(result.error_code.val))
-
+            self.robot.plan_to_joint_config("both_arms", data_collection_params['home']['position'])
         elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
-            positions = np.array(data_collection_params['reset_robot']['position'])
-            names = data_collection_params['reset_robot']['name']
-
-            goal = make_moveit_action_goal(names, positions)
-            self.move_group_client.send_goal(goal)
-            self.move_group_client.wait_for_result()
-            result = self.move_group_client.get_result()
-
-            if result.error_code.val != MoveItErrorCodes.SUCCESS:
-                rospy.logwarn(f"Failed to reset robot. Running hard reset.")
-                self.hard_reset()
+            raise NotImplementedError()
 
     def get_state(self):
-        joint_state = self.joint_states_listener.get()
+        joint_state = self.joint_states_listener.get(block_until_data=False)
         while True:
             try:
                 rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -79,8 +97,8 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
         grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
         return {
-            'gripper1': ros_numpy.numpify(grippers_res.gripper1),
-            'gripper2': ros_numpy.numpify(grippers_res.gripper2),
+            'left_gripper': ros_numpy.numpify(grippers_res.left_gripper),
+            'right_gripper': ros_numpy.numpify(grippers_res.right_gripper),
             'link_bot': np.array(rope_state_vector, np.float32),
             'joint_positions': joint_state.position,
             'joint_names': joint_state.name,
@@ -91,8 +109,8 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         # FIXME:
         n_joints = 7 + 7 + 14
         return {
-            'gripper1': 3,
-            'gripper2': 3,
+            'left_gripper': 3,
+            'right_gripper': 3,
             'link_bot': DualArmRopeScenario.n_links * 3,
             'joint_positions': n_joints
         }
@@ -121,6 +139,20 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
 
     def simple_name(self):
         return "dual_arm"
+
+    def on_before_data_collection(self):
+        self.service_provider.pause()
+        self.move_rope_to_match_grippers()
+        self.attach_rope_to_grippers()
+        self.service_provider.play()
+        left_gripper_position = np.array([-0.2, 0.5, 0.3])
+        right_gripper_position = np.array([0.2, -0.5, 0.3])
+        init_action = {
+            'left_gripper_position': left_gripper_position,
+            'right_gripper_position': right_gripper_position,
+            'speed': 0.25,
+        }
+        self.execute_action(init_action)
 
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         raise NotImplementedError()
@@ -164,30 +196,38 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         # wait a second so that the rope can drape on the objects
         self.settle()
 
-        if 'gripper1_action_sample_extent' in data_collection_params:
-            gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
+        if 'left_gripper_action_sample_extent' in data_collection_params:
+            left_gripper_extent = np.array(data_collection_params['left_gripper_action_sample_extent']).reshape([3, 2])
         else:
-            gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-        gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
-        gripper1_bbox_msg.header.frame_id = 'world'
-        self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
+            left_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        left_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
+        left_gripper_bbox_msg.header.frame_id = 'world'
+        self.left_gripper_bbox_pub.publish(left_gripper_bbox_msg)
 
-        if 'gripper2_action_sample_extent' in data_collection_params:
-            gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
+        if 'right_gripper_action_sample_extent' in data_collection_params:
+            right_gripper_extent = np.array(data_collection_params['right_gripper_action_sample_extent']).reshape([3, 2])
         else:
-            gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-        gripper2_bbox_msg = extent_array_to_bbox(gripper1_extent)
-        gripper2_bbox_msg.header.frame_id = 'world'
-        self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
+            right_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+        right_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
+        right_gripper_bbox_msg.header.frame_id = 'world'
+        self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
 
-        gripper1_position = env_rng.uniform(gripper1_extent[:, 0], gripper1_extent[:, 1])
-        gripper2_position = env_rng.uniform(gripper2_extent[:, 0], gripper2_extent[:, 1])
+        left_gripper_position = env_rng.uniform(left_gripper_extent[:, 0], left_gripper_extent[:, 1])
+        right_gripper_position = env_rng.uniform(right_gripper_extent[:, 0], right_gripper_extent[:, 1])
         return_action = {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position
+            'left_gripper_position': left_gripper_position,
+            'right_gripper_position': right_gripper_position
         }
         self.execute_action(return_action)
         self.settle()
+
+    def execute_action(self, action: Dict):
+        speed = action['speed']
+        left_gripper_points = [action['left_gripper_position']]
+        right_gripper_points = [action['right_gripper_position']]
+        tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
+        grippers = [left_gripper_points, right_gripper_points]
+        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers, speed)
 
     def get_environment(self, params: Dict, **kwargs):
         # FIXME: implement
@@ -196,3 +236,29 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
                                               res=res,
                                               service_provider=self.service_provider,
                                               robot_name=self.robot_name())
+
+    @staticmethod
+    def robot_name():
+        raise NotImplementedError()
+
+    def attach_rope_to_grippers(self):
+        left_req, right_req = attach_or_detach_requests()
+        self.attach_srv(left_req)
+        self.attach_srv(right_req)
+
+    def detach_rope_to_grippers(self):
+        left_req, right_req = attach_or_detach_requests()
+        self.detach_srv(left_req)
+        self.detach_srv(right_req)
+
+    def move_rope_to_match_grippers(self):
+        left_transform = self.tf.get_transform("robot_root", "left_tool_placeholder")
+        right_transform = self.tf.get_transform("robot_root", "right_tool_placeholder")
+        move = SetDualGripperPointsRequest()
+        move.left_gripper.x = left_transform[0, 3]
+        move.left_gripper.y = left_transform[1, 3]
+        move.left_gripper.z = left_transform[2, 3]
+        move.right_gripper.x = right_transform[0, 3]
+        move.right_gripper.y = right_transform[1, 3]
+        move.right_gripper.z = right_transform[2, 3]
+        self.set_dual_gripper_srv(move)

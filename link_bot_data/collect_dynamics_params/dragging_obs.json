@@ -48,6 +48,6 @@
   "max_distance_gripper_can_move": 0.15,
   "steps_per_traj": 50,
   "trajs_per_file": 32,
-  "randomize_environment_every_n_trajectories": 8,
+  "randomize_n": 8,
   "no_objects": false
 }

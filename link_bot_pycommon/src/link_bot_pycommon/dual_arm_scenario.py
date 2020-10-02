@@ -18,9 +18,7 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
 
     def __init__(self):
         super().__init__()
-        # TODO: robot_name?
-        robot_name = 'victor'
-        self.joint_states_listener = Listener(f"{robot_name}/joint_states", JointState)
+        self.joint_states_listener = Listener(f"joint_states", JointState)
         self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
 

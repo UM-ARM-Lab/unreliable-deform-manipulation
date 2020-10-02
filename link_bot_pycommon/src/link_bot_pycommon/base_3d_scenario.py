@@ -33,11 +33,6 @@ class Base3DScenario(ExperimentScenario):
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
         self.recovery_probability_viz_pub = rospy.Publisher(
             "recovery_probability_viz", Float32, queue_size=10, latch=True)
-        try:
-            import tf2_ros
-            self.broadcaster = tf2_ros.StaticTransformBroadcaster()
-        except ImportError:
-            self.broadcaster = None
 
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
@@ -90,7 +85,7 @@ class Base3DScenario(ExperimentScenario):
         self.env_bbox_pub.publish(bbox_msg)
 
     def send_occupancy_tf(self, environment: Dict):
-        grid_utils.send_occupancy_tf(self.broadcaster, environment)
+        grid_utils.send_occupancy_tf(self.tf.tf_broadcaster, environment)
 
     def plot_sampled_goal_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#EB322F')

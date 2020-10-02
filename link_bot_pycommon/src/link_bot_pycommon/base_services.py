@@ -13,12 +13,12 @@ class BaseServices:
     def __init__(self):
         self.service_names = []
 
-        self.world_control = self.add_required_service('world_control', WorldControl)
-        self.get_physics = self.add_required_service('gazebo/get_physics_properties', GetPhysicsProperties)
-        self.set_physics = self.add_required_service('gazebo/set_physics_properties', SetPhysicsProperties)
+        self.world_control = self.add_required_service('/world_control', WorldControl)
+        self.get_physics = self.add_required_service('/gazebo/get_physics_properties', GetPhysicsProperties)
+        self.set_physics = self.add_required_service('/gazebo/set_physics_properties', SetPhysicsProperties)
 
         # services we don't absolute want to wait for on startup
-        self.compute_occupancy = rospy.ServiceProxy('occupancy', ComputeOccupancy)
+        self.compute_occupancy = rospy.ServiceProxy('/occupancy', ComputeOccupancy)
         self.record = rospy.ServiceProxy('video_recorder', TriggerVideoRecording)
 
     def wait_for_services(self):

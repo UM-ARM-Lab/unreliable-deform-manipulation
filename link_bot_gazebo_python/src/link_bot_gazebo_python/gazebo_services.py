@@ -2,8 +2,10 @@ import pathlib
 
 import rosbag
 import roslaunch
+import rospy
 from gazebo_msgs.srv import SetPhysicsPropertiesRequest, GetPhysicsPropertiesRequest, SetLinkState, SetLinkStateRequest
 from link_bot_pycommon.base_services import BaseServices
+from std_srvs.srv import EmptyRequest, Empty
 
 
 class GazeboServices(BaseServices):
@@ -13,7 +15,16 @@ class GazeboServices(BaseServices):
         self.max_step_size = None
         self.gazebo_process = None
 
-        self.set_link_state = self.add_required_service('gazebo/set_link_state', SetLinkState)
+        # Yes, absolute paths here are what I want. I don't want these namespaced by the robot
+        self.set_link_state = self.add_required_service('/gazebo/set_link_state', SetLinkState)
+        self.pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+        self.play_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
+        self.is_sim = True
+        try:
+            self.play_srv.wait_for_service(0.1)
+            self.pause_srv.wait_for_service(0.1)
+        except rospy.ServiceException:
+            self.is_sim = False
 
     def restore_from_bag(self, bagfile_name: pathlib.Path):
         # run a few times to really make sure it happens
@@ -69,3 +80,11 @@ class GazeboServices(BaseServices):
         self.max_step_size = max_step_size
         set_physics_msg.time_step = max_step_size
         self.set_physics.call(set_physics_msg)
+
+    def play(self):
+        if self.is_sim:
+            self.play_srv(EmptyRequest())
+
+    def pause(self):
+        if self.is_sim:
+            self.pause_srv(EmptyRequest())

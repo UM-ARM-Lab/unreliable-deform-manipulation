@@ -6,12 +6,10 @@ import ompl.control as oc
 import tensorflow as tf
 from matplotlib import colors
 
-import actionlib
 import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
-from arm_robots_msgs.msg import Points
-from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
+from arm_robots_msgs.srv import GrippersTrajectory
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.visualization import rviz_arrow
@@ -22,7 +20,6 @@ from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, e
 from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
-from moveit_msgs.msg import MoveGroupAction
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest
 from sensor_msgs.msg import Image
@@ -130,14 +127,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
         self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
         self.reset_srv = rospy.ServiceProxy("gazebo/reset_simulation", Empty)
-        self.gripper1_bbox_pub = rospy.Publisher('gripper1_bbox_pub', BoundingBox, queue_size=10, latch=True)
-        self.gripper2_bbox_pub = rospy.Publisher('gripper2_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.left_gripper_bbox_pub = rospy.Publisher('left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.right_gripper_bbox_pub = rospy.Publisher('right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
 
         self.max_action_attempts = 500
 
         self.robot_reset_rng = np.random.RandomState(0)
-
-        self.move_group_client = None
 
     def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
         return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(final_state.values(), goal.values())])
@@ -152,14 +147,14 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.reset_srv(EmptyRequest())
 
     def randomization_initialization(self):
-        self.move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
+        pass
 
     def on_before_data_collection(self):
-        gripper1_position = np.array([1.0, 0.2, 1.0])
-        gripper2_position = np.array([1.0, -0.2, 1.0])
+        left_gripper_position = np.array([1.0, 0.2, 1.0])
+        right_gripper_position = np.array([1.0, -0.2, 1.0])
         init_action = {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position,
+            'left_gripper_position': left_gripper_position,
+            'right_gripper_position': right_gripper_position,
             'speed': 0.25,
         }
         self.execute_action(init_action)
@@ -168,12 +163,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         reset = SetRopeStateRequest()
 
         # TODO: rename this to rope endpoints reset positions or something
-        reset.gripper1.x = numpify(data_collection_params['left_gripper_reset_position'][0])
-        reset.gripper1.y = numpify(data_collection_params['left_gripper_reset_position'][1])
-        reset.gripper1.z = numpify(data_collection_params['left_gripper_reset_position'][2])
-        reset.gripper2.x = numpify(data_collection_params['right_gripper_reset_position'][0])
-        reset.gripper2.y = numpify(data_collection_params['right_gripper_reset_position'][1])
-        reset.gripper2.z = numpify(data_collection_params['right_gripper_reset_position'][2])
+        reset.left_gripper.x = numpify(data_collection_params['left_gripper_reset_position'][0])
+        reset.left_gripper.y = numpify(data_collection_params['left_gripper_reset_position'][1])
+        reset.left_gripper.z = numpify(data_collection_params['left_gripper_reset_position'][2])
+        reset.right_gripper.x = numpify(data_collection_params['right_gripper_reset_position'][0])
+        reset.right_gripper.y = numpify(data_collection_params['right_gripper_reset_position'][1])
+        reset.right_gripper.z = numpify(data_collection_params['right_gripper_reset_position'][2])
 
         self.set_rope_state_srv(reset)
 
@@ -201,18 +196,18 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         displacement2 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
 
         random_directions_1 = directions_3d(pitch_1, yaw_1)
-        gripper1_delta_position = random_directions_1 * displacement1[:, :, :, tf.newaxis]
+        left_gripper_delta_position = random_directions_1 * displacement1[:, :, :, tf.newaxis]
 
         random_directions_2 = directions_3d(pitch_2, yaw_2)
-        gripper2_delta_position = random_directions_2 * displacement2[:, :, :, tf.newaxis]
+        right_gripper_delta_position = random_directions_2 * displacement2[:, :, :, tf.newaxis]
 
         # Apply delta
-        gripper1_position = state['gripper1'][:, tf.newaxis, tf.newaxis] + gripper1_delta_position
-        gripper2_position = state['gripper2'][:, tf.newaxis, tf.newaxis] + gripper2_delta_position
+        left_gripper_position = state['left_gripper'][:, tf.newaxis, tf.newaxis] + left_gripper_delta_position
+        right_gripper_position = state['right_gripper'][:, tf.newaxis, tf.newaxis] + right_gripper_delta_position
 
         actions = {
-            'gripper1_position': gripper1_position,
-            'gripper2_position': gripper2_position,
+            'left_gripper_position': left_gripper_position,
+            'right_gripper_position': right_gripper_position,
             'speed': action_params['speed'],
         }
         return actions
@@ -230,8 +225,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             # move in the same direction as the previous action with some probability
             repeat_probability = data_collection_params['repeat_delta_gripper_motion_probability']
             if not no_repeat and self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
-                gripper1_delta_position = self.last_action['gripper1_delta_position']
-                gripper2_delta_position = self.last_action['gripper2_delta_position']
+                left_gripper_delta_position = self.last_action['left_gripper_delta_position']
+                right_gripper_delta_position = self.last_action['right_gripper_delta_position']
             else:
                 # Sample a new random action
                 pitch_1 = action_rng.uniform(-np.pi, np.pi)
@@ -242,46 +237,46 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 displacement2 = action_rng.uniform(0, action_params['max_distance_gripper_can_move'])
 
                 rotation_matrix_1 = transformations.euler_matrix(0, pitch_1, yaw_1)
-                gripper1_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * displacement1
-                gripper1_delta_position = gripper1_delta_position_homo[:3]
+                left_gripper_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * displacement1
+                left_gripper_delta_position = left_gripper_delta_position_homo[:3]
 
                 rotation_matrix_2 = transformations.euler_matrix(0, pitch_2, yaw_2)
-                gripper2_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * displacement2
-                gripper2_delta_position = gripper2_delta_position_homo[:3]
+                right_gripper_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * displacement2
+                right_gripper_delta_position = right_gripper_delta_position_homo[:3]
 
             # Apply delta and check for out of bounds
-            gripper1_position = state['gripper1'] + gripper1_delta_position
-            gripper2_position = state['gripper2'] + gripper2_delta_position
+            left_gripper_position = state['left_gripper'] + left_gripper_delta_position
+            right_gripper_position = state['right_gripper'] + right_gripper_delta_position
 
             action = {
-                'gripper1_position': gripper1_position,
-                'gripper2_position': gripper2_position,
-                'gripper1_delta_position': gripper1_delta_position,
-                'gripper2_delta_position': gripper2_delta_position,
+                'left_gripper_position': left_gripper_position,
+                'right_gripper_position': right_gripper_position,
+                'left_gripper_delta_position': left_gripper_delta_position,
+                'right_gripper_delta_position': right_gripper_delta_position,
                 'speed': action_params['speed'],
             }
-            out_of_bounds = DualFloatingGripperRopeScenario.grippers_out_of_bounds(gripper1_position,
-                                                                                   gripper2_position,
+            out_of_bounds = DualFloatingGripperRopeScenario.grippers_out_of_bounds(left_gripper_position,
+                                                                                   right_gripper_position,
                                                                                    data_collection_params)
 
             max_gripper_d = default_if_none(data_collection_params['max_distance_between_grippers'], 1000)
-            too_far = np.linalg.norm(gripper1_position - gripper2_position) > max_gripper_d
+            too_far = np.linalg.norm(left_gripper_position - right_gripper_position) > max_gripper_d
 
-            if 'gripper1_action_sample_extent' in data_collection_params:
-                gripper1_extent = np.array(data_collection_params['gripper1_action_sample_extent']).reshape([3, 2])
+            if 'left_gripper_action_sample_extent' in data_collection_params:
+                left_gripper_extent = np.array(data_collection_params['left_gripper_action_sample_extent']).reshape([3, 2])
             else:
-                gripper1_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-            gripper1_bbox_msg = extent_array_to_bbox(gripper1_extent)
-            gripper1_bbox_msg.header.frame_id = 'world'
-            self.gripper1_bbox_pub.publish(gripper1_bbox_msg)
+                left_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+            left_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
+            left_gripper_bbox_msg.header.frame_id = 'world'
+            self.left_gripper_bbox_pub.publish(left_gripper_bbox_msg)
 
-            if 'gripper2_action_sample_extent' in data_collection_params:
-                gripper2_extent = np.array(data_collection_params['gripper2_action_sample_extent']).reshape([3, 2])
+            if 'right_gripper_action_sample_extent' in data_collection_params:
+                right_gripper_extent = np.array(data_collection_params['right_gripper_action_sample_extent']).reshape([3, 2])
             else:
-                gripper2_extent = np.array(data_collection_params['extent']).reshape([3, 2])
-            gripper2_bbox_msg = extent_array_to_bbox(gripper2_extent)
-            gripper2_bbox_msg.header.frame_id = 'world'
-            self.gripper2_bbox_pub.publish(gripper2_bbox_msg)
+                right_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+            right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
+            right_gripper_bbox_msg.header.frame_id = 'world'
+            self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
             if not out_of_bounds and not too_far:
                 self.last_action = action
                 return action
@@ -290,11 +285,11 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return action
 
     @staticmethod
-    def grippers_out_of_bounds(gripper1, gripper2, data_collection_params: Dict):
-        gripper1_extent = data_collection_params['gripper1_action_sample_extent']
-        gripper2_extent = data_collection_params['gripper2_action_sample_extent']
-        return DualFloatingGripperRopeScenario.is_out_of_bounds(gripper1, gripper1_extent) \
-               or DualFloatingGripperRopeScenario.is_out_of_bounds(gripper2, gripper2_extent)
+    def grippers_out_of_bounds(left_gripper, right_gripper, data_collection_params: Dict):
+        left_gripper_extent = data_collection_params['left_gripper_action_sample_extent']
+        right_gripper_extent = data_collection_params['right_gripper_action_sample_extent']
+        return DualFloatingGripperRopeScenario.is_out_of_bounds(left_gripper, left_gripper_extent) \
+               or DualFloatingGripperRopeScenario.is_out_of_bounds(right_gripper, right_gripper_extent)
 
     @staticmethod
     def is_out_of_bounds(p, extent):
@@ -306,26 +301,26 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def interpolate(start_state, end_state, step_size=0.05):
-        gripper1_start = np.array(start_state['gripper1'])
-        gripper1_end = np.array(end_state['gripper1'])
+        left_gripper_start = np.array(start_state['left_gripper'])
+        left_gripper_end = np.array(end_state['left_gripper'])
 
-        gripper2_start = np.array(start_state['gripper2'])
-        gripper2_end = np.array(end_state['gripper2'])
+        right_gripper_start = np.array(start_state['right_gripper'])
+        right_gripper_end = np.array(end_state['right_gripper'])
 
-        gripper1_delta = gripper1_end - gripper1_start
-        gripper2_delta = gripper2_end - gripper2_start
+        left_gripper_delta = left_gripper_end - left_gripper_start
+        right_gripper_delta = right_gripper_end - right_gripper_start
 
-        gripper1_steps = np.round(np.linalg.norm(gripper1_delta) / step_size).astype(np.int64)
-        gripper2_steps = np.round(np.linalg.norm(gripper2_delta) / step_size).astype(np.int64)
-        steps = max(gripper1_steps, gripper2_steps)
+        left_gripper_steps = np.round(np.linalg.norm(left_gripper_delta) / step_size).astype(np.int64)
+        right_gripper_steps = np.round(np.linalg.norm(right_gripper_delta) / step_size).astype(np.int64)
+        steps = max(left_gripper_steps, right_gripper_steps)
 
         interpolated_actions = []
         for t in np.linspace(step_size, 1, steps):
-            gripper1_i = gripper1_start + gripper1_delta * t
-            gripper2_i = gripper2_start + gripper2_delta * t
+            left_gripper_i = left_gripper_start + left_gripper_delta * t
+            right_gripper_i = right_gripper_start + right_gripper_delta * t
             action = {
-                'gripper1_position': gripper1_i,
-                'gripper2_position': gripper2_i,
+                'left_gripper_position': left_gripper_i,
+                'right_gripper_position': right_gripper_i,
             }
             interpolated_actions.append(action)
 
@@ -333,35 +328,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def robot_name():
-        return "kinematic_rope"
+        return "rope_3d"
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
         pass
-
-    def execute_action(self, action: Dict):
-        target_left_gripper_point = ros_numpy.msgify(Point, action['gripper1_position'])
-
-        target_right_gripper_point = ros_numpy.msgify(Point, action['gripper2_position'])
-
-        req = GrippersTrajectoryRequest()
-        req.speed = action['speed']
-        left_gripper_points = Points()
-        left_gripper_points.points.append(target_left_gripper_point)
-        right_gripper_points = Points()
-        right_gripper_points.points.append(target_right_gripper_point)
-        req.grippers.append(left_gripper_points)
-        req.grippers.append(right_gripper_points)
-        req.group_name = "both_arms"
-        req.tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
-
-        while True:
-            try:
-                _ = self.action_srv(req)
-                break
-            except Exception as e:
-                print(e)
-                input("Did you forget to start the shim?")
-                pass
 
     @staticmethod
     def put_state_in_robot_frame(state: Dict):
@@ -371,15 +341,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         # This assumes robot is at 0 0 0
         robot_position = tf.constant([[0, 0, 0]], tf.float32)
-        gripper1_robot = state['gripper1']
-        gripper2_robot = state['gripper2']
+        left_gripper_robot = state['left_gripper']
+        right_gripper_robot = state['right_gripper']
 
         rope_points_robot = rope_points - tf.expand_dims(robot_position, axis=-2)
         rope_robot = tf.reshape(rope_points_robot, rope.shape)
 
         return {
-            'gripper1': gripper1_robot,
-            'gripper2': gripper2_robot,
+            'left_gripper': left_gripper_robot,
+            'right_gripper': right_gripper_robot,
             'link_bot': rope_robot,
         }
 
@@ -391,15 +361,15 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         center = tf.reduce_mean(rope_points, axis=-2)
 
-        gripper1_local = state['gripper1'] - center
-        gripper2_local = state['gripper2'] - center
+        left_gripper_local = state['left_gripper'] - center
+        right_gripper_local = state['right_gripper'] - center
 
         rope_points_local = rope_points - tf.expand_dims(center, axis=-2)
         rope_local = tf.reshape(rope_points_local, rope.shape)
 
         return {
-            'gripper1': gripper1_local,
-            'gripper2': gripper2_local,
+            'left_gripper': left_gripper_local,
+            'right_gripper': right_gripper_local,
             'link_bot': rope_local,
         }
 
@@ -413,17 +383,17 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def apply_local_action_at_state(state, local_action):
         return {
-            'gripper1_position': state['gripper1'] + local_action['gripper1_delta'],
-            'gripper2_position': state['gripper2'] + local_action['gripper2_delta']
+            'left_gripper_position': state['left_gripper'] + local_action['left_gripper_delta'],
+            'right_gripper_position': state['right_gripper'] + local_action['right_gripper_delta']
         }
 
     @staticmethod
     def add_noise(action: Dict, noise_rng: np.random.RandomState):
-        gripper1_noise = noise_rng.normal(scale=0.01, size=[3])
-        gripper2_noise = noise_rng.normal(scale=0.01, size=[3])
+        left_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
+        right_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         return {
-            'gripper1_position': action['gripper1_position'] + gripper1_noise,
-            'gripper2_position': action['gripper2_position'] + gripper2_noise
+            'left_gripper_position': action['left_gripper_position'] + left_gripper_noise,
+            'right_gripper_position': action['right_gripper_position'] + right_gripper_noise
         }
 
     @staticmethod
@@ -432,24 +402,24 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def put_action_local_frame(state: Dict, action: Dict):
-        target_gripper1_position = action['gripper1_position']
-        target_gripper2_position = action['gripper2_position']
+        target_left_gripper_position = action['left_gripper_position']
+        target_right_gripper_position = action['right_gripper_position']
 
-        current_gripper1_point = state['gripper1']
-        current_gripper2_point = state['gripper2']
+        current_left_gripper_point = state['left_gripper']
+        current_right_gripper_point = state['right_gripper']
 
-        gripper1_delta = target_gripper1_position - current_gripper1_point
-        gripper2_delta = target_gripper2_position - current_gripper2_point
+        left_gripper_delta = target_left_gripper_position - current_left_gripper_point
+        right_gripper_delta = target_right_gripper_position - current_right_gripper_point
 
         return {
-            'gripper1_delta': gripper1_delta,
-            'gripper2_delta': gripper2_delta,
+            'left_gripper_delta': left_gripper_delta,
+            'right_gripper_delta': right_gripper_delta,
         }
 
     @staticmethod
     def state_to_gripper_position(state: Dict):
-        gripper_position1 = np.reshape(state['gripper1'], [3])
-        gripper_position2 = np.reshape(state['gripper2'], [3])
+        gripper_position1 = np.reshape(state['left_gripper'], [3])
+        gripper_position2 = np.reshape(state['right_gripper'], [3])
         return gripper_position1, gripper_position2
 
     def get_state(self):
@@ -504,8 +474,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope_velocity_vector.append(v.z)
 
         return {
-            'gripper1': ros_numpy.numpify(grippers_res.gripper1),
-            'gripper2': ros_numpy.numpify(grippers_res.gripper2),
+            'left_gripper': ros_numpy.numpify(grippers_res.left_gripper),
+            'right_gripper': ros_numpy.numpify(grippers_res.right_gripper),
             'link_bot': np.array(rope_state_vector, np.float32),
             'color_depth_image': color_depth_cropped,
         }
@@ -513,8 +483,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def observations_description() -> Dict:
         return {
-            'gripper1': 3,
-            'gripper2': 3,
+            'left_gripper': 3,
+            'right_gripper': 3,
             'color_depth_image': IMAGE_H * IMAGE_W * 4,
         }
 
@@ -525,8 +495,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def observation_features_description() -> Dict:
         return {
-            'gripper1': 3,
-            'gripper2': 3,
+            'left_gripper': 3,
+            'right_gripper': 3,
             'link_bot': DualFloatingGripperRopeScenario.n_links * 3,
         }
 
@@ -534,8 +504,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
-            'gripper1_position': 3,
-            'gripper2_position': 3,
+            'left_gripper_position': 3,
+            'right_gripper_position': 3,
             'speed': 1,
         }
 
@@ -557,16 +527,16 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         while True:
             extent = np.array(goal_extent).reshape(3, 2)
-            gripper1 = rng.uniform(extent[:, 0], extent[:, 1])
-            gripper2 = rng.uniform(extent[:, 0], extent[:, 1])
+            left_gripper = rng.uniform(extent[:, 0], extent[:, 1])
+            right_gripper = rng.uniform(extent[:, 0], extent[:, 1])
             goal = {
-                'gripper1': gripper1,
-                'gripper2': gripper2,
+                'left_gripper': left_gripper,
+                'right_gripper': right_gripper,
             }
             row1, col1, channel1 = grid_utils.point_to_idx_3d_in_env(
-                gripper1[0], gripper1[1], gripper1[2], environment)
+                left_gripper[0], left_gripper[1], left_gripper[2], environment)
             row2, col2, channel2 = grid_utils.point_to_idx_3d_in_env(
-                gripper2[0], gripper2[1], gripper2[2], environment)
+                right_gripper[0], right_gripper[1], right_gripper[2], environment)
             collision1 = env_inflated[row1, col1, channel1] > 0.5
             collision2 = env_inflated[row2, col2, channel2] > 0.5
             if not collision1 and not collision2:
@@ -580,10 +550,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_gripper_goal(state: Dict, goal: Dict):
-        gripper1 = state['gripper1']
-        gripper2 = state['gripper2']
-        distance1 = np.linalg.norm(goal['gripper1'] - gripper1)
-        distance2 = np.linalg.norm(goal['gripper2'] - gripper2)
+        left_gripper = state['left_gripper']
+        right_gripper = state['right_gripper']
+        distance1 = np.linalg.norm(goal['left_gripper'] - left_gripper)
+        distance2 = np.linalg.norm(goal['right_gripper'] - right_gripper)
         return max(distance1, distance2)
 
     def sample_midpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
@@ -613,10 +583,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                                    rope_points, axis=1)[n_from_ends:-n_from_ends]
         rope_distance = np.min(distances)
 
-        gripper1 = state['gripper1']
-        gripper2 = state['gripper2']
-        distance1 = np.linalg.norm(goal['gripper1'] - gripper1)
-        distance2 = np.linalg.norm(goal['gripper2'] - gripper2)
+        left_gripper = state['left_gripper']
+        right_gripper = state['right_gripper']
+        distance1 = np.linalg.norm(goal['left_gripper'] - left_gripper)
+        distance2 = np.linalg.norm(goal['right_gripper'] - right_gripper)
         return max(max(distance1, distance2), rope_distance)
 
     @staticmethod
@@ -723,47 +693,47 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             point_marker.pose.orientation.w = 1
             goal_marker_msg.markers.append(point_marker)
 
-        if 'gripper1' in goal:
-            gripper1_marker = Marker()
-            gripper1_marker.scale.x = goal_threshold * 2
-            gripper1_marker.scale.y = goal_threshold * 2
-            gripper1_marker.scale.z = goal_threshold * 2
-            gripper1_marker.action = Marker.ADD
-            gripper1_marker.type = Marker.SPHERE
-            gripper1_marker.header.frame_id = "world"
-            gripper1_marker.header.stamp = rospy.Time.now()
-            gripper1_marker.ns = 'goal'
-            gripper1_marker.id = 1
-            gripper1_marker.color.r = r
-            gripper1_marker.color.g = g
-            gripper1_marker.color.b = b
-            gripper1_marker.color.a = a
-            gripper1_marker.pose.position.x = goal['gripper1'][0]
-            gripper1_marker.pose.position.y = goal['gripper1'][1]
-            gripper1_marker.pose.position.z = goal['gripper1'][2]
-            gripper1_marker.pose.orientation.w = 1
-            goal_marker_msg.markers.append(gripper1_marker)
+        if 'left_gripper' in goal:
+            left_gripper_marker = Marker()
+            left_gripper_marker.scale.x = goal_threshold * 2
+            left_gripper_marker.scale.y = goal_threshold * 2
+            left_gripper_marker.scale.z = goal_threshold * 2
+            left_gripper_marker.action = Marker.ADD
+            left_gripper_marker.type = Marker.SPHERE
+            left_gripper_marker.header.frame_id = "world"
+            left_gripper_marker.header.stamp = rospy.Time.now()
+            left_gripper_marker.ns = 'goal'
+            left_gripper_marker.id = 1
+            left_gripper_marker.color.r = r
+            left_gripper_marker.color.g = g
+            left_gripper_marker.color.b = b
+            left_gripper_marker.color.a = a
+            left_gripper_marker.pose.position.x = goal['left_gripper'][0]
+            left_gripper_marker.pose.position.y = goal['left_gripper'][1]
+            left_gripper_marker.pose.position.z = goal['left_gripper'][2]
+            left_gripper_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(left_gripper_marker)
 
-        if 'gripper2' in goal:
-            gripper2_marker = Marker()
-            gripper2_marker.scale.x = goal_threshold * 2
-            gripper2_marker.scale.y = goal_threshold * 2
-            gripper2_marker.scale.z = goal_threshold * 2
-            gripper2_marker.action = Marker.ADD
-            gripper2_marker.type = Marker.SPHERE
-            gripper2_marker.header.frame_id = "world"
-            gripper2_marker.header.stamp = rospy.Time.now()
-            gripper2_marker.ns = 'goal'
-            gripper2_marker.id = 2
-            gripper2_marker.color.r = r
-            gripper2_marker.color.g = g
-            gripper2_marker.color.b = b
-            gripper2_marker.color.a = a
-            gripper2_marker.pose.position.x = goal['gripper2'][0]
-            gripper2_marker.pose.position.y = goal['gripper2'][1]
-            gripper2_marker.pose.position.z = goal['gripper2'][2]
-            gripper2_marker.pose.orientation.w = 1
-            goal_marker_msg.markers.append(gripper2_marker)
+        if 'right_gripper' in goal:
+            right_gripper_marker = Marker()
+            right_gripper_marker.scale.x = goal_threshold * 2
+            right_gripper_marker.scale.y = goal_threshold * 2
+            right_gripper_marker.scale.z = goal_threshold * 2
+            right_gripper_marker.action = Marker.ADD
+            right_gripper_marker.type = Marker.SPHERE
+            right_gripper_marker.header.frame_id = "world"
+            right_gripper_marker.header.stamp = rospy.Time.now()
+            right_gripper_marker.ns = 'goal'
+            right_gripper_marker.id = 2
+            right_gripper_marker.color.r = r
+            right_gripper_marker.color.g = g
+            right_gripper_marker.color.b = b
+            right_gripper_marker.color.a = a
+            right_gripper_marker.pose.position.x = goal['right_gripper'][0]
+            right_gripper_marker.pose.position.y = goal['right_gripper'][1]
+            right_gripper_marker.pose.position.z = goal['right_gripper'][2]
+            right_gripper_marker.pose.orientation.w = 1
+            goal_marker_msg.markers.append(right_gripper_marker)
 
         self.state_viz_pub.publish(goal_marker_msg)
 
@@ -793,29 +763,29 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             point_marker.color.a = a
             goal_marker_msg.markers.append(point_marker)
 
-        if 'gripper1_box' in goal:
-            gripper1_marker = make_box_marker_from_extents(goal['gripper1_box'])
-            gripper1_marker.header.frame_id = "world"
-            gripper1_marker.header.stamp = rospy.Time.now()
-            gripper1_marker.ns = 'goal'
-            gripper1_marker.id = 1
-            gripper1_marker.color.r = r
-            gripper1_marker.color.g = g
-            gripper1_marker.color.b = b
-            gripper1_marker.color.a = a
-            goal_marker_msg.markers.append(gripper1_marker)
+        if 'left_gripper_box' in goal:
+            left_gripper_marker = make_box_marker_from_extents(goal['left_gripper_box'])
+            left_gripper_marker.header.frame_id = "world"
+            left_gripper_marker.header.stamp = rospy.Time.now()
+            left_gripper_marker.ns = 'goal'
+            left_gripper_marker.id = 1
+            left_gripper_marker.color.r = r
+            left_gripper_marker.color.g = g
+            left_gripper_marker.color.b = b
+            left_gripper_marker.color.a = a
+            goal_marker_msg.markers.append(left_gripper_marker)
 
-        if 'gripper2_box' in goal:
-            gripper2_marker = make_box_marker_from_extents(goal['gripper2_box'])
-            gripper2_marker.header.frame_id = "world"
-            gripper2_marker.header.stamp = rospy.Time.now()
-            gripper2_marker.ns = 'goal'
-            gripper2_marker.id = 2
-            gripper2_marker.color.r = r
-            gripper2_marker.color.g = g
-            gripper2_marker.color.b = b
-            gripper2_marker.color.a = a
-            goal_marker_msg.markers.append(gripper2_marker)
+        if 'right_gripper_box' in goal:
+            right_gripper_marker = make_box_marker_from_extents(goal['right_gripper_box'])
+            right_gripper_marker.header.frame_id = "world"
+            right_gripper_marker.header.stamp = rospy.Time.now()
+            right_gripper_marker.ns = 'goal'
+            right_gripper_marker.id = 2
+            right_gripper_marker.color.r = r
+            right_gripper_marker.color.g = g
+            right_gripper_marker.color.b = b
+            right_gripper_marker.color.a = a
+            goal_marker_msg.markers.append(right_gripper_marker)
 
         self.state_viz_pub.publish(goal_marker_msg)
 
@@ -904,78 +874,78 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             spheres.points.append(point)
             lines.points.append(point)
 
-        gripper1_sphere = Marker()
-        gripper1_sphere.action = Marker.ADD  # create or modify
-        gripper1_sphere.type = Marker.SPHERE
-        gripper1_sphere.header.frame_id = "world"
-        gripper1_sphere.header.stamp = rospy.Time.now()
-        gripper1_sphere.ns = label
-        gripper1_sphere.id = 6 * idx + 2
+        left_gripper_sphere = Marker()
+        left_gripper_sphere.action = Marker.ADD  # create or modify
+        left_gripper_sphere.type = Marker.SPHERE
+        left_gripper_sphere.header.frame_id = "world"
+        left_gripper_sphere.header.stamp = rospy.Time.now()
+        left_gripper_sphere.ns = label
+        left_gripper_sphere.id = 6 * idx + 2
 
-        gripper1_sphere.scale.x = 0.02
-        gripper1_sphere.scale.y = 0.02
-        gripper1_sphere.scale.z = 0.02
+        left_gripper_sphere.scale.x = 0.02
+        left_gripper_sphere.scale.y = 0.02
+        left_gripper_sphere.scale.z = 0.02
 
-        gripper1_sphere.pose.position.x = state['gripper1'][0]
-        gripper1_sphere.pose.position.y = state['gripper1'][1]
-        gripper1_sphere.pose.position.z = state['gripper1'][2]
-        gripper1_sphere.pose.orientation.x = 0
-        gripper1_sphere.pose.orientation.y = 0
-        gripper1_sphere.pose.orientation.z = 0
-        gripper1_sphere.pose.orientation.w = 1
+        left_gripper_sphere.pose.position.x = state['left_gripper'][0]
+        left_gripper_sphere.pose.position.y = state['left_gripper'][1]
+        left_gripper_sphere.pose.position.z = state['left_gripper'][2]
+        left_gripper_sphere.pose.orientation.x = 0
+        left_gripper_sphere.pose.orientation.y = 0
+        left_gripper_sphere.pose.orientation.z = 0
+        left_gripper_sphere.pose.orientation.w = 1
 
-        gripper1_sphere.color.r = 0.2
-        gripper1_sphere.color.g = 0.2
-        gripper1_sphere.color.b = 0.8
-        gripper1_sphere.color.a = a
+        left_gripper_sphere.color.r = 0.2
+        left_gripper_sphere.color.g = 0.2
+        left_gripper_sphere.color.b = 0.8
+        left_gripper_sphere.color.a = a
 
-        gripper2_sphere = Marker()
-        gripper2_sphere.action = Marker.ADD  # create or modify
-        gripper2_sphere.type = Marker.SPHERE
-        gripper2_sphere.header.frame_id = "world"
-        gripper2_sphere.header.stamp = rospy.Time.now()
-        gripper2_sphere.ns = label
-        gripper2_sphere.id = 6 * idx + 3
+        right_gripper_sphere = Marker()
+        right_gripper_sphere.action = Marker.ADD  # create or modify
+        right_gripper_sphere.type = Marker.SPHERE
+        right_gripper_sphere.header.frame_id = "world"
+        right_gripper_sphere.header.stamp = rospy.Time.now()
+        right_gripper_sphere.ns = label
+        right_gripper_sphere.id = 6 * idx + 3
 
-        gripper2_sphere.scale.x = 0.02
-        gripper2_sphere.scale.y = 0.02
-        gripper2_sphere.scale.z = 0.02
+        right_gripper_sphere.scale.x = 0.02
+        right_gripper_sphere.scale.y = 0.02
+        right_gripper_sphere.scale.z = 0.02
 
-        gripper2_sphere.pose.position.x = state['gripper2'][0]
-        gripper2_sphere.pose.position.y = state['gripper2'][1]
-        gripper2_sphere.pose.position.z = state['gripper2'][2]
-        gripper2_sphere.pose.orientation.x = 0
-        gripper2_sphere.pose.orientation.y = 0
-        gripper2_sphere.pose.orientation.z = 0
-        gripper2_sphere.pose.orientation.w = 1
+        right_gripper_sphere.pose.position.x = state['right_gripper'][0]
+        right_gripper_sphere.pose.position.y = state['right_gripper'][1]
+        right_gripper_sphere.pose.position.z = state['right_gripper'][2]
+        right_gripper_sphere.pose.orientation.x = 0
+        right_gripper_sphere.pose.orientation.y = 0
+        right_gripper_sphere.pose.orientation.z = 0
+        right_gripper_sphere.pose.orientation.w = 1
 
-        gripper2_sphere.color.r = 0.8
-        gripper2_sphere.color.g = 0.2
-        gripper2_sphere.color.b = 0.2
-        gripper2_sphere.color.a = a
+        right_gripper_sphere.color.r = 0.8
+        right_gripper_sphere.color.g = 0.2
+        right_gripper_sphere.color.b = 0.2
+        right_gripper_sphere.color.a = a
 
-        gripper1_text = Marker()
-        gripper1_text.action = Marker.ADD  # create or modify
-        gripper1_text.type = Marker.TEXT_VIEW_FACING
-        gripper1_text.header.frame_id = "world"
-        gripper1_text.header.stamp = rospy.Time.now()
-        gripper1_text.ns = label
-        gripper1_text.id = 6 * idx + 4
-        gripper1_text.text = "L"
-        gripper1_text.scale.z = 0.015
+        left_gripper_text = Marker()
+        left_gripper_text.action = Marker.ADD  # create or modify
+        left_gripper_text.type = Marker.TEXT_VIEW_FACING
+        left_gripper_text.header.frame_id = "world"
+        left_gripper_text.header.stamp = rospy.Time.now()
+        left_gripper_text.ns = label
+        left_gripper_text.id = 6 * idx + 4
+        left_gripper_text.text = "L"
+        left_gripper_text.scale.z = 0.015
 
-        gripper1_text.pose.position.x = state['gripper1'][0]
-        gripper1_text.pose.position.y = state['gripper1'][1]
-        gripper1_text.pose.position.z = state['gripper1'][2] + 0.015
-        gripper1_text.pose.orientation.x = 0
-        gripper1_text.pose.orientation.y = 0
-        gripper1_text.pose.orientation.z = 0
-        gripper1_text.pose.orientation.w = 1
+        left_gripper_text.pose.position.x = state['left_gripper'][0]
+        left_gripper_text.pose.position.y = state['left_gripper'][1]
+        left_gripper_text.pose.position.z = state['left_gripper'][2] + 0.015
+        left_gripper_text.pose.orientation.x = 0
+        left_gripper_text.pose.orientation.y = 0
+        left_gripper_text.pose.orientation.z = 0
+        left_gripper_text.pose.orientation.w = 1
 
-        gripper1_text.color.r = 1.0
-        gripper1_text.color.g = 1.0
-        gripper1_text.color.b = 1.0
-        gripper1_text.color.a = 1.0
+        left_gripper_text.color.r = 1.0
+        left_gripper_text.color.g = 1.0
+        left_gripper_text.color.b = 1.0
+        left_gripper_text.color.a = 1.0
 
         midpoint_sphere = Marker()
         midpoint_sphere.action = Marker.ADD  # create or modify
@@ -1004,9 +974,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         midpoint_sphere.color.a = a
 
         msg.markers.append(spheres)
-        msg.markers.append(gripper1_sphere)
-        msg.markers.append(gripper2_sphere)
-        msg.markers.append(gripper1_text)
+        msg.markers.append(left_gripper_sphere)
+        msg.markers.append(right_gripper_sphere)
+        msg.markers.append(left_gripper_text)
         msg.markers.append(lines)
         msg.markers.append(midpoint_sphere)
         self.state_viz_pub.publish(msg)
@@ -1027,10 +997,10 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        s1 = np.reshape(data['gripper1'], [3])
-        s2 = np.reshape(data['gripper2'], [3])
-        a1 = np.reshape(data['gripper1_position'], [3])
-        a2 = np.reshape(data['gripper2_position'], [3])
+        s1 = np.reshape(data['left_gripper'], [3])
+        s2 = np.reshape(data['right_gripper'], [3])
+        a1 = np.reshape(data['left_gripper_position'], [3])
+        a2 = np.reshape(data['right_gripper_position'], [3])
 
         idx = kwargs.pop("idx", None)
         if idx is not None:
@@ -1049,9 +1019,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def numpy_to_ompl_state1(state_np: Dict, state_out: ob.CompoundState):
         for i in range(3):
-            state_out[0][i] = np.float64(state_np['gripper1'][i])
+            state_out[0][i] = np.float64(state_np['left_gripper'][i])
         for i in range(3):
-            state_out[1][i] = np.float64(state_np['gripper2'][i])
+            state_out[1][i] = np.float64(state_np['right_gripper'][i])
         for i in range(DualFloatingGripperRopeScenario.n_links * 3):
             state_out[2][i] = np.float64(state_np['link_bot'][i])
         state_out[3][0] = np.float64(state_np['stdev'][0])
@@ -1061,9 +1031,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
         rope_points = np.reshape(state_np['link_bot'], [-1, 3])
         for i in range(3):
-            state_out[0][i] = np.float64(state_np['gripper1'][i])
+            state_out[0][i] = np.float64(state_np['left_gripper'][i])
         for i in range(3):
-            state_out[1][i] = np.float64(state_np['gripper2'][i])
+            state_out[1][i] = np.float64(state_np['right_gripper'][i])
         for j in range(DualFloatingGripperRopeScenario.n_links):
             for i in range(3):
                 state_out[2 + j][i] = np.float64(rope_points[j][i])
@@ -1072,8 +1042,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def ompl_state_to_numpy1(ompl_state: ob.CompoundState):
-        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
-        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
+        left_gripper = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        right_gripper = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
         rope = []
         for i in range(DualFloatingGripperRopeScenario.n_links):
             rope.append(ompl_state[2][3 * i + 0])
@@ -1081,8 +1051,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope.append(ompl_state[2][3 * i + 2])
         rope = np.array(rope)
         return {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
+            'left_gripper': left_gripper,
+            'right_gripper': right_gripper,
             'link_bot': rope,
             'stdev': np.array([ompl_state[3][0]]),
             'num_diverged': np.array([ompl_state[4][0]]),
@@ -1090,8 +1060,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
     @staticmethod
     def ompl_state_to_numpy(ompl_state: ob.CompoundState):
-        gripper1 = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
-        gripper2 = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
+        left_gripper = np.array([ompl_state[0][0], ompl_state[0][1], ompl_state[0][2]])
+        right_gripper = np.array([ompl_state[1][0], ompl_state[1][1], ompl_state[1][2]])
         rope = []
         for i in range(DualFloatingGripperRopeScenario.n_links):
             rope.append(ompl_state[2 + i][0])
@@ -1099,8 +1069,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             rope.append(ompl_state[2 + i][2])
         rope = np.array(rope)
         return {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
+            'left_gripper': left_gripper,
+            'right_gripper': right_gripper,
             'link_bot': rope,
             'stdev': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 2][0]]),
             'num_diverged': np.array([ompl_state[DualFloatingGripperRopeScenario.n_links + 3][0]]),
@@ -1109,22 +1079,22 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     @staticmethod
     def ompl_control_to_numpy(ompl_state: ob.CompoundState, ompl_control: oc.CompoundControl):
         state_np = DualFloatingGripperRopeScenario.ompl_state_to_numpy(ompl_state)
-        current_gripper1_position = state_np['gripper1']
-        current_gripper2_position = state_np['gripper2']
+        current_left_gripper_position = state_np['left_gripper']
+        current_right_gripper_position = state_np['right_gripper']
 
         rotation_matrix_1 = transformations.euler_matrix(0, ompl_control[0][0], ompl_control[0][1])
-        gripper1_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * ompl_control[0][2]
-        gripper1_delta_position = gripper1_delta_position_homo[:3]
+        left_gripper_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * ompl_control[0][2]
+        left_gripper_delta_position = left_gripper_delta_position_homo[:3]
 
         rotation_matrix_2 = transformations.euler_matrix(0, ompl_control[1][0], ompl_control[1][1])
-        gripper2_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * ompl_control[1][2]
-        gripper2_delta_position = gripper2_delta_position_homo[:3]
+        right_gripper_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * ompl_control[1][2]
+        right_gripper_delta_position = right_gripper_delta_position_homo[:3]
 
-        target_gripper1_position = current_gripper1_position + gripper1_delta_position
-        target_gripper2_position = current_gripper2_position + gripper2_delta_position
+        target_left_gripper_position = current_left_gripper_position + left_gripper_delta_position
+        target_right_gripper_position = current_right_gripper_position + right_gripper_delta_position
         return {
-            'gripper1_position': target_gripper1_position,
-            'gripper2_position': target_gripper2_position,
+            'left_gripper_position': target_left_gripper_position,
+            'right_gripper_position': target_right_gripper_position,
         }
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
@@ -1165,29 +1135,29 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
 
         min_x, max_x, min_y, max_y, min_z, max_z = planner_params['extent']
 
-        gripper1_subspace = ob.RealVectorStateSpace(3)
-        gripper1_bounds = ob.RealVectorBounds(3)
-        gripper1_bounds.setLow(0, min_x)
-        gripper1_bounds.setHigh(0, max_x)
-        gripper1_bounds.setLow(1, min_y)
-        gripper1_bounds.setHigh(1, max_y)
-        gripper1_bounds.setLow(2, min_z)
-        gripper1_bounds.setHigh(2, max_z)
-        gripper1_subspace.setBounds(gripper1_bounds)
-        gripper1_subspace.setName("gripper1")
-        state_space.addSubspace(gripper1_subspace, weight=1)
+        left_gripper_subspace = ob.RealVectorStateSpace(3)
+        left_gripper_bounds = ob.RealVectorBounds(3)
+        left_gripper_bounds.setLow(0, min_x)
+        left_gripper_bounds.setHigh(0, max_x)
+        left_gripper_bounds.setLow(1, min_y)
+        left_gripper_bounds.setHigh(1, max_y)
+        left_gripper_bounds.setLow(2, min_z)
+        left_gripper_bounds.setHigh(2, max_z)
+        left_gripper_subspace.setBounds(left_gripper_bounds)
+        left_gripper_subspace.setName("left_gripper")
+        state_space.addSubspace(left_gripper_subspace, weight=1)
 
-        gripper2_subspace = ob.RealVectorStateSpace(3)
-        gripper2_bounds = ob.RealVectorBounds(3)
-        gripper2_bounds.setLow(0, min_x)
-        gripper2_bounds.setHigh(0, max_x)
-        gripper2_bounds.setLow(1, min_y)
-        gripper2_bounds.setHigh(1, max_y)
-        gripper2_bounds.setLow(2, min_z)
-        gripper2_bounds.setHigh(2, max_z)
-        gripper2_subspace.setBounds(gripper2_bounds)
-        gripper2_subspace.setName("gripper2")
-        state_space.addSubspace(gripper2_subspace, weight=1)
+        right_gripper_subspace = ob.RealVectorStateSpace(3)
+        right_gripper_bounds = ob.RealVectorBounds(3)
+        right_gripper_bounds.setLow(0, min_x)
+        right_gripper_bounds.setHigh(0, max_x)
+        right_gripper_bounds.setLow(1, min_y)
+        right_gripper_bounds.setHigh(1, max_y)
+        right_gripper_bounds.setLow(2, min_z)
+        right_gripper_bounds.setHigh(2, max_z)
+        right_gripper_subspace.setBounds(right_gripper_bounds)
+        right_gripper_subspace.setName("right_gripper")
+        state_space.addSubspace(right_gripper_subspace, weight=1)
 
         for i in range(DualFloatingGripperRopeScenario.n_links):
             rope_point_subspace = ob.RealVectorStateSpace(3)
@@ -1234,36 +1204,36 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def make_ompl_control_space(self, state_space, rng: np.random.RandomState, action_params: Dict):
         control_space = oc.CompoundControlSpace(state_space)
 
-        gripper1_control_space = oc.RealVectorControlSpace(state_space, 3)
-        gripper1_control_bounds = ob.RealVectorBounds(3)
+        left_gripper_control_space = oc.RealVectorControlSpace(state_space, 3)
+        left_gripper_control_bounds = ob.RealVectorBounds(3)
         # Pitch
-        gripper1_control_bounds.setLow(0, -np.pi)
-        gripper1_control_bounds.setHigh(0, np.pi)
+        left_gripper_control_bounds.setLow(0, -np.pi)
+        left_gripper_control_bounds.setHigh(0, np.pi)
         # Yaw
-        gripper1_control_bounds.setLow(1, -np.pi)
-        gripper1_control_bounds.setHigh(1, np.pi)
+        left_gripper_control_bounds.setLow(1, -np.pi)
+        left_gripper_control_bounds.setHigh(1, np.pi)
         # Displacement
         max_d = action_params['max_distance_gripper_can_move']
-        gripper1_control_bounds.setLow(2, 0)
-        gripper1_control_bounds.setHigh(2, max_d)
-        gripper1_control_space.setBounds(gripper1_control_bounds)
-        control_space.addSubspace(gripper1_control_space)
+        left_gripper_control_bounds.setLow(2, 0)
+        left_gripper_control_bounds.setHigh(2, max_d)
+        left_gripper_control_space.setBounds(left_gripper_control_bounds)
+        control_space.addSubspace(left_gripper_control_space)
 
-        gripper2_control_space = oc.RealVectorControlSpace(state_space, 3)
-        gripper2_control_bounds = ob.RealVectorBounds(3)
+        right_gripper_control_space = oc.RealVectorControlSpace(state_space, 3)
+        right_gripper_control_bounds = ob.RealVectorBounds(3)
         # Pitch
-        gripper2_control_bounds.setLow(0, -np.pi)
-        gripper2_control_bounds.setHigh(0, np.pi)
+        right_gripper_control_bounds.setLow(0, -np.pi)
+        right_gripper_control_bounds.setHigh(0, np.pi)
         # Yaw
-        gripper2_control_bounds.setLow(1, -np.pi)
-        gripper2_control_bounds.setHigh(1, np.pi)
+        right_gripper_control_bounds.setLow(1, -np.pi)
+        right_gripper_control_bounds.setHigh(1, np.pi)
         # Displacement
         max_d = action_params['max_distance_gripper_can_move']
-        gripper2_control_bounds.setLow(2, 0)
-        gripper2_control_bounds.setHigh(2, max_d)
+        right_gripper_control_bounds.setLow(2, 0)
+        right_gripper_control_bounds.setHigh(2, max_d)
 
-        gripper2_control_space.setBounds(gripper2_control_bounds)
-        control_space.addSubspace(gripper2_control_space)
+        right_gripper_control_space.setBounds(right_gripper_control_bounds)
+        control_space.addSubspace(right_gripper_control_space)
 
         def _allocator(cs):
             return DualGripperControlSampler(cs, scenario=self, rng=rng, action_params=action_params)
@@ -1356,8 +1326,8 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
         random_point_rope = np.concatenate([random_point] * DualFloatingGripperRopeScenario.n_links)
         state_np = {
-            'gripper1': random_point,
-            'gripper2': random_point,
+            'left_gripper': random_point,
+            'right_gripper': random_point,
             'link_bot': random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
@@ -1404,13 +1374,13 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         # don't bother trying to sample "legit" rope states, because this is only used to bias sampling towards the goal
         # so just prenteing every point on therope is at the goal should be sufficient
         rope = sample_rope_grippers(self.rng,
-                                    self.goal['gripper1'],
-                                    self.goal['gripper2'],
+                                    self.goal['left_gripper'],
+                                    self.goal['right_gripper'],
                                     DualFloatingGripperRopeScenario.n_links)
 
         goal_state_np = {
-            'gripper1': self.goal['gripper1'],
-            'gripper2': self.goal['gripper2'],
+            'left_gripper': self.goal['left_gripper'],
+            'right_gripper': self.goal['right_gripper'],
             'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
@@ -1462,12 +1432,12 @@ class RopeMidpointGoalRegion(ob.GoalSampleableRegion):
         kd = 0.04
         rope = sample_rope(self.rng, self.goal['midpoint'], DualFloatingGripperRopeScenario.n_links, kd)
         # gripper 1 is attached to the last link
-        gripper1 = rope[-1] + self.rng.uniform(-kd, kd, 3)
-        gripper2 = rope[0] + self.rng.uniform(-kd, kd, 3)
+        left_gripper = rope[-1] + self.rng.uniform(-kd, kd, 3)
+        right_gripper = rope[0] + self.rng.uniform(-kd, kd, 3)
 
         goal_state_np = {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
+            'left_gripper': left_gripper,
+            'right_gripper': right_gripper,
             'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
@@ -1519,12 +1489,12 @@ class RopeAnyPointGoalRegion(ob.GoalSampleableRegion):
         kd = 0.05
         rope = sample_rope(self.rng, self.goal['point'], DualFloatingGripperRopeScenario.n_links, kd)
         # gripper 1 is attached to the last link
-        gripper1 = rope[-1] + self.rng.uniform(-kd, kd, 3)
-        gripper2 = rope[0] + self.rng.uniform(-kd, kd, 3)
+        left_gripper = rope[-1] + self.rng.uniform(-kd, kd, 3)
+        right_gripper = rope[0] + self.rng.uniform(-kd, kd, 3)
 
         goal_state_np = {
-            'gripper1': gripper1,
-            'gripper2': gripper2,
+            'left_gripper': left_gripper,
+            'right_gripper': right_gripper,
             'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
@@ -1568,13 +1538,13 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
         # attempt to sample "legit" rope states
         kd = 0.05
         rope = sample_rope_and_grippers(
-            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'],
+            self.rng, self.goal['left_gripper'], self.goal['right_gripper'], self.goal['point'],
             DualFloatingGripperRopeScenario.n_links,
             kd)
 
         goal_state_np = {
-            'gripper1': self.goal['gripper1'],
-            'gripper2': self.goal['gripper2'],
+            'left_gripper': self.goal['left_gripper'],
+            'right_gripper': self.goal['right_gripper'],
             'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
@@ -1611,32 +1581,32 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
         n_from_ends = 7
         near_center_rope_points = rope_points[n_from_ends:-n_from_ends]
 
-        gripper1_extent = np.reshape(self.goal['gripper1_box'], [3, 2])
-        gripper1_satisfied = np.logical_and(
-            state_np['gripper1'] >= gripper1_extent[:, 0], state_np['gripper1'] <= gripper1_extent[:, 1])
+        left_gripper_extent = np.reshape(self.goal['left_gripper_box'], [3, 2])
+        left_gripper_satisfied = np.logical_and(
+            state_np['left_gripper'] >= left_gripper_extent[:, 0], state_np['left_gripper'] <= left_gripper_extent[:, 1])
 
-        gripper2_extent = np.reshape(self.goal['gripper2_box'], [3, 2])
-        gripper2_satisfied = np.logical_and(
-            state_np['gripper2'] >= gripper2_extent[:, 0], state_np['gripper2'] <= gripper2_extent[:, 1])
+        right_gripper_extent = np.reshape(self.goal['right_gripper_box'], [3, 2])
+        right_gripper_satisfied = np.logical_and(
+            state_np['right_gripper'] >= right_gripper_extent[:, 0], state_np['right_gripper'] <= right_gripper_extent[:, 1])
 
         point_extent = np.reshape(self.goal['point_box'], [3, 2])
         points_satisfied = np.logical_and(near_center_rope_points >=
                                           point_extent[:, 0], near_center_rope_points <= point_extent[:, 1])
         any_point_satisfied = np.reduce_any(points_satisfied)
 
-        return float(any_point_satisfied and gripper1_satisfied and gripper2_satisfied)
+        return float(any_point_satisfied and left_gripper_satisfied and right_gripper_satisfied)
 
     def sampleGoal(self, state_out: ob.CompoundState):
         # attempt to sample "legit" rope states
         kd = 0.05
         rope = sample_rope_and_grippers(
-            self.rng, self.goal['gripper1'], self.goal['gripper2'], self.goal['point'],
+            self.rng, self.goal['left_gripper'], self.goal['right_gripper'], self.goal['point'],
             DualFloatingGripperRopeScenario.n_links,
             kd)
 
         goal_state_np = {
-            'gripper1': self.goal['gripper1'],
-            'gripper2': self.goal['gripper2'],
+            'left_gripper': self.goal['left_gripper'],
+            'right_gripper': self.goal['right_gripper'],
             'link_bot': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),

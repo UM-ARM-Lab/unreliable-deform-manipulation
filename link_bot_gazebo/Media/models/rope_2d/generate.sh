@@ -1,0 +1,1 @@
+n_links=10 mass=0.1 length=0.5 radius=0.01 erb rope_2d.erb > rope_2d.sdf

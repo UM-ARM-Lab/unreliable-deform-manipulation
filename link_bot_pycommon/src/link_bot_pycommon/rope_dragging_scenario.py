@@ -420,7 +420,7 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def robot_name():
-        return "dragging_rope"
+        return "rope_2d"
 
     @staticmethod
     def dynamics_loss_function(dataset_element, predictions):

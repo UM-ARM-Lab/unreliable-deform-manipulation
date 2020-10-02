@@ -41,11 +41,11 @@ private:
 
   physics::ModelPtr model_;
   physics::LinkPtr rope_link1_;
-  physics::LinkPtr gripper1_;
-  physics::LinkPtr gripper2_;
+  physics::LinkPtr left_gripper_;
+  physics::LinkPtr right_gripper_;
   event::ConnectionPtr updateConnection_;
   double length_{ 0.0 };
-  double rest_distance_between_gripper1_and_link_1_{ 0.0 };
+  double rest_distance_between_left_gripper_and_link_1_{ 0.0 };
   unsigned int num_links_{ 0U };
   ros::NodeHandle ros_node_;
   ros::ServiceServer set_state_service_;

@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "enumerate.h"
+#include <arc_utilities/enumerate.h>
 
 #define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)

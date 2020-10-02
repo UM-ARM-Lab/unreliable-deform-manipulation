@@ -3,6 +3,7 @@ from typing import Dict, Optional
 import numpy as np
 
 import rospy
+from arc_utilities.ros_helpers import TF2Wrapper
 from geometry_msgs.msg import Vector3
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from moonshine.moonshine_utils import numpify
@@ -14,6 +15,7 @@ class ExperimentScenario:
     def __init__(self):
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
+        self.tf = TF2Wrapper()
 
     def __eq__(self, other):
         if isinstance(other, str):

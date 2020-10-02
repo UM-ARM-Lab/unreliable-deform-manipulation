@@ -7,6 +7,7 @@ link_mass = mass/n_links
 color = "Red"%>
 <sdf version="1.6">
     <model name="dragging_rope">
+        <allow_auto_disable>true</allow_auto_disable>
         <pose frame="">0 0 <%=radius/2%> 0 0 0</pose>
         <% for i in 1..n_links %>
         <link name="rope_link_<%=i%>">
@@ -180,7 +181,6 @@ color = "Red"%>
             <overstretching_factor>1.3</overstretching_factor>
         </plugin>
         <plugin name='position_3d_plugin' filename='libposition_3d_plugin.so'>
-            <object_name>gripper</object_name>
             <gravity_compensation>true</gravity_compensation>
             <kP_pos>5</kP_pos>
             <kD_pos>0.0</kD_pos>

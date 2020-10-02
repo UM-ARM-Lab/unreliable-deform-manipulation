@@ -35,8 +35,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("kP_pos"))
     {
       printf("using default kP_pos=%f\n", kP_pos_);
-    }
-    else
+    } else
     {
       kP_pos_ = sdf->GetElement("kP_pos")->Get<double>();
     }
@@ -44,8 +43,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("kD_pos"))
     {
       printf("using default kD_pos=%f\n", kD_pos_);
-    }
-    else
+    } else
     {
       kD_pos_ = sdf->GetElement("kD_pos")->Get<double>();
     }
@@ -53,8 +51,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("max_vel"))
     {
       printf("using default max_vel=%f\n", max_vel_);
-    }
-    else
+    } else
     {
       max_vel_ = sdf->GetElement("max_vel")->Get<double>();
     }
@@ -62,8 +59,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("kP_vel"))
     {
       printf("using default kP_vel=%f\n", kP_vel_);
-    }
-    else
+    } else
     {
       kP_vel_ = sdf->GetElement("kP_vel")->Get<double>();
     }
@@ -71,8 +67,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("kI_vel"))
     {
       printf("using default kI_vel=%f\n", kI_vel_);
-    }
-    else
+    } else
     {
       kI_vel_ = sdf->GetElement("kI_vel")->Get<double>();
     }
@@ -80,8 +75,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("kD_vel"))
     {
       printf("using default kD_vel=%f\n", kD_vel_);
-    }
-    else
+    } else
     {
       kD_vel_ = sdf->GetElement("kD_vel")->Get<double>();
     }
@@ -89,8 +83,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (!sdf->HasElement("max_force"))
     {
       printf("using default max_force=%f\n", max_force_);
-    }
-    else
+    } else
     {
       max_force_ = sdf->GetElement("max_force")->Get<double>();
     }
@@ -103,8 +96,7 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     if (sdf->HasElement("link"))
     {
       this->link_name_ = sdf->Get<std::string>("link");
-    }
-    else
+    } else
     {
       ROS_FATAL_STREAM("The position 3d plugin requires a `link` parameter tag");
       return;
@@ -134,13 +126,15 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     private_ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
 
     {
-      auto stop_bind = [this](std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res) { return OnStop(req, res); };
+      auto stop_bind = [this](std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
+      { return OnStop(req, res); };
       auto stop_so = create_service_options(std_srvs::Empty, "stop", stop_bind);
       stop_service_ = private_ros_node_->advertiseService(stop_so);
     }
 
     {
-      auto enable_bind = [this](peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res) {
+      auto enable_bind = [this](peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res)
+      {
         return OnEnable(req, res);
       };
       auto enable_so = create_service_options(peter_msgs::Position3DEnable, "enable", enable_bind);
@@ -148,7 +142,8 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
 
     {
-      auto pos_move_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res) {
+      auto pos_move_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
+      {
         return OnMove(req, res);
       };
       auto pos_move_so = create_service_options(peter_msgs::Position3DAction, "move", pos_move_bind);
@@ -156,7 +151,8 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
 
     {
-      auto pos_set_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res) {
+      auto pos_set_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
+      {
         return OnSet(req, res);
       };
       auto pos_set_so = create_service_options(peter_msgs::Position3DAction, "set", pos_set_bind);
@@ -164,21 +160,25 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
     }
 
     {
-      auto get_pos_bind = [this](peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res) {
+      auto get_pos_bind = [this](peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res)
+      {
         return GetPos(req, res);
       };
       auto get_pos_so = create_service_options(peter_msgs::GetPosition3D, "get", get_pos_bind);
       get_position_service_ = private_ros_node_->advertiseService(get_pos_so);
     }
 
-    ros_queue_thread_ = std::thread([this] { QueueThread(); });
-    private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
+    ros_queue_thread_ = std::thread([this]
+                                    { QueueThread(); });
+    private_ros_queue_thread_ = std::thread([this]
+                                            { PrivateQueueThread(); });
   }
 
   pos_pid_ = common::PID(kP_pos_, 0, kD_pos_, 0, 0, max_vel_, -max_vel_);
   vel_pid_ = common::PID(kP_vel_, 0, kD_vel_, 0, 0, max_force_, -max_force_);
 
-  auto update = [this](common::UpdateInfo const &info) { OnUpdate(info); };
+  auto update = [this](common::UpdateInfo const &info)
+  { OnUpdate(info); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
 
   target_position_ = link_->WorldPose().Pos();
@@ -186,8 +186,8 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 
 void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
 {
-  (void)info;
-  constexpr auto dt{ 0.001 };
+  (void) info;
+  constexpr auto dt{0.001};
 
   auto const pos = link_->WorldPose().Pos();
   auto const vel_ = link_->WorldLinearVel();
@@ -203,11 +203,11 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
     auto const max_i = total_mass_ * model_->GetWorld()->Gravity().Length();
     auto const z_comp = kI_vel_ * z_integral_;
 
+    // FIXME: there's a bug waiting here, one of these branches is wrong...
     if (vel_error.Z() < 0 and z_comp < max_i)
     {
       z_integral_ += -vel_error.Z();
-    }
-    else if (vel_error.Z() > 0 and z_comp > 0)
+    } else if (vel_error.Z() > 0 and z_comp > 0)
     {
       z_integral_ += -vel_error.Z();
     }
@@ -222,8 +222,8 @@ void Position3dPlugin::OnUpdate(common::UpdateInfo const &info)
 
 bool Position3dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyResponse &res)
 {
-  (void)req;
-  (void)res;
+  (void) req;
+  (void) res;
 
   enabled_ = true;
   target_position_ = link_->WorldPose().Pos();
@@ -232,7 +232,7 @@ bool Position3dPlugin::OnStop(std_srvs::EmptyRequest &req, std_srvs::EmptyRespon
 
 bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res)
 {
-  (void)res;
+  (void) res;
   enabled_ = req.enable;
   if (req.enable)
   {
@@ -243,7 +243,7 @@ bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_
 
 bool Position3dPlugin::OnSet(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
 {
-  (void)res;
+  (void) res;
   // Only set the position, don't step physics
   enabled_ = true;
   target_position_.X(req.position.x);
@@ -254,7 +254,7 @@ bool Position3dPlugin::OnSet(peter_msgs::Position3DActionRequest &req, peter_msg
 
 bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
 {
-  (void)res;
+  (void) res;
   enabled_ = true;
   target_position_.X(req.position.x);
   target_position_.Y(req.position.y);
@@ -264,7 +264,7 @@ bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_ms
   auto const steps = static_cast<unsigned int>(req.timeout / seconds_per_step);
 
   // Wait until the setpoint or timeout is reached
-  for (auto i{ 0ul }; i < steps; ++i)
+  for (auto i{0ul}; i < steps; ++i)
   {
     model_->GetWorld()->Step(1);
     auto const reached = pos_error_.Length() < 0.001;
@@ -278,7 +278,7 @@ bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_ms
 
 bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res)
 {
-  (void)req;
+  (void) req;
   auto const pos = link_->WorldPose().Pos();
   res.pos.x = pos.X();
   res.pos.y = pos.Y();

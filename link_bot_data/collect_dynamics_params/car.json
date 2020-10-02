@@ -77,7 +77,7 @@
   "steps_per_traj": 20,
   "trajs_per_file": 1,
   "no_objects": false,
-  "randomize_environment_every_n_trajectories": 8,
+  "randomize_n": 8,
   "repeat_delta_gripper_motion_probability": 0.8,
   "include_joint_states": false,
   "max_distance_gripper_can_move": 0.10,
