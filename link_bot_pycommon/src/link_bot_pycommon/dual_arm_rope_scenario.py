@@ -167,21 +167,17 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         exclude.model_names.append("rope_3d")
         self.exclude_from_planning_scene_srv(exclude)
 
+        # move to init positions
+        self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
+
         # Grasp the rope and move to a certain position to start data collection
         self.service_provider.pause()
         self.move_rope_to_match_grippers()
         self.attach_rope_to_grippers()
         self.service_provider.play()
-        rospy.sleep(5)
-        left_gripper_position = np.array(params['left_gripper_init_position'])
-        right_gripper_position = np.array(params['right_gripper_init_position'])
-        init_action = {
-            'left_gripper_position': left_gripper_position,
-            'right_gripper_position': right_gripper_position,
-            'speed': 0.25,
-        }
-        self.execute_action(init_action)
-        rospy.sleep(5)
+
+        self.robot.close_left_gripper()
+        self.robot.close_right_gripper()
 
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         raise NotImplementedError()
@@ -197,12 +193,11 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         pass
 
     def execute_action(self, action: Dict):
-        speed = action['speed']
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]
         tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
         grippers = [left_gripper_points, right_gripper_points]
-        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers, speed)
+        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
 
     def get_environment(self, params: Dict, **kwargs):
         res = params.get("res", 0.01)
@@ -229,17 +224,11 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         left_transform = self.tf.get_transform("robot_root", "left_tool_placeholder")
         right_transform = self.tf.get_transform("robot_root", "right_tool_placeholder")
         desired_rope_point_positions = np.stack([left_transform[0:3, 3], right_transform[0:3, 3]], axis=0)
-        left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
-        current_rope_point_positions = np.stack([left_rope_point_position, right_rope_point_position], axis=0)
         move = SetDualGripperPointsRequest()
-        distance = np.linalg.norm(current_rope_point_positions - desired_rope_point_positions, axis=-1)
-        n_steps = np.max(distance / step_size)
-        # FIXME: this is a possibly bad idea / won't work, we would need a controller to move the points slowly.
-        for rope_point_positions in np.linspace(current_rope_point_positions, desired_rope_point_positions, n_steps):
-            move.left_gripper.x = rope_point_positions[0, 0]
-            move.left_gripper.y = rope_point_positions[0, 1]
-            move.left_gripper.z = rope_point_positions[0, 2]
-            move.right_gripper.x = rope_point_positions[1, 0]
-            move.right_gripper.y = rope_point_positions[1, 1]
-            move.right_gripper.z = rope_point_positions[1, 2]
-            self.set_rope_end_points_srv(move)
+        move.left_gripper.x = desired_rope_point_positions[0, 0]
+        move.left_gripper.y = desired_rope_point_positions[0, 1]
+        move.left_gripper.z = desired_rope_point_positions[0, 2]
+        move.right_gripper.x = desired_rope_point_positions[1, 0]
+        move.right_gripper.y = desired_rope_point_positions[1, 1]
+        move.right_gripper.z = desired_rope_point_positions[1, 2]
+        self.set_rope_end_points_srv(move)

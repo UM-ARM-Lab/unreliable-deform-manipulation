@@ -74,7 +74,7 @@
 
         <!-- The Rope -->
         <include>
-            <pose>0.0 0.7 0.5 0 0 0</pose>
+            <pose>-0.4 0.6 0.5 0 0 0</pose>
             <uri>model://rope_3d</uri>
         </include>
 

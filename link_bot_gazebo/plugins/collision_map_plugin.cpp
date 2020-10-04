@@ -13,9 +13,9 @@
 
 using namespace gazebo;
 
-const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{ -10000 };
-const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{ 1 };
-const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{ 0 };
+const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{-10000};
+const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{1};
+const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
 /**
  * This plugin moves a sphere along a grid in the world and checks for collision using raw ODE functions
@@ -41,10 +41,12 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
     ros::init(argc, argv, "collision_map_plugin", ros::init_options::NoSigintHandler);
   }
 
-  auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res) {
+  auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res)
+  {
     compute_occupancy_grid(req.h_rows, req.w_cols, req.c_channels, req.center, req.resolution, req.excluded_models);
 
-    auto const grid_float = [&]() {
+    auto const grid_float = [&]()
+    {
       auto const &data = grid_.GetImmutableRawData();
       std::vector<float> flat;
       for (auto const &d : data)
@@ -77,19 +79,39 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
     get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
-  ROS_INFO_STREAM("Finished loading collision map plugin!");
-  ros_queue_thread_ = std::thread([this] { QueueThread(); });
+  ros_queue_thread_ = std::thread([this]
+                                  { QueueThread(); });
+
+  move_sphere_thread_ = std::thread(
+      [this]()
+      {
+        // wait for the model to exist
+        ROS_INFO("waiting for collision_sphere to appear...");
+        while (true)
+        {
+          physics::ModelPtr m = world_->ModelByName("collision_sphere");
+          if (m)
+          {
+            boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
+            // no way we will be in the way of anything 10 meters underground...
+            m->SetWorldPose({0, 0, -10, 0, 0, 0});
+            break;
+          }
+        }
+        ROS_INFO("done waiting for collision_sphere");
+      });
 }
+
 void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
                                                 geometry_msgs::Point center, float resolution,
-                                                std::vector<std::string> const excluded_models)
+                                                std::vector<std::string> const& excluded_models)
 {
   auto const x_width = resolution * w_cols;
   auto const y_height = resolution * h_rows;
   auto const z_size = resolution * c_channels;
   Eigen::Isometry3d origin_transform = Eigen::Isometry3d::Identity();
   origin_transform.translation() =
-      Eigen::Vector3d{ center.x - x_width / 2, center.y - y_height / 2, center.z - z_size / 2 };
+      Eigen::Vector3d{center.x - x_width / 2, center.y - y_height / 2, center.z - z_size / 2};
 
   grid_ = sdf_tools::CollisionMapGrid(origin_transform, "/world", resolution, w_cols, h_rows, c_channels, oob_value);
 
@@ -110,27 +132,26 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
   {
     boost::recursive_mutex::scoped_lock lock(*engine_->GetPhysicsUpdateMutex());
 
-    for (auto x_idx{ 0l }; x_idx < grid_.GetNumXCells(); ++x_idx)
+    for (auto x_idx{0l}; x_idx < grid_.GetNumXCells(); ++x_idx)
     {
-      for (auto y_idx{ 0l }; y_idx < grid_.GetNumYCells(); ++y_idx)
+      for (auto y_idx{0l}; y_idx < grid_.GetNumYCells(); ++y_idx)
       {
-        for (auto z_idx{ 0l }; z_idx < grid_.GetNumZCells(); ++z_idx)
+        for (auto z_idx{0l}; z_idx < grid_.GetNumZCells(); ++z_idx)
         {
           auto const grid_location = grid_.GridIndexToLocation(x_idx, y_idx, z_idx);
-          m_->SetWorldPose({ grid_location[0], grid_location[1], grid_location[2], 0, 0, 0 });
+          m_->SetWorldPose({grid_location[0], grid_location[1], grid_location[2], 0, 0, 0});
           MyIntersection intersection;
-          auto const collision_space = (dGeomID)(ode_->GetSpaceId());
+          auto const collision_space = (dGeomID) (ode_->GetSpaceId());
           dSpaceCollide2(sphere_collision_geom_id, collision_space, &intersection, &nearCallback);
           for (auto const &excluded_model : excluded_models)
           {
-              if (intersection.in_collision and (intersection.name.find(excluded_model) == std::string::npos))
-              {
-                grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
-              }
-              else
-              {
-                grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
-              }
+            if (intersection.in_collision and (intersection.name.find(excluded_model) == std::string::npos))
+            {
+              grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
+            } else
+            {
+              grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
+            }
           }
         }
       }
@@ -166,8 +187,7 @@ void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
   if (dGeomIsSpace(_o2))
   {
     dSpaceCollide2(_o1, _o2, _data, &nearCallback);
-  }
-  else
+  } else
   {
     auto const ode_collision = static_cast<physics::ODECollision *>(dGeomGetData(_o2));
     if (ode_collision)
@@ -178,8 +198,7 @@ void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
       {
         ROS_DEBUG_STREAM("Skipping collision with " << ode_collision->GetScopedName().c_str() << " at " << position[0]
                                                     << "," << position[1] << "," << position[2]);
-      }
-      else
+      } else
       {
         int n = dCollide(_o1, _o2, 1, &contact, sizeof(contact));
         if (n > 0)
@@ -191,8 +210,7 @@ void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
           }
         }
       }
-    }
-    else
+    } else
     {
       intersection->in_collision = false;
     }

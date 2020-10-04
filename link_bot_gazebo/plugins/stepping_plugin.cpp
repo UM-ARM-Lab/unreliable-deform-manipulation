@@ -84,7 +84,7 @@ public:
       }
     });
 
-    printf("Finished loading stepping plugin!\n");
+    ROS_INFO("Finished loading stepping plugin!");
   }
 
   ~SteppingPlugin() override

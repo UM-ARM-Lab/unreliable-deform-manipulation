@@ -30,6 +30,7 @@ class CollisionMapPlugin : public WorldPlugin {
   ros::ServiceServer get_occupancy_service_;
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
+  std::thread move_sphere_thread_;
   physics::PhysicsEnginePtr engine_;
   physics::WorldPtr world_;
   physics::ODEPhysicsPtr ode_;
@@ -52,7 +53,7 @@ class CollisionMapPlugin : public WorldPlugin {
   void QueueThread();
 
   void compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels, geometry_msgs::Point center,
-                              float resolution, std::vector<std::string> excluded_models);
+                              float resolution, const std::vector<std::string>& excluded_models);
 };
 
 }  // namespace gazebo

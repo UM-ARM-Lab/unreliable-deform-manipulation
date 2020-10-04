@@ -154,7 +154,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         init_action = {
             'left_gripper_position': left_gripper_position,
             'right_gripper_position': right_gripper_position,
-            'speed': 0.1,
         }
         self.execute_action(init_action)
 
@@ -207,7 +206,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         actions = {
             'left_gripper_position': left_gripper_position,
             'right_gripper_position': right_gripper_position,
-            'speed': action_params['speed'],
         }
         return actions
 
@@ -252,7 +250,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
                 'right_gripper_position': right_gripper_position,
                 'left_gripper_delta_position': left_gripper_delta_position,
                 'right_gripper_delta_position': right_gripper_delta_position,
-                'speed': action_params['speed'],
             }
             out_of_bounds = DualFloatingGripperRopeScenario.grippers_out_of_bounds(left_gripper_position,
                                                                                    right_gripper_position,
@@ -506,7 +503,6 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return {
             'left_gripper_position': 3,
             'right_gripper_position': 3,
-            'speed': 1,
         }
 
     @staticmethod
