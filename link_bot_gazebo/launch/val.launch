@@ -1,7 +1,7 @@
 <launch>
     <arg name="gui" default="true"/>
     <arg name="verbose" default="true"/>
-    <arg name="world" default="car.world"/>
+    <arg name="world" default="empty.world"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
         <arg name="world" value="$(arg world)"/>

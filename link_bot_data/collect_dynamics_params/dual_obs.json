@@ -1,23 +1,6 @@
 {
   "scene": "tabletop",
-  "home": {
-    "name": [
-      "victor_left_arm_joint_1",
-      "victor_left_arm_joint_2",
-      "victor_left_arm_joint_3",
-      "victor_left_arm_joint_4",
-      "victor_left_arm_joint_5",
-      "victor_left_arm_joint_6",
-      "victor_left_arm_joint_7",
-      "victor_right_arm_joint_1",
-      "victor_right_arm_joint_2",
-      "victor_right_arm_joint_3",
-      "victor_right_arm_joint_4",
-      "victor_right_arm_joint_5",
-      "victor_right_arm_joint_6",
-      "victor_right_arm_joint_7"
-    ],
-    "position": [
+  "reset_joint_config": [
       -1.1462081323840563,
       1.226658522254759,
       2.496373975637866,
@@ -32,17 +15,6 @@
       0.46886492789985645,
       -1.2886398689514698,
       2.035848925520293
-    ]
-  },
-  "left_gripper_reset_position": [
-    1.1,
-    0.15,
-    1.5
-  ],
-  "right_gripper_reset_position": [
-    1.1,
-    -0.15,
-    1.5
   ],
   "extent": [
     0.45,
@@ -86,10 +58,11 @@
     "hook2"
   ],
   "res": 0.02,
-  "max_step_size": 0.01,
+  "max_step_size": 0.001,
   "steps_per_traj": 20,
   "no_objects": false,
   "randomize_n": 8,
+  "speed": 0.1,
   "repeat_delta_gripper_motion_probability": 0.8,
   "max_distance_gripper_can_move": 0.10,
   "max_distance_between_grippers": null

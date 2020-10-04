@@ -101,7 +101,6 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     } else
     {
       this->frame_id_ = _sdf->GetElement("frameId")->Get<std::string>();
-      ROS_WARN_STREAM("Using non-standard frame id " << this->frame_id_);
     }
 
     if (_sdf->HasElement("scalePrimitivesFactor"))

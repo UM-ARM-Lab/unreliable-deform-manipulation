@@ -5,10 +5,14 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/stl.h>
 #include <ros/console.h>
+#include <ros/spinner.h>
 #include <ros/ros.h>
+#include <memory>
 
 namespace py = pybind11;
 
+// this is of course dangerous, but so far I haven't seen any issues
+std::unique_ptr<ros::AsyncSpinner> spinner;
 
 void init_node(std::string const &name,
                std::vector<std::string> argv = {},
@@ -61,6 +65,14 @@ void init_node(std::string const &name,
   };
   std::transform(argv.begin(), argv.end(), std::back_inserter(argv_pointers), convert);
   ros::init(argc, argv_pointers.data(), name);
+
+  spinner = std::make_unique<ros::AsyncSpinner>(1);
+  spinner->start();
+}
+
+void shutdown()
+{
+    ros::shutdown();
 }
 
 
@@ -76,5 +88,9 @@ PYBIND11_MODULE(roscpp_initializer, m)
         py::arg("anonymous") = false,
         py::arg("disable_rosout") = false,
         py::arg("disable_signals") = false
+  );
+  m.def("shutdown",
+        &shutdown,
+        "shutdown"
   );
 }

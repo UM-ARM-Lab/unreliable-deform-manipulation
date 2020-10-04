@@ -1,14 +1,22 @@
 {
   "scene": "car",
-  "left_gripper_reset_position": [
-    -0.2,
-    0.1,
-    0.0
-  ],
-  "right_gripper_reset_position": [
-    0.2,
-    0.1,
-    0.0
+  "reset_joint_config": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
   ],
   "extent": [
     -0.8,

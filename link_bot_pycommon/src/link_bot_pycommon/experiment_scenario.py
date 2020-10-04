@@ -316,7 +316,7 @@ class ExperimentScenario:
     def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()
 
-    def on_before_data_collection(self):
+    def on_before_data_collection(self, params: Dict):
         pass
 
     def trajopt_action_sequence_cost_differentiable(self, actions):

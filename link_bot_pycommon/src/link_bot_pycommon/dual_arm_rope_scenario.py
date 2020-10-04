@@ -55,10 +55,10 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.robot = get_moveit_robot()
 
     def reset_robot(self, data_collection_params: Dict):
-        if data_collection_params['scene'] == 'tabletop':
-            self.robot.plan_to_joint_config("both_arms", data_collection_params['home']['position'])
-        elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
-            raise NotImplementedError()
+        # if data_collection_params['scene'] == 'tabletop':
+        #     self.robot.plan_to_joint_config("both_arms", data_collection_params['home']['position'])
+        # elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
+        raise NotImplementedError()
 
     def get_state(self):
         joint_state = self.robot.base_robot.joint_state_listener.get()
@@ -161,7 +161,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         res: ExcludeModelsResponse = self.exclude_from_planning_scene_srv(exclude)
         return res.all_model_names
 
-    def on_before_data_collection(self):
+    def on_before_data_collection(self, params: Dict):
         # Mark the rope as a not-obstacle
         exclude = ExcludeModelsRequest()
         exclude.model_names.append("rope_3d")
@@ -173,8 +173,8 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.attach_rope_to_grippers()
         self.service_provider.play()
         rospy.sleep(5)
-        left_gripper_position = np.array([-0.25, 0.6, 0.55])
-        right_gripper_position = np.array([0.25, 0.6, 0.55])
+        left_gripper_position = np.array(params['left_gripper_init_position'])
+        right_gripper_position = np.array(params['right_gripper_init_position'])
         init_action = {
             'left_gripper_position': left_gripper_position,
             'right_gripper_position': right_gripper_position,
@@ -187,6 +187,13 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         raise NotImplementedError()
 
     def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
+        # release the rope
+
+        # plan to reset joint config, we assume this will always work
+
+        # possibly randomize the obstacle configurations?
+
+        # grasp the rope again
         pass
 
     def execute_action(self, action: Dict):

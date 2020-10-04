@@ -138,7 +138,7 @@ class DataCollector:
         record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
         self.scenario.randomization_initialization()
-        self.scenario.on_before_data_collection()
+        self.scenario.on_before_data_collection(self.params)
 
         t0 = perf_counter()
 
