@@ -11,7 +11,6 @@ from colorama import Fore
 import rospy
 from link_bot_data.files_dataset import FilesDataset
 from link_bot_data.link_bot_dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
-from link_bot_pycommon import ros_pycommon
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.grid_utils import extent_to_env_shape
@@ -113,6 +112,7 @@ class DataCollector:
     def collect_data(self,
                      n_trajs: int,
                      nickname: str,
+                     robot_namespace: str,
                      ):
         outdir = pathlib.Path('fwd_model_data') / nickname
         full_output_directory = data_directory(outdir, n_trajs)
@@ -123,8 +123,9 @@ class DataCollector:
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         dataset_hparams = {
-            'seed': self.seed,
             'nickname': nickname,
+            'robot_namespace': robot_namespace,
+            'seed': self.seed,
             'n_trajs': n_trajs,
             'data_collection_params': self.params,
             'states_description': self.scenario.states_description(),

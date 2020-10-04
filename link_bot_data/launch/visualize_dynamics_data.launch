@@ -1,9 +1,6 @@
 <launch>
-    <arg name="use_victor"      default="false"/>
-    <arg name="use_val"         default="false"/>
-
-    <param name="robot_name" value="victor" type="string" if="$(arg use_victor)"/>
-    <param name="robot_name" value="val" type="string" if="$(arg use_val)"/>
+    <arg name="robot_namespace"/>
+    <param name="robot_namespace" value="$(arg robot_namespace)" type="string"/>
 
     <group if="$(arg use_victor)">
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">

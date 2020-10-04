@@ -38,7 +38,7 @@
         </include>
 
         <include>
-            <pose>0 1.23 0.522 0 -1.52 -1.570796</pose>
+            <pose>0 1.22 0.522 0 -1.35 -1.570796</pose>
             <uri>model://car_hood</uri>
         </include>
 
@@ -79,7 +79,7 @@
         </include>
 
         <include>
-            <pose>1.2 -0.48 1.0 -0.11 0.16 2.55</pose>
+            <pose>1.2 -0.48 1.0 -0.11 0.26 2.55</pose>
             <uri>model://kinect</uri>
         </include>
     </world>

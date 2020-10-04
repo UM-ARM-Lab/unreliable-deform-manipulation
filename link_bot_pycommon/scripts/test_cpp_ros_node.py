@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-import moveit_commander
+from time import sleep
+
 from colorama import Fore
+from roscpp_initializer import init_node
 import colorama
-import pycpp_ros_sub
 import rospy
-# from std_msgs.msg import Int64
+from std_msgs.msg import Int64
 
 
 # def cb(msg):
@@ -13,22 +14,19 @@ import rospy
 
 def main():
     colorama.init(autoreset=True)
-    moveit_commander.roscpp_initialize([])
-    # rospy.init_node("test_node")
-    pycpp_sub = pycpp_ros_sub.PyCppRosSub()
-    print("shutting down...")
-    moveit_commander.roscpp_shutdown()
+    init_node("cpp_node_name")
+    rospy.init_node("py_node_name")
     # sub = rospy.Subscriber("test_topic", Int64, cb)
-    # pub = rospy.Publisher("test_topic", Int64, queue_size=10)
+    pub = rospy.Publisher("test_topic", Int64, queue_size=10)
     # calling this constructor should create the subscriber and we should start seeing messages from it
-    # i = 0
-    # while not rospy.is_shutdown():
-    #     msg = Int64
-    #     msg.data = i
-    #     rospy.loginfo(Fore.GREEN + f"Pub : {i}")
-    #     pub.publish(msg)
-    #     rospy.sleep(1)
-    #     i = i + 1
+    i = 0
+    while not rospy.is_shutdown():
+        msg = Int64()
+        msg.data = i
+        rospy.loginfo(Fore.GREEN + f"Pub : {i}")
+        pub.publish(msg)
+        sleep(1)
+        i = i + 1
 
 
 if __name__ == '__main__':

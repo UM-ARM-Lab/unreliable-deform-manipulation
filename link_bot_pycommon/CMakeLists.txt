@@ -13,6 +13,6 @@ catkin_package(
 
 catkin_python_setup()
 
-pybind_add_module(pycpp_ros_sub src/link_bot_pycommon/bindings.cpp)
-target_include_directories(pycpp_ros_sub SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(pycpp_ros_sub PUBLIC ${catkin_LIBRARIES})
+pybind_add_module(roscpp_initializer src/link_bot_pycommon/roscpp_initializer.cpp)
+target_include_directories(roscpp_initializer SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
+target_link_libraries(roscpp_initializer PUBLIC ${catkin_LIBRARIES})

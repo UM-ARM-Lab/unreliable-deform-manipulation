@@ -19,12 +19,6 @@ class GazeboServices(BaseServices):
         self.set_link_state = self.add_required_service('/gazebo/set_link_state', SetLinkState)
         self.pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.play_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-        self.is_sim = True
-        try:
-            self.play_srv.wait_for_service(0.1)
-            self.pause_srv.wait_for_service(0.1)
-        except rospy.ServiceException:
-            self.is_sim = False
 
     def restore_from_bag(self, bagfile_name: pathlib.Path):
         # run a few times to really make sure it happens
@@ -82,9 +76,13 @@ class GazeboServices(BaseServices):
         self.set_physics.call(set_physics_msg)
 
     def play(self):
-        if self.is_sim:
+        try:
             self.play_srv(EmptyRequest())
+        except rospy.ServiceException:
+            pass
 
     def pause(self):
-        if self.is_sim:
+        try:
             self.pause_srv(EmptyRequest())
+        except rospy.ServiceException:
+            pass

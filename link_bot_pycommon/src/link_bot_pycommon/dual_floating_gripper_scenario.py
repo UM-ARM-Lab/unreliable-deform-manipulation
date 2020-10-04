@@ -154,7 +154,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         init_action = {
             'left_gripper_position': left_gripper_position,
             'right_gripper_position': right_gripper_position,
-            'speed': 0.25,
+            'speed': 0.1,
         }
         self.execute_action(init_action)
 

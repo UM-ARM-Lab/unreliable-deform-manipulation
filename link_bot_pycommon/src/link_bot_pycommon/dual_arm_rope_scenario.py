@@ -1,12 +1,10 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 
 import ros_numpy
 import rospy
-from arc_utilities.ros_helpers import Listener
-from arm_robots.hdt_michigan import Val
-from arm_robots.victor import Victor
+from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario, IMAGE_H, IMAGE_W
@@ -15,17 +13,6 @@ from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, Set
     ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetDualGripperPointsResponse
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
-
-
-def get_moveit_robot(robot_namespace: Optional[str] = None):
-    if robot_namespace is None:
-        robot_namespace = rospy.get_namespace().strip("/")
-    if robot_namespace == 'victor':
-        return Victor(robot_namespace)
-    elif robot_namespace in ['val', 'hdt_michigan']:
-        return Val(robot_namespace)
-    else:
-        raise NotImplementedError(f"robot with namespace {robot_namespace} not implemented")
 
 
 def attach_or_detach_requests():
@@ -59,8 +46,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
     def __init__(self):
         super().__init__()
         self.service_provider = GazeboServices()  # FIXME: won't work on real robot...
-        self.joint_states_listener = Listener("joint_states", JointState)
-        self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
+        self.joint_state_viz_pub = rospy.Publisher("joint_states_viz", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
         self.set_rope_end_points_srv = rospy.ServiceProxy("/rope_3d/set_dual_gripper_points", SetDualGripperPoints)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
@@ -75,7 +61,7 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             raise NotImplementedError()
 
     def get_state(self):
-        joint_state = self.joint_states_listener.get()
+        joint_state = self.robot.base_robot.joint_state_listener.get()
         while True:
             try:
                 rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -159,10 +145,10 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             else:
                 raise NotImplementedError(type(state['joint_names'][0]))
             joint_msg.name = joint_names
-            self.joint_states_pub.publish(joint_msg)
+            self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_state = self.joint_states_listener.get()
+        joint_state = self.robot.base_robot.joint_state_listener.get()
         return {
             'joint_names': joint_state.name
         }
@@ -185,16 +171,17 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.service_provider.pause()
         self.move_rope_to_match_grippers()
         self.attach_rope_to_grippers()
-        self.settle()
         self.service_provider.play()
-        left_gripper_position = np.array([-0.2, 0.5, 0.3])
-        right_gripper_position = np.array([0.2, 0.5, 0.3])
+        rospy.sleep(5)
+        left_gripper_position = np.array([-0.25, 0.6, 0.55])
+        right_gripper_position = np.array([0.25, 0.6, 0.55])
         init_action = {
             'left_gripper_position': left_gripper_position,
             'right_gripper_position': right_gripper_position,
             'speed': 0.25,
         }
         self.execute_action(init_action)
+        rospy.sleep(5)
 
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         raise NotImplementedError()

@@ -1,9 +1,8 @@
 from typing import Dict
 
 import ros_numpy
-
 import rospy
-from arc_utilities.ros_helpers import Listener
+from arm_robots.get_moveit_robot import get_moveit_robot
 from arm_robots_msgs.msg import Points
 from arm_robots_msgs.srv import GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
@@ -18,17 +17,17 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
 
     def __init__(self):
         super().__init__()
-        self.joint_states_listener = Listener(f"joint_states", JointState)
-        self.joint_states_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
+        self.service_provider = GazeboServices()
+        self.joint_state_viz_pub = rospy.Publisher("joint_states_viz", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
 
-        self.service_provider = GazeboServices()
+        self.robot = get_moveit_robot()
 
     def reset_robot(self, data_collection_params: Dict):
         pass
 
     def get_state(self):
-        joint_state = self.joint_states_listener.get()
+        joint_state = self.robot.base_robot.joint_state_listener.get()
         grippers_res = self.get_rope_end_points_srv(GetDualGripperPointsRequest())
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
@@ -76,10 +75,10 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
         else:
             raise NotImplementedError(type(state['joint_names'][0]))
         joint_msg.name = joint_names
-        self.joint_states_pub.publish(joint_msg)
+        self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_state = self.joint_states_listener.get()
+        joint_state = self.robot.base_robot.joint_state_listener.get()
         return {
             'joint_names': joint_state.name
         }
