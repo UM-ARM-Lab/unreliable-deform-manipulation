@@ -23,7 +23,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 class Base3DScenario(ExperimentScenario):
     def __init__(self):
         super().__init__()
-        self.world_control_srv = rospy.ServiceProxy("world_control", WorldControl)
+        self.world_control_srv = rospy.ServiceProxy("/world_control", WorldControl)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.obs_bbox_pub = rospy.Publisher('obs_bbox', BoundingBox, queue_size=10, latch=True)

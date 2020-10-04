@@ -52,7 +52,7 @@ class CollisionMapPlugin : public WorldPlugin {
   void QueueThread();
 
   void compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels, geometry_msgs::Point center,
-                              float resolution, std::string const &robot_name);
+                              float resolution, std::vector<std::string> excluded_models);
 };
 
 }  // namespace gazebo

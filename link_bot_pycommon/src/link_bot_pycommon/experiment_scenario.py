@@ -127,7 +127,7 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
-    def random_object_position(w: float, h: float, c: float, padding: float, rng: np.random.RandomState) -> Dict:
+    def random_object_position(w: float, h: float, c: float, padding: float, rng: np.random.RandomState):
         xyz_range = {
             'x': [-w / 2 + padding, w / 2 - padding],
             'y': [-h / 2 + padding, h / 2 - padding],
@@ -328,8 +328,11 @@ class ExperimentScenario:
     def trajopt_distance_differentiable(self, s1, s2):
         raise NotImplementedError()
 
+    def get_excluded_models_for_env(self):
+        raise NotImplementedError()
 
-def sample_object_position(env_rng, xyz_range: Dict) -> Dict:
+
+def sample_object_position(env_rng, xyz_range: Dict):
     x_range = xyz_range['x']
     y_range = xyz_range['y']
     z_range = xyz_range['z']

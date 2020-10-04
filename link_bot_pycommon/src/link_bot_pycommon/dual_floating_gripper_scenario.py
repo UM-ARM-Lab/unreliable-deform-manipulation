@@ -122,13 +122,12 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         self.state_depth_viz_pub = rospy.Publisher("state_depth_viz", Image, queue_size=10, latch=True)
         self.last_action = None
         self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", GrippersTrajectory)
-        self.grasping_rope_srv = rospy.ServiceProxy("set_grasping_rope", SetBool)
-        self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
-        self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
-        self.set_rope_state_srv = rospy.ServiceProxy("set_rope_state", SetRopeState)
-        self.reset_srv = rospy.ServiceProxy("gazebo/reset_simulation", Empty)
-        self.left_gripper_bbox_pub = rospy.Publisher('left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
-        self.right_gripper_bbox_pub = rospy.Publisher('right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.get_rope_end_points_srv = rospy.ServiceProxy("/rope_3d/get_dual_gripper_points", GetDualGripperPoints)
+        self.get_rope_srv = rospy.ServiceProxy("/rope_3d/get_rope_state", GetRopeState)
+        self.set_rope_state_srv = rospy.ServiceProxy("/rope_3d/set_rope_state", SetRopeState)
+        self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
+        self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
 
         self.max_action_attempts = 500
 
@@ -423,36 +422,9 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         return gripper_position1, gripper_position2
 
     def get_state(self):
-        # make color + depth image
-        color = ros_numpy.numpify(self.color_image_listener.get(block_until_data=False))
-        depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
+        color_depth_cropped = self.get_color_depth_cropped()
 
-        # NaN Depths means out of range, so clip to the max range
-        depth = np.clip(depth, 0, 3)
-
-        color_depth = np.concatenate([color, depth], axis=2)
-
-        box = tf.convert_to_tensor([crop_region['min_y'] / color.shape[0],
-                                    crop_region['min_x'] / color.shape[1],
-                                    crop_region['max_y'] / color.shape[0],
-                                    crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
-        # this operates on a batch
-        color_depth_cropped = tf.image.crop_and_resize(image=tf.expand_dims(color_depth, axis=0),
-                                                       boxes=tf.expand_dims(box, axis=0),
-                                                       box_indices=[0],
-                                                       crop_size=[IMAGE_H, IMAGE_W])
-        color_depth_cropped = remove_batch(color_depth_cropped)
-
-        def _debug_show_image(_color_depth_cropped):
-            import matplotlib.pyplot as plt
-            plt.imshow(tf.cast(_color_depth_cropped[:, :, :3], tf.int32))
-            plt.show()
-
-        # BEGIN DEBUG
-        # _debug_show_image(color_depth_cropped)
-        # END DEBUG
-
-        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
+        grippers_res = self.get_rope_end_points_srv(GetDualGripperPointsRequest())
         while True:
             try:
                 rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -479,6 +451,34 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             'link_bot': np.array(rope_state_vector, np.float32),
             'color_depth_image': color_depth_cropped,
         }
+
+    def get_color_depth_cropped(self):
+        # make color + depth image
+        color = ros_numpy.numpify(self.color_image_listener.get(block_until_data=False))
+        depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
+        # NaN Depths means out of range, so clip to the max range
+        depth = np.clip(depth, 0, 3)
+        color_depth = np.concatenate([color, depth], axis=2)
+        box = tf.convert_to_tensor([crop_region['min_y'] / color.shape[0],
+                                    crop_region['min_x'] / color.shape[1],
+                                    crop_region['max_y'] / color.shape[0],
+                                    crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
+        # this operates on a batch
+        color_depth_cropped = tf.image.crop_and_resize(image=tf.expand_dims(color_depth, axis=0),
+                                                       boxes=tf.expand_dims(box, axis=0),
+                                                       box_indices=[0],
+                                                       crop_size=[IMAGE_H, IMAGE_W])
+        color_depth_cropped = remove_batch(color_depth_cropped)
+
+        def _debug_show_image(_color_depth_cropped):
+            import matplotlib.pyplot as plt
+            plt.imshow(tf.cast(_color_depth_cropped[:, :, :3], tf.int32))
+            plt.show()
+
+        # BEGIN DEBUG
+        # _debug_show_image(color_depth_cropped)
+        # END DEBUG
+        return color_depth_cropped
 
     @staticmethod
     def observations_description() -> Dict:

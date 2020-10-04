@@ -29,7 +29,7 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
 
     def get_state(self):
         joint_state = self.joint_states_listener.get()
-        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
+        grippers_res = self.get_rope_end_points_srv(GetDualGripperPointsRequest())
         return {
             'gripper1': ros_numpy.numpify(grippers_res.gripper1),
             'gripper2': ros_numpy.numpify(grippers_res.gripper2),
@@ -62,6 +62,7 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
         req.group_name = "both_arms"
         req.tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
 
+        # TODO: use jacobian follow method directly
         _ = self.action_srv(req)
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):

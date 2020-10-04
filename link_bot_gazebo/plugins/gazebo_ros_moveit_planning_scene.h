@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright (C) 2012-2014 Open Source Robotics Foundation
  *
@@ -23,6 +22,7 @@
 #pragma once
 
 #include <atomic>
+#include <unordered_map>
 #include <string>
 
 #include <geometry_msgs/Pose.h>
@@ -64,6 +64,7 @@ public:
   boost::scoped_ptr<ros::NodeHandle> rosnode_;
 
   ros::Publisher planning_scene_pub_;
+  ros::ServiceServer excluded_models_srv_;
 
   std::string topic_name_;
   std::string scene_name_;
@@ -71,6 +72,8 @@ public:
   std::string robot_name_;
   std::string model_name_;
   std::string robot_namespace_;
+  std::unordered_map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
+
   std::vector<std::string> excluded_model_names;
 
   // We need a separate queue and thread so we can handle messages and services when gazebo is paused

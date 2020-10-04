@@ -17,4 +17,8 @@
   <build_export_depend>rospy</build_export_depend>
   <exec_depend>rospy</exec_depend>
 
+  <depend>pybind11_catkin</depend>
+  <depend>std_msgs</depend>
+  <depend>roscpp</depend>
+
 </package>

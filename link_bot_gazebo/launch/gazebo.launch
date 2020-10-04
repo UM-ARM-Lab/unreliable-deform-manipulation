@@ -1,6 +1,6 @@
 <launch>
     <env name="ROSCONSOLE_CONFIG_FILE"
-       value="$(find link_bot_gazebo)/custom_rosconsole.conf"/>
+         value="$(find link_bot_gazebo)/custom_rosconsole.conf"/>
 
     <arg name="world" default="empty.world"/>
     <arg name="verbose" default="false"/>
@@ -40,9 +40,11 @@
         </include>
 
         <!-- start the controllers -->
-        <include file="$(find victor_control)/launch/victor_control.launch"/>
+        <include file="$(find victor_control)/launch/victor_control.launch">
+            <arg name="robot_namespace" value="$(arg robot_name)"/>
+        </include>
 
-        <include file="$(find victor_moveit_config)/launch/move_group.launch">
+        <include ns="$(arg robot_name)" file="$(find victor_moveit_config)/launch/move_group.launch">
             <arg name="allow_trajectory_execution" value="true"/>
             <arg name="info" value="true"/>
             <arg name="debug" value="$(arg debug_moveit)"/>
@@ -55,9 +57,11 @@
         </include>
 
         <!-- start the controllers -->
-        <include file="$(find hdt_michigan_control)/launch/hdt_michigan_control.launch"/>
+        <include file="$(find hdt_michigan_control)/launch/hdt_michigan_control.launch">
+            <arg name="robot_namespace" value="$(arg robot_name)"/>
+        </include>
 
-        <include file="$(find hdt_michigan_moveit)/launch/move_group.launch">
+        <include ns="$(arg robot_name)" file="$(find hdt_michigan_moveit)/launch/move_group.launch">
             <arg name="allow_trajectory_execution" value="true"/>
             <arg name="fake_execution" value="false"/>
             <arg name="info" value="true"/>

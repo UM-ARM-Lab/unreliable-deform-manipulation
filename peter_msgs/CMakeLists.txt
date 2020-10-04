@@ -22,6 +22,7 @@ add_service_files(
         FILES
         ComputeOccupancy.srv
         DualGripperTrajectory.srv
+        ExcludeModels.srv
         GetBool.srv
         GetDualGripperPoints.srv
         GetFloat32.srv

@@ -42,7 +42,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
   }
 
   auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res) {
-    compute_occupancy_grid(req.h_rows, req.w_cols, req.c_channels, req.center, req.resolution, req.robot_name);
+    compute_occupancy_grid(req.h_rows, req.w_cols, req.c_channels, req.center, req.resolution, req.excluded_models);
 
     auto const grid_float = [&]() {
       auto const &data = grid_.GetImmutableRawData();
@@ -82,7 +82,7 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 }
 void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
                                                 geometry_msgs::Point center, float resolution,
-                                                std::string const &robot_name)
+                                                std::vector<std::string> const excluded_models)
 {
   auto const x_width = resolution * w_cols;
   auto const y_height = resolution * h_rows;
@@ -121,13 +121,16 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
           MyIntersection intersection;
           auto const collision_space = (dGeomID)(ode_->GetSpaceId());
           dSpaceCollide2(sphere_collision_geom_id, collision_space, &intersection, &nearCallback);
-          if (intersection.in_collision and (intersection.name.find(robot_name) == std::string::npos))
+          for (auto const &excluded_model : excluded_models)
           {
-            grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
-          }
-          else
-          {
-            grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
+              if (intersection.in_collision and (intersection.name.find(excluded_model) == std::string::npos))
+              {
+                grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
+              }
+              else
+              {
+                grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
+              }
           }
         }
       }

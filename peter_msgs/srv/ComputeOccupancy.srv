@@ -1,5 +1,5 @@
 bool request_new
-string robot_name
+string[] excluded_models
 geometry_msgs/Point center
 int64 w_cols
 int64 h_rows

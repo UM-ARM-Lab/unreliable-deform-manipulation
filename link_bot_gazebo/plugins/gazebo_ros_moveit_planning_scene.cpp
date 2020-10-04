@@ -27,6 +27,8 @@
 #include <boost/bind.hpp>
 #include <gazebo/common/common.hh>
 
+#include <peter_msgs/ExcludeModels.h>
+
 #include "gazebo_ros_moveit_planning_scene.h"
 
 namespace gazebo
@@ -37,6 +39,8 @@ static std::string get_id(const physics::LinkPtr &link)
 }
 
 GZ_REGISTER_MODEL_PLUGIN(GazeboRosMoveItPlanningScene);
+
+constexpr auto NAME = "GazeboRosMoveItPlanningScene";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Destructor
@@ -62,8 +66,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     if (_sdf->HasElement("robotNamespace"))
     {
       this->robot_namespace_ = _sdf->GetElement("robotNamespace")->Get<std::string>() + "/";
-    }
-    else
+    } else
     {
       this->robot_namespace_ = "";
     }
@@ -71,8 +74,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     if (!_sdf->HasElement("robotName"))
     {
       this->robot_name_ = _model->GetName();
-    }
-    else
+    } else
     {
       this->robot_name_ = _sdf->GetElement("robotName")->Get<std::string>();
     }
@@ -80,8 +82,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     if (!_sdf->HasElement("topicName"))
     {
       this->topic_name_ = "planning_scene";
-    }
-    else
+    } else
     {
       this->topic_name_ = _sdf->GetElement("topicName")->Get<std::string>();
     }
@@ -89,8 +90,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     if (!_sdf->HasElement("sceneName"))
     {
       this->scene_name_ = "";
-    }
-    else
+    } else
     {
       this->scene_name_ = _sdf->GetElement("sceneName")->Get<std::string>();
     }
@@ -98,8 +98,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     if (!_sdf->HasElement("frameId"))
     {
       this->frame_id_ = "world";
-    }
-    else
+    } else
     {
       this->frame_id_ = _sdf->GetElement("frameId")->Get<std::string>();
       ROS_WARN_STREAM("Using non-standard frame id " << this->frame_id_);
@@ -121,7 +120,7 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
   if (!ros::isInitialized())
   {
     ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
-                     << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+                         << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
     return;
   }
 
@@ -130,17 +129,35 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
   // Publish the planning scene
   planning_scene_pub_ = rosnode_->advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
 
+  auto exclude_bind = [this](peter_msgs::ExcludeModelsRequest &req, peter_msgs::ExcludeModelsResponse &res)
+  {
+    for (auto const &name : req.model_names)
+    {
+      if (not name.empty())
+      {
+        excluded_model_names.push_back(name);
+      }
+    }
+    // copies into the response
+    res.all_model_names = excluded_model_names;
+    return true;
+  };
+  auto exclude_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExcludeModels>("exclude_models_from_planning_scene", exclude_bind,
+                                                                                    ros::VoidPtr(), &queue_);
+  excluded_models_srv_ = rosnode_->advertiseService(exclude_so);
+
   // Custom Callback Queue for services
   this->callback_queue_thread_ = boost::thread(boost::bind(&GazeboRosMoveItPlanningScene::QueueThread, this));
 
-  periodic_event_thread_ = std::thread([this] {
-    while (ros::ok())
-    {
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(0.01s);
-      PeriodicUpdate();
-    }
-  });
+  periodic_event_thread_ = std::thread([this]
+                                       {
+                                         while (ros::ok())
+                                         {
+                                           using namespace std::chrono_literals;
+                                           std::this_thread::sleep_for(0.01s);
+                                           PeriodicUpdate();
+                                         }
+                                       });
 }
 
 void GazeboRosMoveItPlanningScene::PeriodicUpdate()
@@ -161,6 +178,26 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
   planning_scene_msg.is_diff = true;
   planning_scene_msg.world.collision_objects.clear();
   std::vector<ModelPtr> models = this->world_->Models();
+
+  // Iterate through the tracked models and clear their dynamic information
+  // This also sets objects to be removed if they currently aren't in the scene
+  for (auto &[name, object] : collision_object_map_)
+  {
+    // Mark for removal unless it's found in the gazebo world
+    object.operation = moveit_msgs::CollisionObject::REMOVE;
+
+    // Clear shape information
+    object.primitives.clear();
+    object.primitive_poses.clear();
+
+    object.meshes.clear();
+    object.mesh_poses.clear();
+
+    object.planes.clear();
+    object.plane_poses.clear();
+  }
+
+
   for (auto model_it = models.cbegin(); model_it != models.end(); ++model_it)
   {
     const ModelPtr &model = *model_it;
@@ -176,11 +213,10 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
     if (std::find(excluded_model_names.cbegin(), excluded_model_names.cend(), model_name) !=
         excluded_model_names.cend())
     {
-      ROS_DEBUG_STREAM("Skipping model " << model_name);
+      ROS_DEBUG_STREAM_NAMED(NAME, "Skipping model " << model_name);
       continue;
     }
 
-    ROS_DEBUG_STREAM("Adding model " << model_name);
     // Iterate over all links in the model, and add collision objects from each one
     // This adds meshes and primitives to:
     //  object.meshes,
@@ -192,22 +228,44 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
       const LinkPtr &link = *link_it;
       const std::string id = get_id(link);
 
-      moveit_msgs::CollisionObject object;
+      // Get all the collision objects for this link
+      const auto &collisions = link->GetCollisions();
+      if (collisions.empty())
+      {
+        // we get an error if we try to publish this object, so skip it
+        continue;
+      }
+
+      // Check if the gazebo model is already in the collision object map
+      auto found_collision_object = collision_object_map_.find(id);
+
+      // Create a new collision object representing this link if it's not in the map
+      if (found_collision_object == collision_object_map_.end())
+      {
+        ROS_DEBUG_STREAM_NAMED(NAME, "Creating collision object for model"
+            << model_name
+            << "model_name " << model_name_
+            << " n objects = " << collision_object_map_.size());
+
+        moveit_msgs::CollisionObject new_object;
+        new_object.id = id;
+        new_object.header.frame_id = "world";
+        new_object.operation = moveit_msgs::CollisionObject::ADD;
+
+        collision_object_map_[id] = new_object;
+        ROS_DEBUG_STREAM_NAMED(NAME, "Adding object: " << id);
+      } else
+      {
+        collision_object_map_[id].operation = moveit_msgs::CollisionObject::MOVE;
+        ROS_DEBUG_STREAM_NAMED(NAME, "Moving object: " << id);
+      }
+
+      // Get a reference to the object from the map
+      moveit_msgs::CollisionObject &object = collision_object_map_[id];
       object.id = id;
       object.header.frame_id = this->frame_id_;
       object.header.stamp = ros::Time::now();
       object.operation = moveit_msgs::CollisionObject::ADD;
-
-      moveit_msgs::ObjectColor object_color;
-      object_color.id = id;
-      std_msgs::ColorRGBA color;
-      color.r = 1.f;
-      color.g = 1.f;
-      color.b = 1.f;
-      color.a = 1.f;
-      object_color.color = color;
-
-      ROS_DEBUG_STREAM("Adding object: " << id);
 
       ignition::math::Pose3d link_pose = link->WorldPose();
       geometry_msgs::Pose link_pose_msg;
@@ -221,15 +279,8 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
         link_pose_msg.orientation.w = link_pose.Rot().W();
       }
 
-      // Get all the collision objects for this link
-      const auto &collisions = link->GetCollisions();
-      if (collisions.empty())
+      for (const auto &collision : collisions)
       {
-        continue;
-      }
-      for (auto coll_it = collisions.cbegin(); coll_it != collisions.end(); ++coll_it)
-      {
-        const CollisionPtr &collision = *coll_it;
         const ShapePtr shape = collision->GetShape();
 
         ignition::math::Pose3d collision_pose = collision->InitialRelativePose() + link_pose;
@@ -289,14 +340,12 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
                 // Unsupported
                 ROS_ERROR_STREAM("TRIFANS not supported");
                 break;
-            };
+            }
           }
-        }
-        else if (shape->HasType(Base::PLANE_SHAPE))
+        } else if (shape->HasType(Base::PLANE_SHAPE))
         {
           object.plane_poses.push_back(collision_pose_msg);
-        }
-        else
+        } else
         {
           object.primitive_poses.push_back(collision_pose_msg);
         }
@@ -393,10 +442,9 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
                 // Unsupported
                 ROS_ERROR_STREAM("TRIFANS not supported");
                 break;
-            };
+            }
           }
-        }
-        else if (shape->HasType(Base::PLANE_SHAPE))
+        } else if (shape->HasType(Base::PLANE_SHAPE))
         {
           // Plane
           boost::shared_ptr<PlaneShape> plane_shape = boost::dynamic_pointer_cast<PlaneShape>(shape);
@@ -408,8 +456,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
           plane_msg.coef[3] = 0;  // This should be handled by the position of the collision object
 
           object.planes.push_back(plane_msg);
-        }
-        else
+        } else
         {
           // Solid primitive
           shape_msgs::SolidPrimitive primitive_msg;
@@ -423,8 +470,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
             primitive_msg.dimensions[0] = box_shape->Size().X() * scale_primitives_factor_;
             primitive_msg.dimensions[1] = box_shape->Size().Y() * scale_primitives_factor_;
             primitive_msg.dimensions[2] = box_shape->Size().Z() * scale_primitives_factor_;
-          }
-          else if (shape->HasType(Base::CYLINDER_SHAPE))
+          } else if (shape->HasType(Base::CYLINDER_SHAPE))
           {
             boost::shared_ptr<CylinderShape> cylinder_shape = boost::dynamic_pointer_cast<CylinderShape>(shape);
 
@@ -432,16 +478,14 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
             primitive_msg.dimensions.resize(2);
             primitive_msg.dimensions[0] = cylinder_shape->GetLength() * scale_primitives_factor_;
             primitive_msg.dimensions[1] = cylinder_shape->GetRadius() * scale_primitives_factor_;
-          }
-          else if (shape->HasType(Base::SPHERE_SHAPE))
+          } else if (shape->HasType(Base::SPHERE_SHAPE))
           {
             boost::shared_ptr<SphereShape> sphere_shape = boost::dynamic_pointer_cast<SphereShape>(shape);
 
             primitive_msg.type = primitive_msg.SPHERE;
             primitive_msg.dimensions.resize(1);
             primitive_msg.dimensions[0] = sphere_shape->GetRadius() * scale_primitives_factor_;
-          }
-          else
+          } else
           {
             // HEIGHTMAP_SHAPE, MAP_SHAPE, MULTIRAY_SHAPE, RAY_SHAPE
             // Unsupported
@@ -450,14 +494,47 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
           object.primitives.push_back(primitive_msg);
         }
-        ROS_DEBUG("model %s has %zu links", model_name.c_str(), links.size());
-        ROS_DEBUG("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
-                  object.mesh_poses.size());
+        ROS_DEBUG_NAMED("model %s has %zu links", model_name.c_str(), links.size());
+        ROS_DEBUG_NAMED("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
+                        object.mesh_poses.size());
       }
-
-      planning_scene_msg.world.collision_objects.push_back(object);
-      // planning_scene_msg.object_colors.push_back(object_color);
     }
+  }
+
+  // Iterate through the objects we're already tracking
+  std::vector<std::string> to_remove;
+  for (auto &[name, object] : collision_object_map_)
+  {
+    // Update stamp
+    object.header.stamp = ros::Time::now();
+    // Add the object to the planning scene message
+    planning_scene_msg.world.collision_objects.push_back(object);
+
+    moveit_msgs::ObjectColor object_color;
+    object_color.id = object.id;
+    std_msgs::ColorRGBA color;
+    color.r = 0.f;
+    color.g = 0.f;
+    color.b = 1.f;
+    color.a = 1.f;
+    object_color.color = color;
+
+    planning_scene_msg.object_colors.push_back(object_color);
+
+    // Actually remove objects from being tracked
+    if (object.operation == moveit_msgs::CollisionObject::REMOVE)
+    {
+      // Mark for removal from the map
+      to_remove.push_back(name);
+      ROS_DEBUG_STREAM_NAMED(NAME, "Removing object: " << object.id);
+    }
+  }
+
+  // Actually remove the collision object from the map
+
+  for (auto const &name : to_remove)
+  {
+    collision_object_map_.erase(name);
   }
 
   return planning_scene_msg;

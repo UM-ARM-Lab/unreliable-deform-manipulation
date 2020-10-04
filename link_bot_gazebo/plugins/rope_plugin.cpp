@@ -60,9 +60,10 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
   auto overstretched_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetBool>(
       "rope_overstretched", overstretched_bind, ros::VoidPtr(), &queue_);
 
-  set_state_service_ = ros_node_.advertiseService(set_state_so);
-  rope_overstretched_service_ = ros_node_.advertiseService(overstretched_so);
-  get_state_service_ = ros_node_.advertiseService(get_state_so);
+  ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
+  set_state_service_ = ros_node_->advertiseService(set_state_so);
+  rope_overstretched_service_ = ros_node_->advertiseService(overstretched_so);
+  get_state_service_ = ros_node_->advertiseService(get_state_so);
 
   ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
@@ -116,7 +117,6 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
 bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::GetRopeStateResponse &res)
 {
   static peter_msgs::GetRopeStateResponse previous_res;
-  static auto initialized = false;
 
   for (auto const &joint : model_->GetJoints())
   {
@@ -137,7 +137,7 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
       res.positions.emplace_back(pt);
 
       geometry_msgs::Point velocity;
-      if (initialized)
+      if (velocity_initialized_)
       {
         velocity.x = pt.x - previous_res.positions[i].x;
         velocity.y = pt.y - previous_res.positions[i].y;
@@ -165,7 +165,7 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
   res.model_pose.orientation.w = model_->WorldPose().Rot().W();
 
   previous_res = res;
-  initialized = true;
+  velocity_initialized_ = true;
 
   return true;
 }
@@ -187,7 +187,7 @@ bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::G
 void RopePlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
-  while (ros_node_.ok())
+  while (ros_node_->ok())
   {
     queue_.callAvailable(ros::WallDuration(timeout));
   }
@@ -197,7 +197,7 @@ RopePlugin::~RopePlugin()
 {
   queue_.clear();
   queue_.disable();
-  ros_node_.shutdown();
+  ros_node_->shutdown();
   ros_queue_thread_.join();
 }
 

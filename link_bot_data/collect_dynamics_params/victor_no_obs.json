@@ -8,7 +8,7 @@
     0.6,
     1.3
   ],
-  "gripper1_action_sample_extent": [
+  "left_gripper_action_sample_extent": [
     0.45,
     1.2,
     -0.6,
@@ -16,7 +16,7 @@
     0.6,
     1.3
   ],
-  "gripper2_action_sample_extent": [
+  "right_gripper_action_sample_extent": [
     0.45,
     1.2,
     -0.6,

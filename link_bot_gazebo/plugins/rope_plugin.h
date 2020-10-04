@@ -45,9 +45,10 @@ private:
   physics::LinkPtr right_gripper_;
   event::ConnectionPtr updateConnection_;
   double length_{ 0.0 };
+  bool velocity_initialized_{false };
   double rest_distance_between_left_gripper_and_link_1_{ 0.0 };
   unsigned int num_links_{ 0U };
-  ros::NodeHandle ros_node_;
+  std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::ServiceServer set_state_service_;
   ros::ServiceServer rope_overstretched_service_;
   ros::ServiceServer get_state_service_;

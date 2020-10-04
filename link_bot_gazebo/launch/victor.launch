@@ -12,11 +12,4 @@
         <arg name="debug_gazebo" value="false"/>
         <arg name="debug_moveit" value="false"/>
     </include>
-
-    <node pkg="timed_roslaunch"
-          type="timed_roslaunch.sh"
-          args="10 jacobian_follower jacobian_follower"
-          name="timed_roslaunch"
-          output="screen">
-    </node>
 </launch>

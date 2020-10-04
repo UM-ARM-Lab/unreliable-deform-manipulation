@@ -56,7 +56,7 @@
     -0.5,
     1.0
   ],
-  "gripper1_action_sample_extent": [
+  "left_gripper_action_sample_extent": [
     -0.8,
     0.8,
     0.25,
@@ -64,7 +64,7 @@
     -0.5,
     0.75
   ],
-  "gripper2_action_sample_extent": [
+  "right_gripper_action_sample_extent": [
     -0.8,
     0.8,
     0.25,
@@ -77,9 +77,9 @@
   "steps_per_traj": 20,
   "trajs_per_file": 1,
   "no_objects": false,
+  "speed": 0.1,
   "randomize_n": 8,
   "repeat_delta_gripper_motion_probability": 0.8,
-  "include_joint_states": false,
   "max_distance_gripper_can_move": 0.10,
   "max_distance_between_grippers": 0.70
 }

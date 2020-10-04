@@ -54,10 +54,7 @@ class DataCollector:
         else:
             # At this point, we hope all of the objects have stopped moving, so we can get the environment and assume it never changes
             # over the course of this function
-            environment = ros_pycommon.get_environment_for_extents_3d(extent=self.params['extent'],
-                                                                      res=self.params['res'],
-                                                                      service_provider=self.service_provider,
-                                                                      robot_name=self.scenario.robot_name())
+            environment = self.scenario.get_environment(self.params)
 
         feature = environment
         feature['traj_idx'] = traj_idx

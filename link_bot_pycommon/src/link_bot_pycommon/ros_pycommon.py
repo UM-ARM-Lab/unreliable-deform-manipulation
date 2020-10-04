@@ -16,7 +16,7 @@ def get_occupancy(service_provider,
                   center_x,
                   center_y,
                   center_z,
-                  robot_name):
+                  excluded_models):
     request = ComputeOccupancyRequest()
     request.resolution = res
     request.h_rows = env_h_rows
@@ -25,7 +25,7 @@ def get_occupancy(service_provider,
     request.center.x = center_x
     request.center.y = center_y
     request.center.z = center_z
-    request.robot_name = robot_name
+    request.excluded_models = excluded_models
     request.request_new = True
     # from time import perf_counter
     # t0 = perf_counter()
@@ -40,7 +40,7 @@ def get_occupancy(service_provider,
 def get_environment_for_extents_3d(extent,
                                    res: float,
                                    service_provider: BaseServices,
-                                   robot_name: str):
+                                   excluded_models: [str]):
     cx, cy, cz = extent_to_center(extent)
     env_h_rows, env_w_cols, env_c_channels = extent_to_env_shape(extent, res)
     grid, _ = get_occupancy(service_provider,
@@ -51,7 +51,7 @@ def get_environment_for_extents_3d(extent,
                             center_x=cx,
                             center_y=cy,
                             center_z=cz,
-                            robot_name=robot_name)
+                            excluded_models=excluded_models)
     x_min = extent[0]
     y_min = extent[2]
     z_min = extent[4]
