@@ -2,10 +2,12 @@ from typing import Dict, List
 
 import numpy as np
 
+import moveit_commander
 import ros_numpy
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest
+from geometry_msgs.msg import  PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario, IMAGE_H, IMAGE_W
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
@@ -54,6 +56,31 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
         self.exclude_from_planning_scene_srv = rospy.ServiceProxy("exclude_models_from_planning_scene", ExcludeModels)
         self.robot = get_moveit_robot()
+
+        # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles
+        self.moveit_scene = moveit_commander.PlanningSceneInterface()
+        self.robust_add_to_scene('left_tool_placeholder', 'left_tool_box', self.robot.get_left_gripper_links())
+        self.robust_add_to_scene('right_tool_placeholder', 'right_tool_box', self.robot.get_right_gripper_links())
+
+    def robust_add_to_scene(self, link: str, new_object_name: str, touch_links: List[str]):
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = link
+        box_pose.pose.orientation.w = 1.0
+        while True:
+            self.moveit_scene.add_box(new_object_name, box_pose, size=(0.05, 0.05, 0.05))
+            self.moveit_scene.attach_box(link, new_object_name, touch_links=touch_links)
+
+            rospy.sleep(0.1)
+
+            # Test if the box is in attached objects
+            attached_objects = self.moveit_scene.get_attached_objects([new_object_name])
+            is_attached = len(attached_objects.keys()) > 0
+
+            # Note that attaching the box will remove it from known_objects
+            is_known = new_object_name in self.moveit_scene.get_known_object_names()
+
+            if is_attached and not is_known:
+                break
 
     def reset_robot(self, data_collection_params: Dict):
         # if data_collection_params['scene'] == 'tabletop':
@@ -141,6 +168,11 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         exclude = ExcludeModelsRequest()
         exclude.model_names.append("rope_3d")
         self.exclude_from_planning_scene_srv(exclude)
+
+        # let go
+        self.robot.open_left_gripper()
+        self.robot.open_right_gripper()
+        self.detach_rope_to_grippers()
 
         # move to init positions
         self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])

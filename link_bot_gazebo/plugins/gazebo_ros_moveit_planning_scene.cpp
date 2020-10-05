@@ -518,7 +518,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
     color.a = 1.f;
     object_color.color = color;
 
-    planning_scene_msg.object_colors.push_back(object_color);
+    // planning_scene_msg.object_colors.push_back(object_color);
 
     // Actually remove objects from being tracked
     if (object.operation == moveit_msgs::CollisionObject::REMOVE)

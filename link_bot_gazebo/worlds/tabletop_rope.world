@@ -39,7 +39,7 @@
         </include>
 
         <include>
-            <pose>1.5 0.0 1.2 0 0 3.14159</pose>
+            <pose>1.8 0.0 1.2 0 0.15 3.14159</pose>
             <uri>model://kinect</uri>
         </include>
     </world>
