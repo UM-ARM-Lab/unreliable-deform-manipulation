@@ -134,7 +134,9 @@ class FloatingRopeScenario(Base3DScenario):
         self.robot_reset_rng = np.random.RandomState(0)
 
     def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
-        return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(final_state.values(), goal.values())])
+        distances = tf.stack([tf.linalg.norm(v1 - v2, axis=-1) for v1, v2 in zip(final_state.values(), goal.values())], axis=-1)
+        total_distances = tf.math.reduce_sum(distances, axis=-1)
+        return total_distances
 
     def trajopt_distance_differentiable(self, s1, s2):
         return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(s1.values(), s2.values())])
@@ -495,6 +497,8 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': 3,
             'right_gripper': 3,
+            'gripper1': 3,
+            'gripper2': 3,
             'color_depth_image': IMAGE_H * IMAGE_W * 4,
         }
 

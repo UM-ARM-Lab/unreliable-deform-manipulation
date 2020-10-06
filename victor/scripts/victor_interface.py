@@ -6,7 +6,7 @@ import argparse
 from ros_numpy import numpify
 import tf2_ros
 import tf2_geometry_msgs
-from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from geometry_msgs.msg import Point, PoseStamped, PointStamped
 from sensor_msgs.msg import PointCloud2
 from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetRopeState, GetRopeStateResponse, GetRopeStateRequest

@@ -5,7 +5,7 @@ import ros_numpy
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
 

@@ -1,6 +1,6 @@
 from link_bot_pycommon.dual_arm_victor_rope_scenario import DualArmVictorRopeScenario
 from link_bot_pycommon.dual_arm_scenario import DualArmScenario
-from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
 

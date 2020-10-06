@@ -9,7 +9,7 @@ from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest
 from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario, IMAGE_H, IMAGE_W
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario, IMAGE_H, IMAGE_W
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, \
     SetDualGripperPoints, \

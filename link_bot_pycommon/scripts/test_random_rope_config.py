@@ -5,8 +5,8 @@ import colorama
 import numpy as np
 
 import rospy
-from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
-from link_bot_pycommon.dual_floating_gripper_scenario import sample_rope_and_grippers
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
+from link_bot_pycommon.floating_rope_scenario import sample_rope_and_grippers
 
 
 def main():
