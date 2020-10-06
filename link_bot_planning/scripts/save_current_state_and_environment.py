@@ -7,7 +7,7 @@ import time
 import colorama
 
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from link_bot_pycommon.serialization import dummy_proof_write
 
@@ -19,7 +19,7 @@ def main():
                         help='the hparams.json file for the recovery dataset')
 
     args = parser.parse_args()
-    scenario = DualFloatingGripperRopeScenario()
+    scenario = FloatingRopeScenario()
     service_provider = GazeboServices()
 
     with args.recovery_dataset_dir.open("r") as hparams_file:

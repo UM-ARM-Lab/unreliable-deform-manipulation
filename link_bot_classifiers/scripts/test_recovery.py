@@ -10,7 +10,7 @@ import numpy as np
 import rospy
 from link_bot_classifiers.recovery_policy_utils import load_generic_model
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(0.1)
@@ -27,7 +27,7 @@ def main():
 
     rospy.init_node('test_recovery')
 
-    scenario = DualFloatingGripperRopeScenario()
+    scenario = FloatingRopeScenario()
 
     with gzip.open(args.infile, 'rb') as data_file:
         data_str = data_file.read()

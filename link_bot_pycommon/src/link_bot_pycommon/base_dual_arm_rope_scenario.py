@@ -7,9 +7,9 @@ import ros_numpy
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest
-from geometry_msgs.msg import  PoseStamped
+from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario, IMAGE_H, IMAGE_W
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario, IMAGE_H, IMAGE_W
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, \
     SetDualGripperPoints, \
@@ -44,7 +44,7 @@ def attach_or_detach_requests():
     return left_req, right_req
 
 
-class DualArmRopeScenario(DualFloatingGripperRopeScenario):
+class BaseDualArmRopeScenario(FloatingRopeScenario):
 
     def __init__(self):
         super().__init__()
@@ -114,13 +114,11 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         return left_gripper_position, right_gripper_position
 
     def states_description(self) -> Dict:
-        # joints_res = self.joint_states_srv(GetJointStateRequest())
-        # FIXME:
-        n_joints = 7 + 7 + 14
+        n_joints = len(self.robot.robot_commander.get_joint_names())
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'link_bot': DualArmRopeScenario.n_links * 3,
+            'link_bot': FloatingRopeScenario.n_links * 3,
             'joint_positions': n_joints,
             'color_depth_image': IMAGE_H * IMAGE_W * 4,
         }

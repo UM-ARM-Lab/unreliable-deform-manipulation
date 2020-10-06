@@ -1,6 +1,6 @@
-from link_bot_pycommon.dual_arm_rope_scenario import DualArmRopeScenario
+from link_bot_pycommon.dual_arm_victor_rope_scenario import DualArmVictorRopeScenario
 from link_bot_pycommon.dual_arm_scenario import DualArmScenario
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
 
@@ -15,13 +15,13 @@ def get_scenario(scenario_name: str) -> ExperimentScenario:
     elif scenario_name == 'dragging':
         return RopeDraggingScenario()
     elif scenario_name == 'dual_arm':
-        return DualArmRopeScenario()
+        return DualArmVictorRopeScenario()
     elif scenario_name == 'dual_arm_rope':
-        return DualArmRopeScenario()
+        return DualArmVictorRopeScenario()
     elif scenario_name == 'dual_floating_gripper_rope':
-        return DualFloatingGripperRopeScenario()
+        return FloatingRopeScenario()
     elif scenario_name == 'dual_floating':
-        return DualFloatingGripperRopeScenario()
+        return FloatingRopeScenario()
     elif scenario_name == 'dual_arm_no_rope':
         return DualArmScenario()
     else:

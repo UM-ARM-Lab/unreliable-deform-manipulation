@@ -1,32 +1,28 @@
 <launch>
-    <arg name="robot_namespace"/>
-    <param name="robot_namespace" value="$(arg robot_namespace)" type="string"/>
+    <arg name="use_victor" default="false"/>
+    <arg name="use_val" default="false"/>
 
     <group if="$(arg use_victor)">
-        <include file="$(find victor_moveit_config)/launch/planning_context.launch">
-            <arg name="load_robot_description" value="true"/>
-        </include>
+        <param name="robot_namespace" value="victor"/>
+        <param name="robot_description" command="$(find xacro)/xacro '$(find victor_description)/urdf/victor.urdf.xacro'"/>
+        <node pkg="tf2_ros" type="static_transform_publisher" name="robot_root" required="true"
+              args="0 0 0 0 0 0 victor_root robot_root">
+        </node>
     </group>
     <group if="$(arg use_val)">
-        <include file="$(find hdt_michigan_moveit)/launch/planning_context.launch">
-            <arg name="load_robot_description" value="true"/>
-        </include>
+        <param name="robot_namespace" value="hdt_michigan"/>
+        <param name="robot_description"
+               command="$(find xacro)/xacro '$(find hdt_michigan_description)/urdf/hdt_michigan.urdf.xacro'"/>
+        <node pkg="tf2_ros" type="static_transform_publisher" name="robot_root" required="true"
+              args="0 0 0 0 0 0 hdt_michigan_root robot_root">
+        </node>
     </group>
 
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
               args="0 0 0 0 0 0 robot_root world">
-            <param name="use_sim_time" value="false"/>
         </node>
     </group>
 
-    <include file="$(find physical_robot_3d_rope_shim)/launch/static_transforms.launch">
-        <arg name="use_val" value="$(arg use_val)"/>
-        <arg name="use_victor" value="$(arg use_victor)"/>
-        <arg name="use_sim_time" value="false"/>
-        <arg name="use_mocap_shims" value="false"/>
-    </include>
-
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
-
+    <node ns="$(robot_namespace)" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
 </launch>

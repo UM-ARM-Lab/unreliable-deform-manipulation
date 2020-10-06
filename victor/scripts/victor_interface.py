@@ -6,7 +6,7 @@ import argparse
 from ros_numpy import numpify
 import tf2_ros
 import tf2_geometry_msgs
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
 from geometry_msgs.msg import Point, PoseStamped, PointStamped
 from sensor_msgs.msg import PointCloud2
 from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetRopeState, GetRopeStateResponse, GetRopeStateRequest
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     n = CDCPDGetStateNode()
 
     # TESTING
-    scenario = DualFloatingGripperRopeScenario()
+    scenario = FloatingRopeScenario()
 
     if args.debug:
         while True:

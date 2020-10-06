@@ -5,7 +5,7 @@ import colorama
 import numpy as np
 
 import rospy
-from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
+from link_bot_pycommon.dual_floating_gripper_scenario import FloatingRopeScenario
 from link_bot_pycommon.dual_floating_gripper_scenario import sample_rope_and_grippers
 
 
@@ -13,7 +13,7 @@ def main():
     colorama.init(autoreset=True)
 
     rospy.init_node("test_random_rope_config")
-    sc = DualFloatingGripperRopeScenario()
+    sc = FloatingRopeScenario()
 
     p = [0, 0, 0]
     g1 = [-0.1, 0, 0.4]
@@ -21,7 +21,7 @@ def main():
 
     rng = np.random.RandomState(0)
     for i in range(100):
-        rope = sample_rope_and_grippers(rng, g1, g2, p, DualFloatingGripperRopeScenario.n_links, kd=0.05)
+        rope = sample_rope_and_grippers(rng, g1, g2, p, FloatingRopeScenario.n_links, kd=0.05)
         gripper1 = g1
         gripper2 = g2
 
