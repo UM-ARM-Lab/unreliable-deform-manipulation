@@ -998,11 +998,11 @@ class FloatingRopeScenario(Base3DScenario):
         msg.markers.append(midpoint_sphere)
         self.state_viz_pub.publish(msg)
 
-        color = state['color_depth_image'][:, :, :3].numpy().astype(np.uint8)
+        color = state['color_depth_image'][:, :, :3].astype(np.uint8)
         color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
         self.state_color_viz_pub.publish(color_viz_msg)
 
-        depth = state['color_depth_image'][:, :, 3].numpy().astype(np.float32)
+        depth = state['color_depth_image'][:, :, 3].astype(np.float32)
         depth_viz_msg = ros_numpy.msgify(Image, depth, encoding="32FC1")
         self.state_depth_viz_pub.publish(depth_viz_msg)
 

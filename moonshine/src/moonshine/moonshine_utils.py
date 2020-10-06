@@ -233,3 +233,13 @@ def gather_dict(d: Dict, indices, axis: int = 0):
 
 # Monkey patch the EagerTensor type
 tf.Tensor.is_batched = False
+
+
+def vector_to_dict(description: Dict, z):
+    start_idx = 0
+    d = {}
+    for k, dim in description.items():
+        start_idx += dim
+        indices = tf.range(start_idx, start_idx + dim)
+        d[k] = tf.gather(z, indices, axis=-1)
+    return d

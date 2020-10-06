@@ -18,6 +18,8 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
+        self.observation_feature_keys = list(self.hparams['observation_feature_description'].keys())
+
         self.state_keys = list(self.hparams['states_description'].keys())
         self.state_keys.append('time_idx')
 
@@ -48,6 +50,8 @@ class DynamicsDataset(BaseDataset):
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         for feature_name in self.state_keys:
+            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
+        for feature_name in self.observation_feature_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
         for feature_name in self.action_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)

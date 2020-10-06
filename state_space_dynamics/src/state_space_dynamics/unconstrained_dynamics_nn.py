@@ -1,10 +1,10 @@
-from typing import Dict
+from typing import Dict, List
 
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, vector_to_dict
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -21,12 +21,11 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         for fc_layer_size in self.hparams['fc_layer_sizes']:
             self.dense_layers.append(layers.Dense(fc_layer_size, activation='relu', use_bias=True))
 
-        self.state_keys = self.hparams['state_keys']
-        self.action_keys = self.hparams['action_keys']
-        self.dataset_states_description = self.hparams['dynamics_dataset_hparams']['states_description']
-        self.dataset_actions_description = self.hparams['dynamics_dataset_hparams']['action_description']
-        self.state_dimensions = [self.dataset_states_description[k] for k in self.state_keys]
-        self.total_state_dimensions = sum(self.state_dimensions)
+        self.state_keys: List = self.hparams['state_keys']
+        self.action_keys: List = self.hparams['action_keys']
+        self.dataset_states_description: Dict = self.hparams['dynamics_dataset_hparams']['states_description']
+        self.dataset_actions_description: Dict = self.hparams['dynamics_dataset_hparams']['action_description']
+        self.total_state_dimensions = sum(self.dataset_states_description.values())
 
         self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
 
@@ -50,21 +49,13 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
 
-            delta_s_t = self.vector_to_state_dict(z_t)
+            delta_s_t = vector_to_dict(self.dataset_states_description, z_t)
             s_t_plus_1 = self.scenario.integrate_dynamics(s_t, delta_s_t)
 
             pred_states.append(s_t_plus_1)
 
         pred_states_dict = sequence_of_dicts_to_dict_of_tensors(pred_states, axis=1)
         return pred_states_dict
-
-    def vector_to_state_dict(self, z):
-        start_idx = 0
-        state_vectors = []
-        for dim in self.state_dimensions:
-            state_vectors.append(z[:, start_idx:start_idx + dim])
-            start_idx += dim
-        return dict(zip(self.state_keys, state_vectors))
 
     def compute_loss(self, example, outputs):
         return {

@@ -1,16 +1,18 @@
-from typing import Dict
+from typing import Dict, List
 
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.loss_utils import loss_on_dicts
+from moonshine.moonshine_utils import vector_to_dict
 from shape_completion_training.my_keras_model import MyKerasModel
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 
-class CFMNetwork(MyKerasModel):
+class CFM(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
@@ -18,24 +20,37 @@ class CFMNetwork(MyKerasModel):
         self.obs_keys = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
+        self.observation_feature_keys = self.hparams['observation_feature_keys']
 
         self.encoder = Encoder(hparams, batch_size, scenario)
-        self.predictor = LocallyLinearPredictor(hparams, batch_size, scenario)
+        self.dynamics = LocallyLinearPredictor(hparams, batch_size, scenario)
+        self.observer = Observer(hparams, batch_size, scenario)
 
-    def normalize(self, example):
-        # Rescale to -1 to 1
-        new_example = example
-        for k in self.obs_keys:
-            min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-            max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-            normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-            new_example[k] = normalized_observation
+    def apply_gradients(self, tape, train_element, train_outputs, losses):
+        train_batch_loss = losses['loss']
+        variables = self.trainable_variables
+        gradients = tape.gradient(train_batch_loss, variables)
+        gradients = [tf.clip_by_norm(g, 1) for g in gradients]
+        self.optimizer.apply_gradients(zip(gradients, variables))
+        return {}
 
-        for k in self.action_keys:
-            min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
-            max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
-            normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-            new_example[k] = normalized_action
+    def normalize(self, example: Dict):
+        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
+        new_example = {}
+        for k, v in example.items():
+            # Rescale to -1 to 1
+            if k in self.obs_keys:
+                min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+                max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+                normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+                new_example[k] = normalized_observation
+            elif k in self.action_keys:
+                min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
+                max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
+                normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+                new_example[k] = normalized_action
+            else:
+                new_example[k] = v
 
         return new_example
 
@@ -49,6 +64,7 @@ class CFMNetwork(MyKerasModel):
 
     # @tf.function
     def call(self, example, training=False, **kwargs):
+        # NOTE: we are right now only doing 1-step prediction, and the perception predictions are 0-step
         observation, observation_pos = self.get_positive_pairs(example)
 
         # forward pass
@@ -57,10 +73,12 @@ class CFMNetwork(MyKerasModel):
         pred_inputs['z_pos'] = z_pos['z']
         for k in self.action_keys:
             pred_inputs[k] = example[k]
-        z_seq = self.predictor(pred_inputs)
+        z_seq = self.dynamics(pred_inputs)
+        y_seq = self.observer(pred_inputs)
 
         output = z_seq
-        output.update(z_pos)
+        output['z_pos'] = z_pos['z']
+        output.update(y_seq)
         return output
 
     def compute_loss(self, example, outputs):
@@ -75,26 +93,31 @@ class CFMNetwork(MyKerasModel):
         z_next = tf.reshape(z_next, [-1, z_size])
         batch_size = z.shape[0]
 
-        # loss
-        # NOTE: z could be z_next here? probably doesn't matter
-        tiled_z = tf.tile(z[tf.newaxis], [batch_size, 1, 1])
-        tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
-        neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
-
-        # Subtracting a large positive values should make the loss for diagonal elements be 0
-        # which means we don't want to separate the representation of z from z_next
-        neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
-        # neg_dists_masked = neg_dists
-
-        pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
-
-        dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
-        log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
-        loss = -tf.reduce_mean(log_probabilities[:, -1])  # Get last column which is the true pos sample
+        cfm_loss = self.cfm_loss(batch_size, z, z_next, z_pos)
+        observation_feature_true = {k: example[k][:, :-1] for k in self.observation_feature_keys}
+        observation_feature_predictions = {k: outputs[k] for k in self.observation_feature_keys}
+        observation_feature_loss = loss_on_dicts(tf.keras.losses.mse,
+                                                 dict_true=observation_feature_true,
+                                                 dict_pred=observation_feature_predictions)
+        loss = cfm_loss + observation_feature_loss
 
         return {
             'loss': loss
         }
+
+    def cfm_loss(self, batch_size, z, z_next, z_pos):
+        # NOTE: z could be z_next here? probably doesn't matter
+        tiled_z = tf.tile(z[tf.newaxis], [batch_size, 1, 1])
+        tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
+        neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
+        # Subtracting a large positive values should make the loss for diagonal elements be 0
+        # which means we don't want to separate the representation of z from z_next
+        neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
+        pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
+        dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
+        log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
+        loss = -tf.reduce_mean(log_probabilities[:, -1])  # Get last column which is the true pos sample
+        return loss
 
 
 class Encoder(MyKerasModel):
@@ -173,10 +196,36 @@ class LocallyLinearPredictor(MyKerasModel):
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
         z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
-        z_seq = tf.concat((z, z_next), axis=1)
+        z_seq = tf.stack([z, z_next], axis=1)
         return {
             'z': z_seq
         }
+
+    def compute_loss(self, dataset_element, outputs):
+        raise NotImplementedError()
+
+
+class Observer(MyKerasModel):
+
+    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+        super().__init__(hparams=hparams, batch_size=batch_size)
+        self.state_keys = self.hparams['state_keys']
+        self.observation_feature_description: Dict = self.hparams['dynamics_dataset_hparams']['observation_feature_description']
+        final_dim = sum(self.observation_feature_description.values())
+
+        my_layers = []
+        for h in self.hparams['fc_layer_sizes']:
+            my_layers.append(layers.Dense(h, activation="relu"))
+        my_layers.append(layers.Dense(final_dim, activation=None))
+
+        self.model = Sequential(my_layers)
+
+    # @tf.function
+    def call(self, inputs, **kwargs):
+        z = tf.concat([inputs[k] for k in self.state_keys], axis=-1)
+        y = self.model(z)
+        y_dict = vector_to_dict(self.observation_feature_description, y)
+        return y_dict
 
     def compute_loss(self, dataset_element, outputs):
         raise NotImplementedError()

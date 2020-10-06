@@ -3,26 +3,19 @@
     <arg name="use_val" default="false"/>
 
     <group if="$(arg use_victor)">
-        <param name="robot_namespace" value="victor"/>
         <param name="robot_description" command="$(find xacro)/xacro '$(find victor_description)/urdf/victor.urdf.xacro'"/>
         <node pkg="tf2_ros" type="static_transform_publisher" name="robot_root" required="true"
               args="0 0 0 0 0 0 victor_root robot_root">
         </node>
+        <node ns="victor" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
     </group>
     <group if="$(arg use_val)">
-        <param name="robot_namespace" value="hdt_michigan"/>
         <param name="robot_description"
                command="$(find xacro)/xacro '$(find hdt_michigan_description)/urdf/hdt_michigan.urdf.xacro'"/>
         <node pkg="tf2_ros" type="static_transform_publisher" name="robot_root" required="true"
               args="0 0 0 0 0 0 hdt_michigan_root robot_root">
         </node>
+        <node ns="hdt_michigan" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
     </group>
 
-    <group ns="static_transform_publishers">
-        <node pkg="tf2_ros" type="static_transform_publisher" name="rename_origin" required="true"
-              args="0 0 0 0 0 0 robot_root world">
-        </node>
-    </group>
-
-    <node ns="$(robot_namespace)" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
 </launch>

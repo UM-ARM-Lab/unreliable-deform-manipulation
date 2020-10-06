@@ -12,4 +12,4 @@ def get_model(model_class_name):
     elif model_class_name == "SimpleNN":
         return unconstrained_dynamics_nn.UnconstrainedDynamicsNN
     elif model_class_name == "CFM":
-        return cfm.CFMNetwork
+        return cfm.CFM
