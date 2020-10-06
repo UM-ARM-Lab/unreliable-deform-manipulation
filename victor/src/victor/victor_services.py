@@ -33,21 +33,20 @@ class VictorServices(BaseServices):
         res = GetDualGripperPointsResponse()
         left_tool_transform = self.tf_wrapper.get_transform(parent="victor_root",
                                                             child="left_tool_placeholder")
-        res.gripper1.x = left_tool_transform[0, 3]
-        res.gripper1.y = left_tool_transform[1, 3]
-        res.gripper1.z = left_tool_transform[2, 3]
+        res.left_gripper.x = left_tool_transform[0, 3]
+        res.left_gripper.y = left_tool_transform[1, 3]
+        res.left_gripper.z = left_tool_transform[2, 3]
         right_tool_transform = self.tf_wrapper.get_transform(parent="victor_root",
                                                              child="right_tool_placeholder")
-        res.gripper2.x = right_tool_transform[0, 3]
-        res.gripper2.y = right_tool_transform[1, 3]
-        res.gripper2.z = right_tool_transform[2, 3]
+        res.right_gripper.x = right_tool_transform[0, 3]
+        res.right_gripper.y = right_tool_transform[1, 3]
+        res.right_gripper.z = right_tool_transform[2, 3]
         return res
 
     def setup_env(self, verbose: int, real_time_rate: float, max_step_size: float):
         # set the robot into impedance mode
-        success = self.victor.set_control_mode(ControlMode.JOINT_IMPEDANCE)
-        if not success:
+        left_res, right_res = self.victor.base_victor.set_control_mode(ControlMode.JOINT_IMPEDANCE)
+        if not left_res.success or not right_res.success:
             raise RuntimeError("Failed to switch into impedance mode")
-        # self.victor.set_right_gripper(gripper_closed_positions)
-        # self.victor.set_left_gripper(gripper_closed_positions)
-        pass
+        self.victor.open_left_gripper()
+        self.victor.open_right_gripper()

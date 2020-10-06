@@ -1,14 +1,11 @@
 from typing import Dict
 
 import ros_numpy
+
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
-from arm_robots_msgs.msg import Points
-from arm_robots_msgs.srv import GrippersTrajectoryRequest
-from geometry_msgs.msg import Point
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario
-from peter_msgs.srv import GetDualGripperPointsRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
 
@@ -23,46 +20,47 @@ class DualArmScenario(DualFloatingGripperRopeScenario):
 
         self.robot = get_moveit_robot()
 
+    def on_before_data_collection(self, params: Dict):
+        # move to init positions
+        self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
+        self.robot.close_left_gripper()
+        self.robot.close_right_gripper()
+
     def reset_robot(self, data_collection_params: Dict):
         pass
 
+    def get_gripper_positions(self):
+        left_gripper = self.robot.robot_commander.get_link("left_tool_placeholder")
+        left_gripper_position = ros_numpy.numpify(left_gripper.pose().pose.position)
+        right_gripper = self.robot.robot_commander.get_link("right_tool_placeholder")
+        right_gripper_position = ros_numpy.numpify(right_gripper.pose().pose.position)
+        return left_gripper_position, right_gripper_position
+
     def get_state(self):
         joint_state = self.robot.base_robot.joint_state_listener.get()
-        grippers_res = self.get_rope_end_points_srv(GetDualGripperPointsRequest())
+        left_gripper_position, right_gripper_position = self.get_gripper_positions()
         return {
-            'gripper1': ros_numpy.numpify(grippers_res.gripper1),
-            'gripper2': ros_numpy.numpify(grippers_res.gripper2),
+            'left_gripper': left_gripper_position,
+            'right_gripper': right_gripper_position,
             'joint_positions': joint_state.position,
             'joint_names': joint_state.name,
         }
 
     def states_description(self) -> Dict:
-        # joints_res = self.joint_states_srv(GetJointStateRequest())
-        # FIXME:
-        n_joints = 7 + 7 + 14
+        n_joints = len(self.robot.robot_commander.get_joint_names())
         return {
-            'gripper1': 3,
-            'gripper2': 3,
+            'left_gripper': 3,
+            'right_gripper': 3,
             'joint_positions': n_joints
         }
 
     def execute_action(self, action: Dict):
-        target_left_gripper_point = ros_numpy.msgify(Point, action['gripper1_position'])
-        target_right_gripper_point = ros_numpy.msgify(Point, action['gripper2_position'])
-
-        req = GrippersTrajectoryRequest()
-        req.speed = 0.1
-        left_gripper_points = Points()
-        left_gripper_points.points.append(target_left_gripper_point)
-        right_gripper_points = Points()
-        right_gripper_points.points.append(target_right_gripper_point)
-        req.grippers.append(left_gripper_points)
-        req.grippers.append(right_gripper_points)
-        req.group_name = "both_arms"
-        req.tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
-
-        # TODO: use jacobian follow method directly
-        _ = self.action_srv(req)
+        left_gripper_points = [action['left_gripper_position']]
+        right_gripper_points = [action['right_gripper_position']]
+        tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
+        grippers = [left_gripper_points, right_gripper_points]
+        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
+        rospy.sleep(0.5)  # REMOVE ME
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         joint_msg = JointState()

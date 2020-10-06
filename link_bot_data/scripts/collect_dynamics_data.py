@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import argparse
-import json
 import pathlib
 
 import colorama
+import hjson
 import numpy as np
 
 import moveit_commander
@@ -38,7 +38,7 @@ def main():
     rospy.init_node('collect_dynamics_data')
 
     with args.collect_dynamics_params.open("r") as f:
-        collect_dynamics_params = json.load(f)
+        collect_dynamics_params = hjson.load(f)
 
     service_provider = get_service_provider(args.service_provider)
 
@@ -47,7 +47,8 @@ def main():
                                                               params=collect_dynamics_params,
                                                               seed=args.seed,
                                                               verbose=args.verbose)
-    files_dataset = data_collector.collect_data(n_trajs=args.n_trajs, nickname=args.nickname, robot_namespace=args.robot_namespace)
+    files_dataset = data_collector.collect_data(n_trajs=args.n_trajs, nickname=args.nickname,
+                                                robot_namespace=args.robot_namespace)
     files_dataset.split()
 
 

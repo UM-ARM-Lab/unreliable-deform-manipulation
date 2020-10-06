@@ -24,6 +24,7 @@
   <depend>tf2_ros</depend>
   <depend>victor_hardware_interface</depend>
   <depend>cnpy</depend>
+  <depend>gazebo_ros_link_attacher</depend>
 
   <build_depend>message_generation</build_depend>
   <build_depend>visualization_msgs</build_depend>

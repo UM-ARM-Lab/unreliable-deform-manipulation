@@ -9,7 +9,8 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.dual_floating_gripper_scenario import DualFloatingGripperRopeScenario, IMAGE_H, IMAGE_W
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, SetDualGripperPoints, \
+from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, \
+    SetDualGripperPoints, \
     ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetDualGripperPointsResponse
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
@@ -61,26 +62,9 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
         raise NotImplementedError()
 
     def get_state(self):
+        # TODO: this should be composed of function calls to get_state for arm_no_rope and get_state for rope?
         joint_state = self.robot.base_robot.joint_state_listener.get()
-        while True:
-            try:
-                rope_res = self.get_rope_srv(GetRopeStateRequest())
-                break
-            except Exception:
-                print("CDCPD failed? Restart it!")
-                input("press enter.")
-
-        rope_state_vector = []
-        for p in rope_res.positions:
-            rope_state_vector.append(p.x)
-            rope_state_vector.append(p.y)
-            rope_state_vector.append(p.z)
-
-        rope_velocity_vector = []
-        for v in rope_res.velocities:
-            rope_velocity_vector.append(v.x)
-            rope_velocity_vector.append(v.y)
-            rope_velocity_vector.append(v.z)
+        rope_state_vector = self.get_rope_state()
 
         left_gripper_position, right_gripper_position = self.get_gripper_positions()
 
@@ -94,15 +78,6 @@ class DualArmRopeScenario(DualFloatingGripperRopeScenario):
             'joint_names': joint_state.name,
             'color_depth_image': color_depth_cropped,
         }
-
-    def get_rope_point_positions(self):
-        # TODO: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
-        #  although that looses semantic meaning and means hard-coding indices a lot...
-        req = GetDualGripperPointsRequest()
-        res: GetDualGripperPointsResponse = self.get_rope_end_points_srv(req)
-        left_rope_point_position = ros_numpy.numpify(res.left_gripper)
-        right_rope_point_position = ros_numpy.numpify(res.right_gripper)
-        return left_rope_point_position, right_rope_point_position
 
     def get_gripper_positions(self):
         left_gripper = self.robot.robot_commander.get_link("left_tool_placeholder")

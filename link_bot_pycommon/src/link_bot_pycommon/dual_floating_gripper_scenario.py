@@ -3,10 +3,10 @@ from typing import Dict, Optional
 import numpy as np
 import ompl.base as ob
 import ompl.control as oc
+import ros_numpy
 import tensorflow as tf
 from matplotlib import colors
 
-import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
 from arm_robots_msgs.srv import GrippersTrajectory
@@ -21,9 +21,9 @@ from link_bot_pycommon.pycommon import default_if_none, directions_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest
+    GetDualGripperPointsRequest, GetDualGripperPointsResponse
 from sensor_msgs.msg import Image
-from std_srvs.srv import Empty, EmptyRequest, SetBool
+from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
@@ -148,7 +148,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
     def randomization_initialization(self):
         pass
 
-    def on_before_data_collection(self):
+    def on_before_data_collection(self, params: Dict):
         left_gripper_position = np.array([1.0, 0.2, 1.0])
         right_gripper_position = np.array([1.0, -0.2, 1.0])
         init_action = {
@@ -259,7 +259,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             too_far = np.linalg.norm(left_gripper_position - right_gripper_position) > max_gripper_d
 
             if 'left_gripper_action_sample_extent' in data_collection_params:
-                left_gripper_extent = np.array(data_collection_params['left_gripper_action_sample_extent']).reshape([3, 2])
+                left_gripper_extent = np.array(data_collection_params['left_gripper_action_sample_extent']).reshape(
+                    [3, 2])
             else:
                 left_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
             left_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
@@ -267,7 +268,8 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             self.left_gripper_bbox_pub.publish(left_gripper_bbox_msg)
 
             if 'right_gripper_action_sample_extent' in data_collection_params:
-                right_gripper_extent = np.array(data_collection_params['right_gripper_action_sample_extent']).reshape([3, 2])
+                right_gripper_extent = np.array(data_collection_params['right_gripper_action_sample_extent']).reshape(
+                    [3, 2])
             else:
                 right_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
             right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
@@ -418,10 +420,7 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
         gripper_position2 = np.reshape(state['right_gripper'], [3])
         return gripper_position1, gripper_position2
 
-    def get_state(self):
-        color_depth_cropped = self.get_color_depth_cropped()
-
-        grippers_res = self.get_rope_end_points_srv(GetDualGripperPointsRequest())
+    def get_rope_state(self):
         while True:
             try:
                 rope_res = self.get_rope_srv(GetRopeStateRequest())
@@ -429,18 +428,32 @@ class DualFloatingGripperRopeScenario(Base3DScenario):
             except Exception:
                 print("CDCPD failed? Restart it!")
                 input("press enter.")
-
         rope_state_vector = []
         for p in rope_res.positions:
             rope_state_vector.append(p.x)
             rope_state_vector.append(p.y)
             rope_state_vector.append(p.z)
-
         rope_velocity_vector = []
         for v in rope_res.velocities:
             rope_velocity_vector.append(v.x)
             rope_velocity_vector.append(v.y)
             rope_velocity_vector.append(v.z)
+        return rope_state_vector
+
+    def get_rope_point_positions(self):
+        # TODO: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
+        #  although that looses semantic meaning and means hard-coding indices a lot...
+        req = GetDualGripperPointsRequest()
+        res: GetDualGripperPointsResponse = self.get_rope_end_points_srv(req)
+        left_rope_point_position = ros_numpy.numpify(res.left_gripper)
+        right_rope_point_position = ros_numpy.numpify(res.right_gripper)
+        return left_rope_point_position, right_rope_point_position
+
+    def get_state(self):
+        color_depth_cropped = self.get_color_depth_cropped()
+
+        rope_state_vector = self.get_rope_state()
+        grippers_res = self.get_rope_point_positions()
 
         return {
             'left_gripper': ros_numpy.numpify(grippers_res.left_gripper),
@@ -1579,11 +1592,13 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
 
         left_gripper_extent = np.reshape(self.goal['left_gripper_box'], [3, 2])
         left_gripper_satisfied = np.logical_and(
-            state_np['left_gripper'] >= left_gripper_extent[:, 0], state_np['left_gripper'] <= left_gripper_extent[:, 1])
+            state_np['left_gripper'] >= left_gripper_extent[:, 0],
+            state_np['left_gripper'] <= left_gripper_extent[:, 1])
 
         right_gripper_extent = np.reshape(self.goal['right_gripper_box'], [3, 2])
         right_gripper_satisfied = np.logical_and(
-            state_np['right_gripper'] >= right_gripper_extent[:, 0], state_np['right_gripper'] <= right_gripper_extent[:, 1])
+            state_np['right_gripper'] >= right_gripper_extent[:, 0],
+            state_np['right_gripper'] <= right_gripper_extent[:, 1])
 
         point_extent = np.reshape(self.goal['point_box'], [3, 2])
         points_satisfied = np.logical_and(near_center_rope_points >=
