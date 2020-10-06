@@ -1,5 +1,9 @@
 import numpy as np
-import ompl.control as oc
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    import ompl.control as oc
 
 
 class RandomDirectedControlSampler(oc.DirectedControlSampler):

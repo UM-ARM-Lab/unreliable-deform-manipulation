@@ -11,9 +11,9 @@ from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario, IMAGE_H, IMAGE_W
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import GetDualGripperPointsRequest, GetRopeStateRequest, SetDualGripperPointsRequest, \
+from peter_msgs.srv import SetDualGripperPointsRequest, \
     SetDualGripperPoints, \
-    ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetDualGripperPointsResponse
+    ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
 

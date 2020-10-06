@@ -1,10 +1,14 @@
 from typing import Dict, Optional
 
 import numpy as np
-import ompl.base as ob
-import ompl.control as oc
 import tensorflow as tf
 from matplotlib import colors
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    import ompl.base as ob
+    import ompl.control as oc
 
 import ros_numpy
 import rospy

@@ -1,6 +1,5 @@
 from __future__ import division
 
-import math
 import pathlib
 import random
 import string

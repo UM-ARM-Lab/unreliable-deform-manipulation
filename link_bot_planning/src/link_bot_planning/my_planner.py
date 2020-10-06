@@ -5,10 +5,14 @@ from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import ompl.base as ob
-import ompl.control as oc
 from dataclasses_json import dataclass_json
 from matplotlib import cm
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    import ompl.base as ob
+    import ompl.control as oc
 
 import rospy
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker

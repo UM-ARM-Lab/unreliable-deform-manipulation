@@ -1,8 +1,10 @@
-import sys
 from time import perf_counter
 from typing import Dict
 
-import ompl.base as ob
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    import ompl.base as ob
 
 import rospy
 
