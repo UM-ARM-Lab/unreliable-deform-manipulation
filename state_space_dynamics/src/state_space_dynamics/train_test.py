@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pathlib
 import time
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import hjson
 import numpy as np
@@ -170,6 +170,17 @@ def viz_main(dataset_dirs: List[pathlib.Path],
              checkpoint: pathlib.Path,
              mode: str,
              ):
+    viz_dataset(dataset_dirs=dataset_dirs,
+                checkpoint=checkpoint,
+                mode=mode,
+                viz_func=viz_example)
+
+
+def viz_dataset(dataset_dirs: List[pathlib.Path],
+                checkpoint: pathlib.Path,
+                mode: str,
+                viz_func: Callable
+                ):
     test_dataset = DynamicsDataset(dataset_dirs)
 
     trials_directory = pathlib.Path('trials').absolute()
@@ -192,15 +203,19 @@ def viz_main(dataset_dirs: List[pathlib.Path],
         batch.update(test_dataset.batch_metadata)
         predictions = runner.model(batch, training=False)
 
-        test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
-        anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
-        while not anim.done:
-            t = anim.t()
-            actual_t = remove_batch(test_dataset.scenario.index_state_time(batch, t))
-            action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
-            test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
-            test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-            prediction_t = remove_batch(test_dataset.scenario.index_state_time(predictions, t))
-            test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
+        viz_func(batch, predictions, test_dataset)
 
-            anim.step()
+
+def viz_example(batch, predictions, test_dataset):
+    test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
+    anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
+    while not anim.done:
+        t = anim.t()
+        actual_t = remove_batch(test_dataset.scenario.index_state_time(batch, t))
+        action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
+        test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
+        test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
+        prediction_t = remove_batch(test_dataset.scenario.index_state_time(predictions, t))
+        test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
+
+        anim.step()

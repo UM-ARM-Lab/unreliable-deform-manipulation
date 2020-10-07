@@ -339,7 +339,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def put_state_in_robot_frame(state: Dict):
-        rope = state['link_bot']
+        rope = state['rope']
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)
 
@@ -354,12 +354,12 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': left_gripper_robot,
             'right_gripper': right_gripper_robot,
-            'link_bot': rope_robot,
+            'rope': rope_robot,
         }
 
     @staticmethod
     def put_state_local_frame(state: Dict):
-        rope = state['link_bot']
+        rope = state['rope']
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)
 
@@ -374,12 +374,12 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': left_gripper_local,
             'right_gripper': right_gripper_local,
-            'link_bot': rope_local,
+            'rope': rope_local,
         }
 
     @staticmethod
     def local_environment_center_differentiable(state):
-        rope_vector = state['link_bot']
+        rope_vector = state['rope']
         rope_points = tf.reshape(rope_vector, [rope_vector.shape[0], -1, 3])
         center = tf.reduce_mean(rope_points, axis=1)
         return center
@@ -464,7 +464,7 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': ros_numpy.numpify(grippers_res.left_gripper),
             'right_gripper': ros_numpy.numpify(grippers_res.right_gripper),
-            'link_bot': np.array(rope_state_vector, np.float32),
+            'rope': np.array(rope_state_vector, np.float32),
             'color_depth_image': color_depth_cropped,
         }
 
@@ -515,7 +515,7 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'link_bot': FloatingRopeScenario.n_links * 3,
+            'rope': FloatingRopeScenario.n_links * 3,
         }
 
     @staticmethod
@@ -528,7 +528,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def state_to_points_for_cc(state: Dict):
-        return state['link_bot'].reshape(-1, 3)
+        return state['rope'].reshape(-1, 3)
 
     def __repr__(self):
         return "DualFloatingGripperRope"
@@ -593,7 +593,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_grippers_and_any_point_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['link_bot'], [-1, 3])
+        rope_points = np.reshape(state['rope'], [-1, 3])
         # well ok not _any_ node, but ones near the middle
         n_from_ends = 5
         distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) -
@@ -608,7 +608,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_any_point_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['link_bot'], [-1, 3])
+        rope_points = np.reshape(state['rope'], [-1, 3])
         # well ok not _any_ node, but ones near the middle
         n_from_ends = 7
         distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) -
@@ -618,7 +618,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_midpoint_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['link_bot'], [-1, 3])
+        rope_points = np.reshape(state['rope'], [-1, 3])
         rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
@@ -626,17 +626,17 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def full_distance_tf(s1: Dict, s2: Dict):
         """ the same as the distance metric used in planning """
-        distance = tf.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=-1)
+        distance = tf.linalg.norm(s1['rope'] - s2['rope'], axis=-1)
         return distance
 
     def batch_full_distance(self, s1: Dict, s2: Dict):
-        return np.linalg.norm(s1['link_bot'] - s2['link_bot'], axis=1)
+        return np.linalg.norm(s1['rope'] - s2['rope'], axis=1)
 
     def compute_label(self, actual: Dict, predicted: Dict, labeling_params: Dict):
         # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
         # done when making the classifier dataset
-        actual_rope = np.array(actual["link_bot"])
-        predicted_rope = np.array(predicted["link_bot"])
+        actual_rope = np.array(actual["rope"])
+        predicted_rope = np.array(predicted["rope"])
         model_error = np.linalg.norm(actual_rope - predicted_rope)
         threshold = labeling_params['threshold']
         is_close = model_error < threshold
@@ -831,180 +831,186 @@ class FloatingRopeScenario(Base3DScenario):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)
 
-        link_bot_points = np.reshape(state['link_bot'], [-1, 3])
+        if 'rope' in state:
+            rope_points = np.reshape(state['rope'], [-1, 3])
 
-        msg = MarkerArray()
-        lines = Marker()
-        lines.action = Marker.ADD  # create or modify
-        lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "world"
-        lines.header.stamp = rospy.Time.now()
-        lines.ns = label
-        lines.id = 6 * idx + 0
+            msg = MarkerArray()
+            lines = Marker()
+            lines.action = Marker.ADD  # create or modify
+            lines.type = Marker.LINE_STRIP
+            lines.header.frame_id = "world"
+            lines.header.stamp = rospy.Time.now()
+            lines.ns = label
+            lines.id = 6 * idx + 0
 
-        lines.pose.position.x = 0
-        lines.pose.position.y = 0
-        lines.pose.position.z = 0
-        lines.pose.orientation.x = 0
-        lines.pose.orientation.y = 0
-        lines.pose.orientation.z = 0
-        lines.pose.orientation.w = 1
+            lines.pose.position.x = 0
+            lines.pose.position.y = 0
+            lines.pose.position.z = 0
+            lines.pose.orientation.x = 0
+            lines.pose.orientation.y = 0
+            lines.pose.orientation.z = 0
+            lines.pose.orientation.w = 1
 
-        lines.scale.x = 0.01
+            lines.scale.x = 0.01
 
-        lines.color.r = r
-        lines.color.g = g
-        lines.color.b = b
-        lines.color.a = a
+            lines.color.r = r
+            lines.color.g = g
+            lines.color.b = b
+            lines.color.a = a
 
-        spheres = Marker()
-        spheres.action = Marker.ADD  # create or modify
-        spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "world"
-        spheres.header.stamp = rospy.Time.now()
-        spheres.ns = label
-        spheres.id = 6 * idx + 1
+            spheres = Marker()
+            spheres.action = Marker.ADD  # create or modify
+            spheres.type = Marker.SPHERE_LIST
+            spheres.header.frame_id = "world"
+            spheres.header.stamp = rospy.Time.now()
+            spheres.ns = label
+            spheres.id = 6 * idx + 1
 
-        spheres.scale.x = 0.02
-        spheres.scale.y = 0.02
-        spheres.scale.z = 0.02
+            spheres.scale.x = 0.02
+            spheres.scale.y = 0.02
+            spheres.scale.z = 0.02
 
-        spheres.pose.position.x = 0
-        spheres.pose.position.y = 0
-        spheres.pose.position.z = 0
-        spheres.pose.orientation.x = 0
-        spheres.pose.orientation.y = 0
-        spheres.pose.orientation.z = 0
-        spheres.pose.orientation.w = 1
+            spheres.pose.position.x = 0
+            spheres.pose.position.y = 0
+            spheres.pose.position.z = 0
+            spheres.pose.orientation.x = 0
+            spheres.pose.orientation.y = 0
+            spheres.pose.orientation.z = 0
+            spheres.pose.orientation.w = 1
 
-        spheres.color.r = r
-        spheres.color.g = g
-        spheres.color.b = b
-        spheres.color.a = a
+            spheres.color.r = r
+            spheres.color.g = g
+            spheres.color.b = b
+            spheres.color.a = a
 
-        for i, (x, y, z) in enumerate(link_bot_points):
-            point = Point()
-            point.x = x
-            point.y = y
-            point.z = z
+            for i, (x, y, z) in enumerate(rope_points):
+                point = Point()
+                point.x = x
+                point.y = y
+                point.z = z
 
-            spheres.points.append(point)
-            lines.points.append(point)
+                spheres.points.append(point)
+                lines.points.append(point)
 
-        left_gripper_sphere = Marker()
-        left_gripper_sphere.action = Marker.ADD  # create or modify
-        left_gripper_sphere.type = Marker.SPHERE
-        left_gripper_sphere.header.frame_id = "world"
-        left_gripper_sphere.header.stamp = rospy.Time.now()
-        left_gripper_sphere.ns = label
-        left_gripper_sphere.id = 6 * idx + 2
+            midpoint_sphere = Marker()
+            midpoint_sphere.action = Marker.ADD  # create or modify
+            midpoint_sphere.type = Marker.SPHERE
+            midpoint_sphere.header.frame_id = "world"
+            midpoint_sphere.header.stamp = rospy.Time.now()
+            midpoint_sphere.ns = label
+            midpoint_sphere.id = 6 * idx + 5
 
-        left_gripper_sphere.scale.x = 0.02
-        left_gripper_sphere.scale.y = 0.02
-        left_gripper_sphere.scale.z = 0.02
+            midpoint_sphere.scale.x = 0.03
+            midpoint_sphere.scale.y = 0.03
+            midpoint_sphere.scale.z = 0.03
 
-        left_gripper_sphere.pose.position.x = state['left_gripper'][0]
-        left_gripper_sphere.pose.position.y = state['left_gripper'][1]
-        left_gripper_sphere.pose.position.z = state['left_gripper'][2]
-        left_gripper_sphere.pose.orientation.x = 0
-        left_gripper_sphere.pose.orientation.y = 0
-        left_gripper_sphere.pose.orientation.z = 0
-        left_gripper_sphere.pose.orientation.w = 1
+            rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
+            midpoint_sphere.pose.position.x = rope_midpoint[0]
+            midpoint_sphere.pose.position.y = rope_midpoint[1]
+            midpoint_sphere.pose.position.z = rope_midpoint[2]
+            midpoint_sphere.pose.orientation.x = 0
+            midpoint_sphere.pose.orientation.y = 0
+            midpoint_sphere.pose.orientation.z = 0
+            midpoint_sphere.pose.orientation.w = 1
 
-        left_gripper_sphere.color.r = 0.2
-        left_gripper_sphere.color.g = 0.2
-        left_gripper_sphere.color.b = 0.8
-        left_gripper_sphere.color.a = a
+            midpoint_sphere.color.r = r * 0.8
+            midpoint_sphere.color.g = g * 0.8
+            midpoint_sphere.color.b = b * 0.8
+            midpoint_sphere.color.a = a
 
-        right_gripper_sphere = Marker()
-        right_gripper_sphere.action = Marker.ADD  # create or modify
-        right_gripper_sphere.type = Marker.SPHERE
-        right_gripper_sphere.header.frame_id = "world"
-        right_gripper_sphere.header.stamp = rospy.Time.now()
-        right_gripper_sphere.ns = label
-        right_gripper_sphere.id = 6 * idx + 3
+            msg.markers.append(spheres)
+            msg.markers.append(lines)
+            msg.markers.append(midpoint_sphere)
 
-        right_gripper_sphere.scale.x = 0.02
-        right_gripper_sphere.scale.y = 0.02
-        right_gripper_sphere.scale.z = 0.02
+        if 'left_gripper' in state:
+            left_gripper_sphere = Marker()
+            left_gripper_sphere.action = Marker.ADD  # create or modify
+            left_gripper_sphere.type = Marker.SPHERE
+            left_gripper_sphere.header.frame_id = "world"
+            left_gripper_sphere.header.stamp = rospy.Time.now()
+            left_gripper_sphere.ns = label
+            left_gripper_sphere.id = 6 * idx + 2
 
-        right_gripper_sphere.pose.position.x = state['right_gripper'][0]
-        right_gripper_sphere.pose.position.y = state['right_gripper'][1]
-        right_gripper_sphere.pose.position.z = state['right_gripper'][2]
-        right_gripper_sphere.pose.orientation.x = 0
-        right_gripper_sphere.pose.orientation.y = 0
-        right_gripper_sphere.pose.orientation.z = 0
-        right_gripper_sphere.pose.orientation.w = 1
+            left_gripper_sphere.scale.x = 0.02
+            left_gripper_sphere.scale.y = 0.02
+            left_gripper_sphere.scale.z = 0.02
 
-        right_gripper_sphere.color.r = 0.8
-        right_gripper_sphere.color.g = 0.2
-        right_gripper_sphere.color.b = 0.2
-        right_gripper_sphere.color.a = a
+            left_gripper_sphere.pose.position.x = state['left_gripper'][0]
+            left_gripper_sphere.pose.position.y = state['left_gripper'][1]
+            left_gripper_sphere.pose.position.z = state['left_gripper'][2]
+            left_gripper_sphere.pose.orientation.x = 0
+            left_gripper_sphere.pose.orientation.y = 0
+            left_gripper_sphere.pose.orientation.z = 0
+            left_gripper_sphere.pose.orientation.w = 1
 
-        left_gripper_text = Marker()
-        left_gripper_text.action = Marker.ADD  # create or modify
-        left_gripper_text.type = Marker.TEXT_VIEW_FACING
-        left_gripper_text.header.frame_id = "world"
-        left_gripper_text.header.stamp = rospy.Time.now()
-        left_gripper_text.ns = label
-        left_gripper_text.id = 6 * idx + 4
-        left_gripper_text.text = "L"
-        left_gripper_text.scale.z = 0.015
+            left_gripper_sphere.color.r = 0.2
+            left_gripper_sphere.color.g = 0.2
+            left_gripper_sphere.color.b = 0.8
+            left_gripper_sphere.color.a = a
 
-        left_gripper_text.pose.position.x = state['left_gripper'][0]
-        left_gripper_text.pose.position.y = state['left_gripper'][1]
-        left_gripper_text.pose.position.z = state['left_gripper'][2] + 0.015
-        left_gripper_text.pose.orientation.x = 0
-        left_gripper_text.pose.orientation.y = 0
-        left_gripper_text.pose.orientation.z = 0
-        left_gripper_text.pose.orientation.w = 1
+            left_gripper_text = Marker()
+            left_gripper_text.action = Marker.ADD  # create or modify
+            left_gripper_text.type = Marker.TEXT_VIEW_FACING
+            left_gripper_text.header.frame_id = "world"
+            left_gripper_text.header.stamp = rospy.Time.now()
+            left_gripper_text.ns = label
+            left_gripper_text.id = 6 * idx + 4
+            left_gripper_text.text = "L"
+            left_gripper_text.scale.z = 0.015
 
-        left_gripper_text.color.r = 1.0
-        left_gripper_text.color.g = 1.0
-        left_gripper_text.color.b = 1.0
-        left_gripper_text.color.a = 1.0
+            left_gripper_text.pose.position.x = state['left_gripper'][0]
+            left_gripper_text.pose.position.y = state['left_gripper'][1]
+            left_gripper_text.pose.position.z = state['left_gripper'][2] + 0.015
+            left_gripper_text.pose.orientation.x = 0
+            left_gripper_text.pose.orientation.y = 0
+            left_gripper_text.pose.orientation.z = 0
+            left_gripper_text.pose.orientation.w = 1
 
-        midpoint_sphere = Marker()
-        midpoint_sphere.action = Marker.ADD  # create or modify
-        midpoint_sphere.type = Marker.SPHERE
-        midpoint_sphere.header.frame_id = "world"
-        midpoint_sphere.header.stamp = rospy.Time.now()
-        midpoint_sphere.ns = label
-        midpoint_sphere.id = 6 * idx + 5
+            left_gripper_text.color.r = 1.0
+            left_gripper_text.color.g = 1.0
+            left_gripper_text.color.b = 1.0
+            left_gripper_text.color.a = 1.0
 
-        midpoint_sphere.scale.x = 0.03
-        midpoint_sphere.scale.y = 0.03
-        midpoint_sphere.scale.z = 0.03
+            msg.markers.append(left_gripper_sphere)
+            msg.markers.append(left_gripper_text)
 
-        rope_midpoint = link_bot_points[int(FloatingRopeScenario.n_links / 2)]
-        midpoint_sphere.pose.position.x = rope_midpoint[0]
-        midpoint_sphere.pose.position.y = rope_midpoint[1]
-        midpoint_sphere.pose.position.z = rope_midpoint[2]
-        midpoint_sphere.pose.orientation.x = 0
-        midpoint_sphere.pose.orientation.y = 0
-        midpoint_sphere.pose.orientation.z = 0
-        midpoint_sphere.pose.orientation.w = 1
+        if 'right_gripper' in state:
+            right_gripper_sphere = Marker()
+            right_gripper_sphere.action = Marker.ADD  # create or modify
+            right_gripper_sphere.type = Marker.SPHERE
+            right_gripper_sphere.header.frame_id = "world"
+            right_gripper_sphere.header.stamp = rospy.Time.now()
+            right_gripper_sphere.ns = label
+            right_gripper_sphere.id = 6 * idx + 3
 
-        midpoint_sphere.color.r = r * 0.8
-        midpoint_sphere.color.g = g * 0.8
-        midpoint_sphere.color.b = b * 0.8
-        midpoint_sphere.color.a = a
+            right_gripper_sphere.scale.x = 0.02
+            right_gripper_sphere.scale.y = 0.02
+            right_gripper_sphere.scale.z = 0.02
 
-        msg.markers.append(spheres)
-        msg.markers.append(left_gripper_sphere)
-        msg.markers.append(right_gripper_sphere)
-        msg.markers.append(left_gripper_text)
-        msg.markers.append(lines)
-        msg.markers.append(midpoint_sphere)
+            right_gripper_sphere.pose.position.x = state['right_gripper'][0]
+            right_gripper_sphere.pose.position.y = state['right_gripper'][1]
+            right_gripper_sphere.pose.position.z = state['right_gripper'][2]
+            right_gripper_sphere.pose.orientation.x = 0
+            right_gripper_sphere.pose.orientation.y = 0
+            right_gripper_sphere.pose.orientation.z = 0
+            right_gripper_sphere.pose.orientation.w = 1
+
+            right_gripper_sphere.color.r = 0.8
+            right_gripper_sphere.color.g = 0.2
+            right_gripper_sphere.color.b = 0.2
+            right_gripper_sphere.color.a = a
+
+            msg.markers.append(right_gripper_sphere)
         self.state_viz_pub.publish(msg)
 
-        color = state['color_depth_image'][:, :, :3].astype(np.uint8)
-        color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
-        self.state_color_viz_pub.publish(color_viz_msg)
+        if 'color_depth_image' in state:
+            color = state['color_depth_image'][:, :, :3].astype(np.uint8)
+            color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
+            self.state_color_viz_pub.publish(color_viz_msg)
 
-        depth = state['color_depth_image'][:, :, 3].astype(np.float32)
-        depth_viz_msg = ros_numpy.msgify(Image, depth, encoding="32FC1")
-        self.state_depth_viz_pub.publish(depth_viz_msg)
+            depth = state['color_depth_image'][:, :, 3].astype(np.float32)
+            depth_viz_msg = ros_numpy.msgify(Image, depth, encoding="32FC1")
+            self.state_depth_viz_pub.publish(depth_viz_msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}
@@ -1040,13 +1046,13 @@ class FloatingRopeScenario(Base3DScenario):
         for i in range(3):
             state_out[1][i] = np.float64(state_np['right_gripper'][i])
         for i in range(FloatingRopeScenario.n_links * 3):
-            state_out[2][i] = np.float64(state_np['link_bot'][i])
+            state_out[2][i] = np.float64(state_np['rope'][i])
         state_out[3][0] = np.float64(state_np['stdev'][0])
         state_out[4][0] = np.float64(state_np['num_diverged'][0])
 
     @staticmethod
     def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
-        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
+        rope_points = np.reshape(state_np['rope'], [-1, 3])
         for i in range(3):
             state_out[0][i] = np.float64(state_np['left_gripper'][i])
         for i in range(3):
@@ -1070,7 +1076,7 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': left_gripper,
             'right_gripper': right_gripper,
-            'link_bot': rope,
+            'rope': rope,
             'stdev': np.array([ompl_state[3][0]]),
             'num_diverged': np.array([ompl_state[4][0]]),
         }
@@ -1088,7 +1094,7 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': left_gripper,
             'right_gripper': right_gripper,
-            'link_bot': rope,
+            'rope': rope,
             'stdev': np.array([ompl_state[FloatingRopeScenario.n_links + 2][0]]),
             'num_diverged': np.array([ompl_state[FloatingRopeScenario.n_links + 3][0]]),
         }
@@ -1345,7 +1351,7 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
         state_np = {
             'left_gripper': random_point,
             'right_gripper': random_point,
-            'link_bot': random_point_rope,
+            'rope': random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -1398,7 +1404,7 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
         goal_state_np = {
             'left_gripper': self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'link_bot': rope.flatten(),
+            'rope': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -1455,7 +1461,7 @@ class RopeMidpointGoalRegion(ob.GoalSampleableRegion):
         goal_state_np = {
             'left_gripper': left_gripper,
             'right_gripper': right_gripper,
-            'link_bot': rope.flatten(),
+            'rope': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -1512,7 +1518,7 @@ class RopeAnyPointGoalRegion(ob.GoalSampleableRegion):
         goal_state_np = {
             'left_gripper': left_gripper,
             'right_gripper': right_gripper,
-            'link_bot': rope.flatten(),
+            'rope': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -1562,7 +1568,7 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
         goal_state_np = {
             'left_gripper': self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'link_bot': rope.flatten(),
+            'rope': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -1594,7 +1600,7 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
 
     def isSatisfied(self, state: ob.CompoundState, distance):
         state_np = self.scenario.ompl_state_to_numpy(state)
-        rope_points = np.reshape(state_np['link_bot'], [-1, 3])
+        rope_points = np.reshape(state_np['rope'], [-1, 3])
         n_from_ends = 7
         near_center_rope_points = rope_points[n_from_ends:-n_from_ends]
 
@@ -1626,7 +1632,7 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
         goal_state_np = {
             'left_gripper': self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'link_bot': rope.flatten(),
+            'rope': rope.flatten(),
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
