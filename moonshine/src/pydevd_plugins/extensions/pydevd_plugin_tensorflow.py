@@ -20,8 +20,7 @@ class TfTensorResolver(TypeResolveProvider):
 class TfTensorToString(StrPresentationProvider):
     def get_str(self, x):
         x_np = x.numpy()
-        batch_status_str = 'B' if x.is_batched else ''
-        return f'{batch_status_str}{x.dtype.name} {x.shape} {np.array2string(x_np)}'
+        return f'{x.dtype.name} {x.shape} {np.array2string(x_np)}'
 
     def can_provide(self, type_object, type_name):
         return type_name in ['EagerTensor', 'Tensor']

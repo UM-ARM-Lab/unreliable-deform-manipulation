@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -69,28 +69,27 @@ class CFM(MyKerasModel):
 
         # forward pass
         z, z_pos = self.encoder(observation), self.encoder(observation_pos)  # b x z_dim
-        pred_inputs = z
-        pred_inputs['z_pos'] = z_pos['z']
+        pred_inputs = {
+            'z': z['z'],
+            'z_pos': z_pos['z'],
+        }
         for k in self.action_keys:
             pred_inputs[k] = example[k]
         z_seq = self.dynamics(pred_inputs)
         y_seq = self.observer(pred_inputs)
 
-        output = z_seq
-        output['z_pos'] = z_pos['z']
+        output = {
+            'z_pos': z_pos['z'],
+        }
+        output.update(z_seq)
         output.update(y_seq)
         return output
 
     def compute_loss(self, example, outputs):
         z = outputs['z'][:, 0]
-        z_pos = outputs['z_pos']
-        z_next = outputs['z'][:, 1]
-        z_size = z.shape[-1]
+        z_pos = outputs['z_pos'][:, 0]
+        z_next = outputs['z'][:, 1]  # this assumes single transitions
 
-        # TODO: collapse various batch dimensions
-        z = tf.reshape(z, [-1, z_size])
-        z_pos = tf.reshape(z_pos, [-1, z_size])
-        z_next = tf.reshape(z_next, [-1, z_size])
         batch_size = z.shape[0]
 
         cfm_loss = self.cfm_loss(batch_size, z, z_next, z_pos)
@@ -196,7 +195,7 @@ class LocallyLinearPredictor(MyKerasModel):
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
         z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
-        z_seq = tf.stack([z, z_next], axis=1)
+        z_seq = tf.concat([z, z_next], axis=1)
         return {
             'z': z_seq
         }

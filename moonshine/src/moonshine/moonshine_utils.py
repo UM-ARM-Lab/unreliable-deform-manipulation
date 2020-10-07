@@ -231,45 +231,6 @@ def gather_dict(d: Dict, indices, axis: int = 0):
     return {k: tf.gather(v, indices, axis=axis) for k, v in d.items()}
 
 
-def make_type_batched(type_name: Type):
-    type_name.is_batched = False
-    excluded_symbols = ['__class__', '__init__', '__new__', '__repr__', '__str__', '__getattribute__', '__setattr__']
-    for symbol_name in dir(type_name):
-        original_symbol = getattr(type_name, symbol_name)
-        if hasattr(original_symbol, '__call__') and symbol_name not in excluded_symbols:
-            def capture_and_intercept(n, s):
-                def _intercept(*args, **kwargs):
-                    print("intercepted", n)
-                    result = s(*args, **kwargs)
-                    any_args_are_batched = False
-                    for a in args:
-                        if getattr(a, 'is_batched', False):
-                            any_args_are_batched = True
-                    for a in kwargs.values():
-                        if getattr(a, 'is_batched', False):
-                            any_args_are_batched = True
-                    print(f'any batched args = {any_args_are_batched}')
-                    if any_args_are_batched:
-                        try:
-                            result.is_batched = True
-                        except AttributeError:
-                            # results must be a python native type, which you can't add attribtutes to
-                            # so instead we just do nothing
-                            pass
-                    return result
-
-                return _intercept
-
-            # print(f"will intercept calls to {symbol_name}")
-
-            # this lambda allows us to capture the symbol_name and original_symbol at there current values in the for-loop
-            setattr(type_name, symbol_name, (lambda n, s: capture_and_intercept(n, s))(symbol_name, original_symbol))
-
-
-# Monkey patch the Tensor type
-make_type_batched(tf.Tensor)
-
-
 def vector_to_dict(description: Dict, z):
     start_idx = 0
     d = {}

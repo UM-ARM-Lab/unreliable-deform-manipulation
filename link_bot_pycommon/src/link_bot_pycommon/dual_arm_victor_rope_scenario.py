@@ -12,5 +12,4 @@ class DualArmVictorRopeScenario(BaseDualArmRopeScenario):
         self.victor = Victor()
 
     def on_before_data_collection(self, params: Dict):
-        self.victor.base_victor.set_control_mode(ControlMode.JOINT_IMPEDANCE)
         super().on_before_data_collection(params)

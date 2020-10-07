@@ -216,71 +216,59 @@ class ExperimentScenario:
     def get_state(self):
         raise NotImplementedError()
 
-    def index_predicted_state_time(self, state, t):
+    # unfortunately all these versions of these functions are slightly different
+    # and trying to write it generically would be hard to do correctly and the result would be unreadable
+    def index_predicted_state_time_batched(self, state, t):
         state_t = {}
         for feature_name in self.states_description().keys():
             if add_predicted(feature_name) in state:
-                if state[add_predicted(feature_name)].is_batched:
-                    state_t[feature_name] = state[add_predicted(feature_name)][:, t]
-                else:
-                    state_t[feature_name] = state[add_predicted(feature_name)][t]
+                state_t[feature_name] = state[add_predicted(feature_name)][:, t]
         return state_t
 
-    def index_observation_features_time(self, observation_features, t):
+    def index_observation_features_time_batched(self, observation_features, t):
         observation_features_t = {}
         for feature_name in self.observation_features_description().keys():
             if feature_name in observation_features:
-                if observation_features[feature_name].is_batched:
-                    observation_features_t[feature_name] = observation_features[feature_name][:, t]
-                else:
-                    observation_features_t[feature_name] = observation_features[feature_name][t]
+                observation_features_t[feature_name] = observation_features[feature_name][:, t]
         return observation_features_t
 
-    def index_observation_time(self, observation, t):
+    def index_observation_time_batched(self, observation, t):
         observation_t = {}
         for feature_name in self.observations_description().keys():
             if feature_name in observation:
-                if observation[feature_name].is_batched:
-                    observation_t[feature_name] = observation[feature_name][:, t]
-                else:
-                    observation_t[feature_name] = observation[feature_name][t]
+                observation_t[feature_name] = observation[feature_name][:, t]
         return observation_t
 
-    def index_state_time(self, state, t):
+    def index_state_time_batched(self, state, t):
         state_t = {}
         for feature_name in self.states_description().keys():
             if feature_name in state:
-                if state[feature_name].is_batched:
-                    state_t[feature_name] = state[feature_name][:, t]
-                else:
-                    state_t[feature_name] = state[feature_name][t]
+                state_t[feature_name] = state[feature_name][t]
         return state_t
 
-    def index_action_time(self, action, t):
+    def index_state_time_batched(self, state, t):
+        state_t = {}
+        for feature_name in self.states_description().keys():
+            if feature_name in state:
+                state_t[feature_name] = state[feature_name][:, t]
+        return state_t
+
+    def index_action_time_batched(self, action, t):
         action_t = {}
         for feature_name in self.actions_description().keys():
-            if action[feature_name].is_batched:
-                if t < action[feature_name].shape[1]:
-                    action_t[feature_name] = action[feature_name][:, t]
-                else:
-                    action_t[feature_name] = action[feature_name][:, t - 1]
+            if t < action[feature_name].shape[0]:
+                action_t[feature_name] = action[feature_name][:, t]
             else:
-                if t < action[feature_name].shape[0]:
-                    action_t[feature_name] = action[feature_name][t]
-                else:
-                    action_t[feature_name] = action[feature_name][t - 1]
+                action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
 
     @staticmethod
-    def index_label_time(example: Dict, t: int):
+    def index_label_time_batched(example: Dict, t: int):
         if t == 0:
             # it makes no sense to have a label at t=0, labels are for transitions/sequences
             # the plotting function that consumes this should use None correctly
             return None
-        if example['is_close'].is_batched:
-            return example['is_close'][:, t]
-        else:
-            return example['is_close'][t]
+        return example['is_close'][:, t]
 
     def randomization_initialization(self):
         raise NotImplementedError()

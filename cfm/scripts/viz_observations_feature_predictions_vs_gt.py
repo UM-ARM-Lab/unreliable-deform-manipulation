@@ -13,17 +13,17 @@ from moonshine.moonshine_utils import remove_batch
 from state_space_dynamics.train_test import viz_dataset
 
 
-def viz_func(batch, predictions, test_dataset : DynamicsDataset):
+def viz_func(batch, predictions, test_dataset: DynamicsDataset):
     """ we assume batch size of 1 """
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
     anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
     while not anim.done:
         t = anim.t()
-        actual_t = remove_batch(test_dataset.scenario.index_observation_features_time(batch, t))
-        action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
+        actual_t = remove_batch(test_dataset.scenario.index_observation_features_time_batched(batch, t))
+        action_t = remove_batch(test_dataset.scenario.index_action_time_batched(batch, t))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
         test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-        prediction_t = remove_batch(test_dataset.scenario.index_observation_features_time(predictions, t))
+        prediction_t = remove_batch(test_dataset.scenario.index_observation_features_time_batched(predictions, t))
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()

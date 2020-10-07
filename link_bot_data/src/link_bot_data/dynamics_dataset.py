@@ -86,7 +86,7 @@ class DynamicsDataset(BaseDataset):
             for k in self.constant_feature_names:
                 out_example[k] = example[k]
 
-            for k in self.state_keys:
+            for k in self.state_keys + self.observation_feature_keys:
                 v = example[k][start_t:start_t + desired_sequence_length]
                 assert v.shape[0] == desired_sequence_length
                 out_example[k] = v

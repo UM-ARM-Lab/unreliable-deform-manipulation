@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import json
 import pathlib
 from typing import List, Optional
 
-import tensorflow as tf
+import hjson
 import numpy as np
+import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
@@ -22,7 +22,7 @@ class BaseDataset:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
 
             # to merge dataset hparams
-            hparams = json.load(dataset_hparams_filename.open('r'))
+            hparams = hjson.load(dataset_hparams_filename.open('r'))
             for k, v in hparams.items():
                 if k not in self.hparams:
                     self.hparams[k] = v

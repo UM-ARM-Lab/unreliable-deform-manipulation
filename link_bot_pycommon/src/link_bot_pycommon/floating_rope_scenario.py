@@ -6,6 +6,7 @@ import tensorflow as tf
 from matplotlib import colors
 
 import warnings
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=RuntimeWarning)
     import ompl.base as ob
@@ -281,9 +282,10 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
             right_gripper_bbox_msg.header.frame_id = 'world'
             self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
-            if not out_of_bounds and not too_far:
-                self.last_action = action
-                return action
+            # if not out_of_bounds and not too_far:
+            #     self.last_action = action
+            #     return action
+            return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
@@ -459,11 +461,11 @@ class FloatingRopeScenario(Base3DScenario):
         color_depth_cropped = self.get_color_depth_cropped()
 
         rope_state_vector = self.get_rope_state()
-        grippers_res = self.get_rope_point_positions()
+        left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
 
         return {
-            'left_gripper': ros_numpy.numpify(grippers_res.left_gripper),
-            'right_gripper': ros_numpy.numpify(grippers_res.right_gripper),
+            'left_gripper': ros_numpy.numpify(left_rope_point_position),
+            'right_gripper': ros_numpy.numpify(right_rope_point_position),
             'rope': np.array(rope_state_vector, np.float32),
             'color_depth_image': color_depth_cropped,
         }
@@ -494,7 +496,7 @@ class FloatingRopeScenario(Base3DScenario):
         # BEGIN DEBUG
         # _debug_show_image(color_depth_cropped)
         # END DEBUG
-        return color_depth_cropped
+        return color_depth_cropped.numpy()
 
     @staticmethod
     def observations_description() -> Dict:
@@ -831,10 +833,11 @@ class FloatingRopeScenario(Base3DScenario):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)
 
+        msg = MarkerArray()
+
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
 
-            msg = MarkerArray()
             lines = Marker()
             lines.action = Marker.ADD  # create or modify
             lines.type = Marker.LINE_STRIP
