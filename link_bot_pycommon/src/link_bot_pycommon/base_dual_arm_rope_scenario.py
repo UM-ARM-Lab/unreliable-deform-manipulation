@@ -1,47 +1,20 @@
 from typing import Dict, List
 
 import numpy as np
+import ros_numpy
 
 import moveit_commander
-import ros_numpy
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
-from gazebo_ros_link_attacher.srv import Attach, AttachRequest
+from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
-from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario, IMAGE_H, IMAGE_W
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import SetDualGripperPointsRequest, \
-    SetDualGripperPoints, \
+from peter_msgs.srv import SetDualGripperPoints, \
     ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
-
-
-def attach_or_detach_requests():
-    robot_name = rospy.get_namespace().strip("/")
-
-    left_req = AttachRequest()
-    left_req.model_name_1 = robot_name
-    left_req.link_name_1 = "left_tool_placeholder"
-    left_req.model_name_2 = "rope_3d"
-    left_req.link_name_2 = "left_gripper"
-    left_req.anchor_position.x = 0
-    left_req.anchor_position.y = 0
-    left_req.anchor_position.z = 0
-    left_req.has_anchor_position = True
-
-    right_req = AttachRequest()
-    right_req.model_name_1 = robot_name
-    right_req.link_name_1 = "right_tool_placeholder"
-    right_req.model_name_2 = "rope_3d"
-    right_req.link_name_2 = "right_gripper"
-    right_req.anchor_position.x = 0
-    right_req.anchor_position.y = 0
-    right_req.anchor_position.z = 0
-    right_req.has_anchor_position = True
-
-    return left_req, right_req
 
 
 class BaseDualArmRopeScenario(FloatingRopeScenario):
@@ -59,8 +32,10 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
 
         # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles
         self.moveit_scene = moveit_commander.PlanningSceneInterface()
-        self.robust_add_to_scene('left_tool_placeholder', 'left_tool_box', self.robot.get_left_gripper_links())
-        self.robust_add_to_scene('right_tool_placeholder', 'right_tool_box', self.robot.get_right_gripper_links())
+        self.robust_add_to_scene('left_tool_placeholder', 'left_tool_box',
+                                 self.robot.base_robot.get_left_gripper_links())
+        self.robust_add_to_scene('right_tool_placeholder', 'right_tool_box',
+                                 self.robot.base_robot.get_right_gripper_links())
 
     def robust_add_to_scene(self, link: str, new_object_name: str, touch_links: List[str]):
         box_pose = PoseStamped()
@@ -83,57 +58,46 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
                 break
 
     def reset_robot(self, data_collection_params: Dict):
-        # if data_collection_params['scene'] == 'tabletop':
-        #     self.robot.plan_to_joint_config("both_arms", data_collection_params['home']['position'])
-        # elif data_collection_params['scene'] in ['car', 'car2', 'car-floor']:
         raise NotImplementedError()
 
     def get_state(self):
         # TODO: this should be composed of function calls to get_state for arm_no_rope and get_state for rope?
         joint_state = self.robot.base_robot.joint_state_listener.get()
-        rope_state_vector = self.get_rope_state()
 
-        left_gripper_position, right_gripper_position = self.get_gripper_positions()
+        left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
 
         color_depth_cropped = self.get_color_depth_cropped()
 
+        rope_state_vector = self.get_rope_state()
+
         return {
-            'left_gripper': left_gripper_position,
-            'right_gripper': right_gripper_position,
-            'link_bot': np.array(rope_state_vector, np.float32),
             'joint_positions': joint_state.position,
             'joint_names': joint_state.name,
+            'left_gripper': ros_numpy.numpify(left_gripper_position),
+            'right_gripper': ros_numpy.numpify(right_gripper_position),
             'color_depth_image': color_depth_cropped,
+            'rope': np.array(rope_state_vector, np.float32),
         }
-
-    def get_gripper_positions(self):
-        left_gripper = self.robot.robot_commander.get_link("left_tool_placeholder")
-        left_gripper_position = ros_numpy.numpify(left_gripper.pose().pose.position)
-        right_gripper = self.robot.robot_commander.get_link("right_tool_placeholder")
-        right_gripper_position = ros_numpy.numpify(right_gripper.pose().pose.position)
-        return left_gripper_position, right_gripper_position
 
     def states_description(self) -> Dict:
-        n_joints = len(self.robot.robot_commander.get_joint_names())
+        n_joints = self.robot.get_n_joints()
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'link_bot': FloatingRopeScenario.n_links * 3,
+            'rope': FloatingRopeScenario.n_links * 3,
             'joint_positions': n_joints,
-            'color_depth_image': IMAGE_H * IMAGE_W * 4,
+            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
         }
 
-    @staticmethod
-    def observations_description() -> Dict:
+    def observations_description(self) -> Dict:
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'color_depth_image': IMAGE_H * IMAGE_W * 4,
+            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         super().plot_state_rviz(state, label, **kwargs)
-        # TODO: remove this once we no longer need to use the old datasets
         if 'joint_positions' in state and 'joint_names' in state:
             joint_msg = JointState()
             joint_msg.header.stamp = rospy.Time.now()
@@ -160,29 +124,6 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         exclude = ExcludeModelsRequest()
         res: ExcludeModelsResponse = self.exclude_from_planning_scene_srv(exclude)
         return res.all_model_names
-
-    def on_before_data_collection(self, params: Dict):
-        # Mark the rope as a not-obstacle
-        exclude = ExcludeModelsRequest()
-        exclude.model_names.append("rope_3d")
-        self.exclude_from_planning_scene_srv(exclude)
-
-        # let go
-        self.robot.open_left_gripper()
-        self.robot.open_right_gripper()
-        self.detach_rope_to_grippers()
-
-        # move to init positions
-        self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
-
-        # Grasp the rope and move to a certain position to start data collection
-        self.service_provider.pause()
-        self.move_rope_to_match_grippers()
-        self.attach_rope_to_grippers()
-        self.service_provider.play()
-
-        self.robot.close_left_gripper()
-        self.robot.close_right_gripper()
 
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         raise NotImplementedError()
@@ -214,26 +155,3 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     @staticmethod
     def robot_name():
         raise NotImplementedError()
-
-    def attach_rope_to_grippers(self):
-        left_req, right_req = attach_or_detach_requests()
-        self.attach_srv(left_req)
-        self.attach_srv(right_req)
-
-    def detach_rope_to_grippers(self):
-        left_req, right_req = attach_or_detach_requests()
-        self.detach_srv(left_req)
-        self.detach_srv(right_req)
-
-    def move_rope_to_match_grippers(self, step_size=0.01):
-        left_transform = self.tf.get_transform("robot_root", "left_tool_placeholder")
-        right_transform = self.tf.get_transform("robot_root", "right_tool_placeholder")
-        desired_rope_point_positions = np.stack([left_transform[0:3, 3], right_transform[0:3, 3]], axis=0)
-        move = SetDualGripperPointsRequest()
-        move.left_gripper.x = desired_rope_point_positions[0, 0]
-        move.left_gripper.y = desired_rope_point_positions[0, 1]
-        move.left_gripper.z = desired_rope_point_positions[0, 2]
-        move.right_gripper.x = desired_rope_point_positions[1, 0]
-        move.right_gripper.y = desired_rope_point_positions[1, 1]
-        move.right_gripper.z = desired_rope_point_positions[1, 2]
-        self.set_rope_end_points_srv(move)

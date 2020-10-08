@@ -319,6 +319,9 @@ class ExperimentScenario:
     def get_excluded_models_for_env(self):
         raise NotImplementedError()
 
+    def on_after_data_collection(self, params):
+        pass
+
 
 def sample_object_position(env_rng, xyz_range: Dict):
     x_range = xyz_range['x']

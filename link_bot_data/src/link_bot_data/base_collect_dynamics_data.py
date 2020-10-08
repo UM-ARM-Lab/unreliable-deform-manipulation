@@ -168,6 +168,8 @@ class DataCollector:
             with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
                 writer.write(example_str)
 
+        self.scenario.on_after_data_collection(self.params)
+
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         return files_dataset

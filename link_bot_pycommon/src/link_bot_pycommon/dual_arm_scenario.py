@@ -1,7 +1,5 @@
 from typing import Dict
 
-import ros_numpy
-
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from link_bot_gazebo_python.gazebo_services import GazeboServices
@@ -29,16 +27,9 @@ class DualArmScenario(FloatingRopeScenario):
     def reset_robot(self, data_collection_params: Dict):
         pass
 
-    def get_gripper_positions(self):
-        left_gripper = self.robot.robot_commander.get_link("left_tool_placeholder")
-        left_gripper_position = ros_numpy.numpify(left_gripper.pose().pose.position)
-        right_gripper = self.robot.robot_commander.get_link("right_tool_placeholder")
-        right_gripper_position = ros_numpy.numpify(right_gripper.pose().pose.position)
-        return left_gripper_position, right_gripper_position
-
     def get_state(self):
         joint_state = self.robot.base_robot.joint_state_listener.get()
-        left_gripper_position, right_gripper_position = self.get_gripper_positions()
+        left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
         return {
             'left_gripper': left_gripper_position,
             'right_gripper': right_gripper_position,
@@ -47,7 +38,7 @@ class DualArmScenario(FloatingRopeScenario):
         }
 
     def states_description(self) -> Dict:
-        n_joints = len(self.robot.robot_commander.get_joint_names())
+        n_joints = len(self.robot.base_robot.robot_commander.get_joint_names())
         return {
             'left_gripper': 3,
             'right_gripper': 3,
@@ -60,9 +51,9 @@ class DualArmScenario(FloatingRopeScenario):
         tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
         grippers = [left_gripper_points, right_gripper_points]
         self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
-        rospy.sleep(0.5)  # REMOVE ME
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
+        # TODO: de-duplicate
         joint_msg = JointState()
         joint_msg.header.stamp = rospy.Time.now()
         joint_msg.position = state['joint_positions']

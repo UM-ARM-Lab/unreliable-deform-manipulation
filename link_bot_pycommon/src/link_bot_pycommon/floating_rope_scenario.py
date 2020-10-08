@@ -106,23 +106,23 @@ def sample_rope(rng, p, n_links, kd: float):
     return rope
 
 
-IMAGE_H = 90
-IMAGE_W = 120
-crop_region = {
-    'min_y': 10,
-    'min_x': 10,
-    'max_y': 450,
-    'max_x': 630,
-}
-
-
 class FloatingRopeScenario(Base3DScenario):
+    IMAGE_H = 126
+    IMAGE_W = 224
     n_links = 25
+    COLOR_IMAGE_TOPIC = "/camera/color/image_raw"
+    DEPTH_IMAGE_TOPIC = "/camera/depth/image_raw"
+    crop_region = {
+        'min_y': 0,
+        'min_x': 0,
+        'max_y': 540,
+        'max_x': 960,
+    }
 
     def __init__(self):
         super().__init__()
-        self.color_image_listener = Listener("/camera/color/image_raw", Image)
-        self.depth_image_listener = Listener("/camera/depth/image_raw", Image)
+        self.color_image_listener = Listener(self.COLOR_IMAGE_TOPIC, Image)
+        self.depth_image_listener = Listener(self.DEPTH_IMAGE_TOPIC, Image)
         self.state_color_viz_pub = rospy.Publisher("state_color_viz", Image, queue_size=10, latch=True)
         self.state_depth_viz_pub = rospy.Publisher("state_depth_viz", Image, queue_size=10, latch=True)
         self.last_action = None
@@ -139,7 +139,8 @@ class FloatingRopeScenario(Base3DScenario):
         self.robot_reset_rng = np.random.RandomState(0)
 
     def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
-        distances = tf.stack([tf.linalg.norm(v1 - v2, axis=-1) for v1, v2 in zip(final_state.values(), goal.values())], axis=-1)
+        distances = tf.stack([tf.linalg.norm(v1 - v2, axis=-1) for v1, v2 in zip(final_state.values(), goal.values())],
+                             axis=-1)
         total_distances = tf.math.reduce_sum(distances, axis=-1)
         return total_distances
 
@@ -282,10 +283,9 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
             right_gripper_bbox_msg.header.frame_id = 'world'
             self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
-            # if not out_of_bounds and not too_far:
-            #     self.last_action = action
-            #     return action
-            return action
+            if not out_of_bounds and not too_far:
+                self.last_action = action
+                return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
@@ -477,15 +477,15 @@ class FloatingRopeScenario(Base3DScenario):
         # NaN Depths means out of range, so clip to the max range
         depth = np.clip(depth, 0, 3)
         color_depth = np.concatenate([color, depth], axis=2)
-        box = tf.convert_to_tensor([crop_region['min_y'] / color.shape[0],
-                                    crop_region['min_x'] / color.shape[1],
-                                    crop_region['max_y'] / color.shape[0],
-                                    crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
+        box = tf.convert_to_tensor([self.crop_region['min_y'] / color.shape[0],
+                                    self.crop_region['min_x'] / color.shape[1],
+                                    self.crop_region['max_y'] / color.shape[0],
+                                    self.crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
         # this operates on a batch
         color_depth_cropped = tf.image.crop_and_resize(image=tf.expand_dims(color_depth, axis=0),
                                                        boxes=tf.expand_dims(box, axis=0),
                                                        box_indices=[0],
-                                                       crop_size=[IMAGE_H, IMAGE_W])
+                                                       crop_size=[self.IMAGE_H, self.IMAGE_W])
         color_depth_cropped = remove_batch(color_depth_cropped)
 
         def _debug_show_image(_color_depth_cropped):
@@ -498,14 +498,13 @@ class FloatingRopeScenario(Base3DScenario):
         # END DEBUG
         return color_depth_cropped.numpy()
 
-    @staticmethod
-    def observations_description() -> Dict:
+    def observations_description(self) -> Dict:
         return {
             'left_gripper': 3,
             'right_gripper': 3,
             'gripper1': 3,
             'gripper2': 3,
-            'color_depth_image': IMAGE_H * IMAGE_W * 4,
+            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     @staticmethod
