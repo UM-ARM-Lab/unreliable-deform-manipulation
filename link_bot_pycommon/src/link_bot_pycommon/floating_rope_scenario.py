@@ -472,7 +472,9 @@ class FloatingRopeScenario(Base3DScenario):
 
     def get_color_depth_cropped(self):
         # make color + depth image
-        color = ros_numpy.numpify(self.color_image_listener.get(block_until_data=False))
+        color_msg: Image = self.color_image_listener.get(block_until_data=False)
+        color = ros_numpy.numpify(color_msg)
+
         depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
         # NaN Depths means out of range, so clip to the max range
         depth = np.clip(depth, 0, 3)
@@ -1007,7 +1009,7 @@ class FloatingRopeScenario(Base3DScenario):
 
         if 'color_depth_image' in state:
             color = state['color_depth_image'][:, :, :3].astype(np.uint8)
-            color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
+            color_viz_msg = ros_numpy.msgify(Image, color, encoding="bgr8")
             self.state_color_viz_pub.publish(color_viz_msg)
 
             depth = state['color_depth_image'][:, :, 3].astype(np.float32)
