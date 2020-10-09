@@ -16,7 +16,7 @@ from state_space_dynamics.train_test import viz_dataset
 def viz_func(batch, predictions, test_dataset: DynamicsDataset):
     """ we assume batch size of 1 """
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
-    anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
+    anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
         actual_t = remove_batch(test_dataset.scenario.index_observation_features_time_batched(batch, t))

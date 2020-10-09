@@ -64,6 +64,8 @@ class DataCollector:
 
         actions = {k: [] for k in self.scenario.actions_description().keys()}
         states = {k: [] for k in self.scenario.states_description().keys()}
+        states.update({k: [] for k in self.scenario.observations_description().keys()})
+        states.update({k: [] for k in self.scenario.observation_features_description().keys()})
 
         # sanity check!
         for k in self.scenario.actions_description().keys():
@@ -90,6 +92,12 @@ class DataCollector:
                     action_component = action[action_name]
                     actions[action_name].append(action_component)
             for state_component_name in self.scenario.states_description().keys():
+                state_component = state[state_component_name]
+                states[state_component_name].append(state_component)
+            for state_component_name in self.scenario.observations_description().keys():
+                state_component = state[state_component_name]
+                states[state_component_name].append(state_component)
+            for state_component_name in self.scenario.observation_features_description().keys():
                 state_component = state[state_component_name]
                 states[state_component_name].append(state_component)
             time_indices.append(time_idx)
@@ -130,6 +138,8 @@ class DataCollector:
             'data_collection_params': self.params,
             'states_description': self.scenario.states_description(),
             'action_description': self.scenario.actions_description(),
+            'observations_description': self.scenario.observations_description(),
+            'observation_features_description': self.scenario.observation_features_description(),
             'scenario': self.scenario_name,
             'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
         }

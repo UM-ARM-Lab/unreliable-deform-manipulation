@@ -1,9 +1,9 @@
 from typing import Dict, List
 
 import numpy as np
-import ros_numpy
 
 import moveit_commander
+import ros_numpy
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach
@@ -13,18 +13,21 @@ from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from peter_msgs.srv import SetDualGripperPoints, \
     ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
+from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
 
 
 class BaseDualArmRopeScenario(FloatingRopeScenario):
+    ROPE_NAMESPACE = 'rope_3d'
 
     def __init__(self):
         super().__init__()
         self.service_provider = GazeboServices()  # FIXME: won't work on real robot...
         self.joint_state_viz_pub = rospy.Publisher("joint_states_viz", JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
-        self.set_rope_end_points_srv = rospy.ServiceProxy("/rope_3d/set_dual_gripper_points", SetDualGripperPoints)
+        self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_dual_gripper_points"),
+                                                          SetDualGripperPoints)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
         self.exclude_from_planning_scene_srv = rospy.ServiceProxy("exclude_models_from_planning_scene", ExcludeModels)

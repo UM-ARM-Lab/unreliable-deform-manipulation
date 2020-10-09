@@ -1,11 +1,13 @@
+import warnings
 from typing import Dict, Optional
 
 import numpy as np
-import ros_numpy
 import tensorflow as tf
 from matplotlib import colors
 
-import warnings
+import ros_numpy
+from arm_robots_msgs.msg import Points
+from rosgraph.names import ns_join
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -14,7 +16,7 @@ with warnings.catch_warnings():
 
 import rospy
 from arc_utilities.ros_helpers import Listener
-from arm_robots_msgs.srv import GrippersTrajectory
+from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.visualization import rviz_arrow
@@ -32,6 +34,7 @@ from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
+KINECT_MAX_DEPTH = 3
 
 def make_box_marker_from_extents(extent):
     m = Marker()
@@ -107,8 +110,8 @@ def sample_rope(rng, p, n_links, kd: float):
 
 
 class FloatingRopeScenario(Base3DScenario):
-    IMAGE_H = 126
-    IMAGE_W = 224
+    IMAGE_H = 90
+    IMAGE_W = 160
     n_links = 25
     COLOR_IMAGE_TOPIC = "/camera/color/image_raw"
     DEPTH_IMAGE_TOPIC = "/camera/depth/image_raw"
@@ -118,6 +121,7 @@ class FloatingRopeScenario(Base3DScenario):
         'max_y': 540,
         'max_x': 960,
     }
+    ROPE_NAMESPACE = 'kinematic_rope'
 
     def __init__(self):
         super().__init__()
@@ -126,10 +130,11 @@ class FloatingRopeScenario(Base3DScenario):
         self.state_color_viz_pub = rospy.Publisher("state_color_viz", Image, queue_size=10, latch=True)
         self.state_depth_viz_pub = rospy.Publisher("state_depth_viz", Image, queue_size=10, latch=True)
         self.last_action = None
-        self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", GrippersTrajectory)
-        self.get_rope_end_points_srv = rospy.ServiceProxy("/rope_3d/get_dual_gripper_points", GetDualGripperPoints)
-        self.get_rope_srv = rospy.ServiceProxy("/rope_3d/get_rope_state", GetRopeState)
-        self.set_rope_state_srv = rospy.ServiceProxy("/rope_3d/set_rope_state", SetRopeState)
+        self.action_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "execute_dual_gripper_action"), GrippersTrajectory)
+        self.get_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_dual_gripper_points"),
+                                                          GetDualGripperPoints)
+        self.get_rope_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_rope_state"), GetRopeState)
+        self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
@@ -164,6 +169,19 @@ class FloatingRopeScenario(Base3DScenario):
             'right_gripper_position': right_gripper_position,
         }
         self.execute_action(init_action)
+
+    def execute_action(self, action: Dict):
+        req = GrippersTrajectoryRequest()
+        left_gripper_point = ros_numpy.msgify(Point, action['left_gripper_position'])
+        left_gripper_points = Points()
+        left_gripper_points.points.append(left_gripper_point)
+        req.grippers.append(left_gripper_points)
+
+        right_gripper_point = ros_numpy.msgify(Point, action['right_gripper_position'])
+        right_gripper_points = Points()
+        right_gripper_points.points.append(right_gripper_point)
+        req.grippers.append(right_gripper_points)
+        self.action_srv(req)
 
     def reset_rope(self, data_collection_params: Dict):
         reset = SetRopeStateRequest()
@@ -449,7 +467,7 @@ class FloatingRopeScenario(Base3DScenario):
         return rope_state_vector
 
     def get_rope_point_positions(self):
-        # TODO: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
+        # NOTE: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
         #  although that looses semantic meaning and means hard-coding indices a lot...
         req = GetDualGripperPointsRequest()
         res: GetDualGripperPointsResponse = self.get_rope_end_points_srv(req)
@@ -464,8 +482,8 @@ class FloatingRopeScenario(Base3DScenario):
         left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
 
         return {
-            'left_gripper': ros_numpy.numpify(left_rope_point_position),
-            'right_gripper': ros_numpy.numpify(right_rope_point_position),
+            'left_gripper': left_rope_point_position,
+            'right_gripper': right_rope_point_position,
             'rope': np.array(rope_state_vector, np.float32),
             'color_depth_image': color_depth_cropped,
         }
@@ -477,7 +495,7 @@ class FloatingRopeScenario(Base3DScenario):
 
         depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
         # NaN Depths means out of range, so clip to the max range
-        depth = np.clip(depth, 0, 3)
+        depth = np.clip(np.nan_to_num(depth, nan=KINECT_MAX_DEPTH), 0, KINECT_MAX_DEPTH)
         color_depth = np.concatenate([color, depth], axis=2)
         box = tf.convert_to_tensor([self.crop_region['min_y'] / color.shape[0],
                                     self.crop_region['min_x'] / color.shape[1],
@@ -504,20 +522,17 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'gripper1': 3,
-            'gripper2': 3,
-            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
+            'color_depth_image': [self.IMAGE_H, self.IMAGE_W, 4],
         }
 
     @staticmethod
     def states_description() -> Dict:
-        return {}
+        return {
+        }
 
     @staticmethod
     def observation_features_description() -> Dict:
         return {
-            'left_gripper': 3,
-            'right_gripper': 3,
             'rope': FloatingRopeScenario.n_links * 3,
         }
 

@@ -208,7 +208,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
 
 def viz_example(batch, predictions, test_dataset):
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
-    anim = RvizAnimationController(np.arange(test_dataset.sequence_length))
+    anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
         actual_t = remove_batch(test_dataset.scenario.index_state_time(batch, t))

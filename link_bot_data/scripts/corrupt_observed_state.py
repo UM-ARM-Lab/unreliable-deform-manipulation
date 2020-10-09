@@ -32,7 +32,7 @@ def main():
 
 def corrupt_example(dataset: DynamicsDataset, example: Dict):
     k = 'link_bot'
-    rope_points = example[k].reshape([dataset.sequence_length, -1, 3])
+    rope_points = example[k].reshape([dataset.steps_per_traj, -1, 3])
 
     gripper1_bias = np.random.uniform(-0.05, 0.05, size=3)
     gripper2_bias = np.random.uniform(-0.05, 0.05, size=3)
@@ -41,18 +41,18 @@ def corrupt_example(dataset: DynamicsDataset, example: Dict):
 
     mean = np.random.uniform(-0.05, 0.05)
     var = np.random.uniform(0.0, 0.02)
-    rope_points += np.random.normal(mean, var, size=[dataset.sequence_length, 25, 3])
+    rope_points += np.random.normal(mean, var, size=[dataset.steps_per_traj, 25, 3])
     r = np.random.rand()
     if r < 0.5:
         # zeros/missing/null data
-        t = np.random.randint(0, dataset.sequence_length)
+        t = np.random.randint(0, dataset.steps_per_traj)
         rope_points[t] = 0
     elif r < 0.10:
         # reverse the points associations
-        t = np.random.uniform(0, dataset.sequence_length)
+        t = np.random.uniform(0, dataset.steps_per_traj)
         rope_points[t] = rope_points[t, ::-1, :]
 
-    example['link_bot'] = rope_points.reshape([dataset.sequence_length, -1])
+    example['link_bot'] = rope_points.reshape([dataset.steps_per_traj, -1])
     yield example
 
 

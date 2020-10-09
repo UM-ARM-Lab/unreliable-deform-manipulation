@@ -11,9 +11,7 @@
     <arg name="use_victor" default="false"/>
     <arg name="use_val" default="false"/>
     <arg name="use_sim_time" default="true"/>
-
-    <arg name="robot_name" value="victor" if="$(arg use_victor)"/>
-    <arg name="robot_name" value="hdt_michigan" if="$(arg use_val)"/>
+    <arg name="robot_name" default="none"/>
 
     <param name="robot_name" value="$(arg robot_name)" type="string"/>
 
@@ -50,6 +48,10 @@
             <arg name="info" value="true"/>
             <arg name="debug" value="$(arg debug_moveit)"/>
         </include>
+
+        <!-- spawn the robot -->
+        <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+              args="-urdf -model $(arg robot_name) -param robot_description"/>
     </group>
     <group if="$(arg use_val)">
         <!-- uploads robot description and setups up other parameters -->
@@ -68,9 +70,9 @@
             <arg name="info" value="true"/>
             <arg name="debug" value="$(arg debug_moveit)"/>
         </include>
-    </group>
 
-    <!-- spawn the robot -->
-    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-          args="-urdf -model $(arg robot_name) -param robot_description"/>
+        <!-- spawn the robot -->
+        <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+              args="-urdf -model $(arg robot_name) -param robot_description"/>
+    </group>
 </launch>

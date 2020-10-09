@@ -134,8 +134,8 @@ def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
         actual_batch_size = int(example['traj_idx'].shape[0])
 
         valid_out_examples = []
-        for start_t in range(0, dataset.sequence_length - classifier_horizon + 1, labeling_params['start_step']):
-            prediction_end_t = dataset.sequence_length
+        for start_t in range(0, dataset.steps_per_traj - classifier_horizon + 1, labeling_params['start_step']):
+            prediction_end_t = dataset.steps_per_traj
             actual_prediction_horizon = prediction_end_t - start_t
             actual_states_from_start_t = {k: example[k][:, start_t:prediction_end_t] for k in fwd_model.state_keys}
             actions_from_start_t = {k: example[k][:, start_t:prediction_end_t - 1] for k in fwd_model.action_keys}

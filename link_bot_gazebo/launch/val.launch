@@ -7,6 +7,7 @@
         <arg name="world" value="$(arg world)"/>
         <arg name="use_victor" value="false"/>
         <arg name="use_val" value="true"/>
+        <arg name="robot_name" value="hdt_michigan"/>
         <arg name="verbose" value="$(arg verbose)"/>
         <arg name="gui" value="$(arg gui)"/>
         <arg name="pause" value="true"/>

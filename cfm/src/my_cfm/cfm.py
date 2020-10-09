@@ -5,6 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.image_augmentation import augment
 from moonshine.loss_utils import loss_on_dicts
 from moonshine.moonshine_utils import vector_to_dict
 from shape_completion_training.my_keras_model import MyKerasModel
@@ -14,23 +15,30 @@ from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 class CFM(MyKerasModel):
 
-    def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
+    def __init__(self, hparams: Dict, batch_size: int, scenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
+        self.scenario = scenario
 
         self.obs_keys = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
         self.observation_feature_keys = self.hparams['observation_feature_keys']
+        self.image_key = 'color_depth_image'
+        self.use_observation_feature_loss = self.hparams['use_observation_feature_loss']
 
         self.encoder = Encoder(hparams, batch_size, scenario)
         self.dynamics = LocallyLinearPredictor(hparams, batch_size, scenario)
         self.observer = Observer(hparams, batch_size, scenario)
 
+        # check for NaNs, because the Kinect uses NaN to indicate "missing" data (usually out of range)
+        # tf.debugging.enable_check_numerics()
+
     def apply_gradients(self, tape, train_element, train_outputs, losses):
         train_batch_loss = losses['loss']
         variables = self.trainable_variables
         gradients = tape.gradient(train_batch_loss, variables)
-        gradients = [tf.clip_by_norm(g, 1) for g in gradients]
+        # g can be None if there are parts of the network not being trained, i.e. the observer with there are no obs. feats.
+        gradients = [tf.clip_by_norm(g, 1) for g in gradients if g is not None]
         self.optimizer.apply_gradients(zip(gradients, variables))
         return {}
 
@@ -60,7 +68,12 @@ class CFM(MyKerasModel):
         return obs, obs_pos
 
     def preprocess_no_gradient(self, example):
-        return self.normalize(example)
+        example = self.normalize(example)
+        augmented = augment(example[self.image_key],
+                            image_h=self.scenario.IMAGE_H,
+                            image_w=self.scenario.IMAGE_W)
+        example[self.image_key] = augmented
+        return example
 
     # @tf.function
     def call(self, example, training=False, **kwargs):
@@ -93,16 +106,22 @@ class CFM(MyKerasModel):
         batch_size = z.shape[0]
 
         cfm_loss = self.cfm_loss(batch_size, z, z_next, z_pos)
+        observation_feature_loss = self.observer_loss(example, outputs)
+        loss = cfm_loss
+        if self.use_observation_feature_loss:
+            loss = loss + observation_feature_loss
+
+        return {
+            'loss': loss
+        }
+
+    def observer_loss(self, example, outputs):
         observation_feature_true = {k: example[k][:, :-1] for k in self.observation_feature_keys}
         observation_feature_predictions = {k: outputs[k] for k in self.observation_feature_keys}
         observation_feature_loss = loss_on_dicts(tf.keras.losses.mse,
                                                  dict_true=observation_feature_true,
                                                  dict_pred=observation_feature_predictions)
-        loss = cfm_loss + observation_feature_loss
-
-        return {
-            'loss': loss
-        }
+        return observation_feature_loss
 
     def cfm_loss(self, batch_size, z, z_next, z_pos):
         # NOTE: z could be z_next here? probably doesn't matter
@@ -209,8 +228,11 @@ class Observer(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
         self.state_keys = self.hparams['state_keys']
-        self.observation_feature_description: Dict = self.hparams['dynamics_dataset_hparams']['observation_feature_description']
-        final_dim = sum(self.observation_feature_description.values())
+        self.observation_features_keys = self.hparams['observation_feature_keys']
+        dataset_params = self.hparams['dynamics_dataset_hparams']
+        self.original_obs_feat_desc: Dict = dataset_params['observation_features_description']
+        self.observation_features_description = {k: self.original_obs_feat_desc[k] for k in self.observation_features_keys}
+        final_dim = sum(list(self.observation_features_description.values()))
 
         my_layers = []
         for h in self.hparams['fc_layer_sizes']:
@@ -223,7 +245,7 @@ class Observer(MyKerasModel):
     def call(self, inputs, **kwargs):
         z = tf.concat([inputs[k] for k in self.state_keys], axis=-1)
         y = self.model(z)
-        y_dict = vector_to_dict(self.observation_feature_description, y)
+        y_dict = vector_to_dict(self.observation_features_description, y)
         return y_dict
 
     def compute_loss(self, dataset_element, outputs):

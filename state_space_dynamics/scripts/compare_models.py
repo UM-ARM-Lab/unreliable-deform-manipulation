@@ -55,7 +55,7 @@ def generate(args):
     for example_idx, dataset_element in enumerate(tf_dataset):
         dataset_element.update(dataset.batch_metadata)
         data_per_model_for_element = {
-            'time_steps': dataset.sequence_length,
+            'time_steps': dataset.steps_per_traj,
             'action_keys': dataset.action_keys,
             'dataset_element': dataset_element,
             'environment': {

@@ -12,6 +12,8 @@
         <arg name="debug_moveit" value="false"/>
     </include>
 
-    <node name="shim" type="dual_gripper_action_forwarder.py" pkg="link_bot_gazebo_python">
+    <node name="shim" type="dual_gripper_action_forwarder_node.py" pkg="link_bot_gazebo_python" >
+         <param name="rope_ns" value="kinematic_rope"/>
     </node>
+
 </launch>

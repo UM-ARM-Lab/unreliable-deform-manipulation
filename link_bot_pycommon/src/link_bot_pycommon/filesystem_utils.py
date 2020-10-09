@@ -1,3 +1,4 @@
+import pathlib
 from typing import Optional
 
 
@@ -26,3 +27,7 @@ def get_all_subfolders(args):
             if subfolder.is_dir():
                 all_subfolders.append(subfolder)
     return all_subfolders
+
+
+def directory_size(dir: pathlib.Path):
+    return sum(f.stat().st_size for f in dir.glob('**/*') if f.is_file())

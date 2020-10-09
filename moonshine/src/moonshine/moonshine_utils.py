@@ -1,7 +1,20 @@
-from typing import Dict, Type
+from typing import Dict, Optional
 
 import numpy as np
 import tensorflow as tf
+
+
+def check_numerics(x, msg: Optional[str] = "found infs or nans!"):
+    if isinstance(x, list):
+        for v in x:
+            if tf.is_tensor(v) and v.dtype in [tf.bfloat16, tf.float16, tf.float32, tf.float64]:
+                tf.debugging.check_numerics(v, msg)
+    elif isinstance(x, dict):
+        for v in x.values():
+            if tf.is_tensor(v) and v.dtype in [tf.bfloat16, tf.float16, tf.float32, tf.float64]:
+                tf.debugging.check_numerics(v, msg)
+    elif tf.is_tensor(x) and x.dtype in [tf.bfloat16, tf.float16, tf.float32, tf.float64]:
+        tf.debugging.check_numerics(x, msg)
 
 
 def numpify(x, dtype=np.float32):

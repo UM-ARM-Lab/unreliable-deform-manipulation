@@ -11,6 +11,7 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.floating_rope_scenario import KINECT_MAX_DEPTH
 from moonshine.moonshine_utils import numpify
 
 
@@ -33,7 +34,7 @@ def main():
         color_depth = example['color_depth_image']
         depth = color_depth[:, :, :, 3:4]
         color = color_depth[:, :, :, :3]
-        new_depth = np.nan_to_num(depth, True, 3)
+        new_depth = np.nan_to_num(depth, True, KINECT_MAX_DEPTH)
         new_color_depth = np.concatenate([color, new_depth], axis=-1)
         example['color_depth_image'] = new_color_depth
         yield example

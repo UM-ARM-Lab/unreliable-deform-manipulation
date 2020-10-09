@@ -30,7 +30,7 @@ def main():
 
     def _process_example(dataset: DynamicsDataset, example: Dict):
         example = numpify(example)
-        rope_points = example['link_bot'].reshape([dataset.sequence_length, -1, 3])
+        rope_points = example['link_bot'].reshape([dataset.steps_per_traj, -1, 3])
         min_z_in_sequence = np.amin(np.amin(rope_points, axis=0), axis=0)[2]
         if min_z_in_sequence < 0.59:
             dataset.scenario.plot_environment_rviz(example)

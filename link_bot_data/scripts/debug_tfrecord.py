@@ -11,15 +11,18 @@ from google.protobuf.json_format import MessageToDict
 def main():
     colorama.init(autoreset=True)
     parser = argparse.ArgumentParser()
-    parser.add_argument('dataset_dir', type=pathlib.Path)
+    parser.add_argument('input', type=pathlib.Path)
     parser.add_argument('--mode', choices=['train', 'test', 'val'], default='train')
     parser.add_argument('--print-limit', type=int, default=15)
 
     args = parser.parse_args()
 
-    filenames = [str(filename) for filename in args.dataset_dir.glob("{}/*.tfrecords".format(args.mode))]
+    if args.input.is_file():
+        filenames = [args.input]
+    else:
+        filenames = [filename for filename in args.input.glob("{}/*.tfrecords".format(args.mode))]
     for filename in filenames:
-        example = next(iter(tf.data.TFRecordDataset(filename, compression_type='ZLIB'))).numpy()
+        example = next(iter(tf.data.TFRecordDataset(filename.as_posix(), compression_type='ZLIB'))).numpy()
         message = tf.train.Example.FromString(example)
         dict_message = MessageToDict(message)
         feature = dict_message['features']['feature']
@@ -38,7 +41,7 @@ def main():
                 print(Fore.RED + "Empty feature: {}, {}".format(feature_name, feature_value) + Fore.RESET)
 
         to_print = sorted(to_print)
-        print(Style.BRIGHT + filename + Style.NORMAL)
+        print(Style.BRIGHT + filename.as_posix() + Style.NORMAL)
         if len(to_print) < args.print_limit:
             for items in to_print:
                 print("{}: {},".format(*items))

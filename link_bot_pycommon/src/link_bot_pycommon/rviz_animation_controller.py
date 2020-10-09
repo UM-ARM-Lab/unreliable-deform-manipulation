@@ -16,13 +16,13 @@ class RvizAnimationController:
             self.time_steps = np.array(time_steps, dtype=np.int64)
         if n_time_steps is not None:
             self.time_steps = np.arange(n_time_steps, dtype=np.int64)
-        self.command_sub = rospy.Subscriber("rviz_anim/control", AnimationControl, self.on_control)
-        self.period_srv = rospy.ServiceProxy("rviz_anim/period", GetFloat32)
-        self.time_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10)
-        self.max_time_pub = rospy.Publisher("rviz_anim/max_time", Int64, queue_size=10)
-        self.auto_play_srv = rospy.ServiceProxy("rviz_anim/auto_play", GetBool)
+        self.command_sub = rospy.Subscriber("/rviz_anim/control", AnimationControl, self.on_control)
+        self.period_srv = rospy.ServiceProxy("/rviz_anim/period", GetFloat32)
+        self.time_pub = rospy.Publisher("/rviz_anim/time", Int64, queue_size=10)
+        self.max_time_pub = rospy.Publisher("/rviz_anim/max_time", Int64, queue_size=10)
+        self.auto_play_srv = rospy.ServiceProxy("/rviz_anim/auto_play", GetBool)
 
-        rospy.wait_for_service("rviz_anim/period")
+        rospy.wait_for_service("/rviz_anim/period")
 
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
@@ -113,11 +113,12 @@ class RvizAnimationController:
 class RvizSimpleStepper:
 
     def __init__(self):
-        self.fwd_sub = rospy.Subscriber("rviz_anim/forward", EmptyMsg, self.on_fwd)
+        self.command_sub = rospy.Subscriber("/rviz_anim/control", AnimationControl, self.on_control)
         self.should_step = False
 
-    def on_fwd(self, msg):
-        self.should_step = True
+    def on_control(self, msg: AnimationControl):
+        if msg.command == AnimationControl.STEP_FORWARD:
+            self.should_step = True
 
     def step(self):
         while not self.should_step:

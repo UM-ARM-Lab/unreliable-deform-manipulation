@@ -18,7 +18,8 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
-        self.observation_feature_keys = list(self.hparams['observation_feature_description'].keys())
+        self.observation_feature_keys = list(self.hparams['observation_features_description'].keys())
+        self.observation_keys = list(self.hparams['observations_description'].keys())
 
         self.state_keys = list(self.hparams['states_description'].keys())
         self.state_keys.append('time_idx')
@@ -37,11 +38,11 @@ class DynamicsDataset(BaseDataset):
 
         self.data_collection_params = self.hparams['data_collection_params']
         if 'new_sequence_length' in self.hparams:
-            self.sequence_length = self.hparams['new_sequence_length']
+            self.steps_per_traj = self.hparams['new_sequence_length']
         else:
-            self.sequence_length = self.hparams['data_collection_params']['steps_per_traj']
+            self.steps_per_traj = self.hparams['data_collection_params']['steps_per_traj']
         self.batch_metadata = {
-            'sequence_length': self.sequence_length
+            'sequence_length': self.steps_per_traj
         }
 
     def make_features_description(self):
@@ -50,6 +51,8 @@ class DynamicsDataset(BaseDataset):
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         for feature_name in self.state_keys:
+            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
+        for feature_name in self.observation_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
         for feature_name in self.observation_feature_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
@@ -81,12 +84,12 @@ class DynamicsDataset(BaseDataset):
 
     def split_into_sequences(self, example, desired_sequence_length):
         # return a dict where every element has different sequences split across the 0th dimension
-        for start_t in range(0, self.sequence_length - desired_sequence_length + 1, desired_sequence_length):
+        for start_t in range(0, self.steps_per_traj - desired_sequence_length + 1, desired_sequence_length):
             out_example = {}
             for k in self.constant_feature_names:
                 out_example[k] = example[k]
 
-            for k in self.state_keys + self.observation_feature_keys:
+            for k in self.state_keys + self.observation_feature_keys + self.observation_keys:
                 v = example[k][start_t:start_t + desired_sequence_length]
                 assert v.shape[0] == desired_sequence_length
                 out_example[k] = v

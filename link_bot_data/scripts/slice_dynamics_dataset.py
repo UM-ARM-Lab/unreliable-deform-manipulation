@@ -35,7 +35,8 @@ def main():
             out_example['time_idx'] = tf.range(0, args.desired_sequence_length, dtype=tf.float32)
             yield out_example
 
-    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example)
+    hparams_update = {'steps_per_traj': args.desired_sequence_length}
+    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example, hparams_update=hparams_update)
 
 
 if __name__ == '__main__':

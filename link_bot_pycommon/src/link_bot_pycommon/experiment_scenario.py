@@ -193,6 +193,7 @@ class ExperimentScenario:
         move_action_req.timeout = timeout
         movable_object_services['move'](move_action_req)
 
+    # TODO: the _keys_ for these "descriptions" should come from the data collection params file
     @staticmethod
     def states_description() -> Dict:
         raise NotImplementedError()

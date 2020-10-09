@@ -37,7 +37,7 @@
                 <material>
                     <script>
                         <uri>file://media/materials/scripts/gazebo.material</uri>
-                        <name>Gazebo/DarkGray</name>
+                        <name>Gazebo/White</name>
                     </script>
                 </material>
             </visual>

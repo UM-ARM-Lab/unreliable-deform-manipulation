@@ -157,7 +157,7 @@ def generate_recovery_examples(tf_dataset: tf.data.Dataset,
         print(Fore.GREEN + f"{in_batch_idx}/{n_batches}, {dt:.3f}s" + Fore.RESET)
         actual_batch_size = int(example['traj_idx'].shape[0])
         # iterate over every subsequence of exactly length actions_sequence_horizon
-        for start_t in range(0, dataset.sequence_length - action_sequence_horizon + 1, labeling_params['start_step']):
+        for start_t in range(0, dataset.steps_per_traj - action_sequence_horizon + 1, labeling_params['start_step']):
             end_t = start_t + action_sequence_horizon
 
             actual_states_from_start_t = {k: example[k][:, start_t:end_t] for k in fwd_model.state_keys}
