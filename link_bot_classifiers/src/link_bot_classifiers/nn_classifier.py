@@ -253,6 +253,7 @@ class NNClassifier(MyKerasModel):
         }
 
 
+# FIXME: inherit from Ensemble
 class NNClassifierWrapper(BaseConstraintChecker):
 
     def __init__(self, paths: List[pathlib.Path], batch_size: int, scenario: ExperimentScenario):

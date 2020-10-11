@@ -14,8 +14,12 @@ def assert_dicts_close_np(a, b):
         assert np.allclose(v1, v2)
 
 
+def is_close_tf(a, b, rtol=1e-4, atol=1e-8):
+    return tf.reduce_all(tf.abs(a - b) <= tf.abs(b) * rtol + atol)
+
+
 def assert_close_tf(a, b, rtol=1e-4, atol=1e-8):
-    assert tf.reduce_all(tf.abs(a - b) <= tf.abs(b) * rtol + atol)
+    assert is_close_tf(a, b, rtol=rtol, atol=atol)
 
 
 def assert_dicts_close_tf(a, b, rtol=1e-4, atol=1e-8):

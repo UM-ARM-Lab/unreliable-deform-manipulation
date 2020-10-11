@@ -14,6 +14,7 @@ class DualArmRealVictorRopeScenario(BaseDualArmRopeScenario):
 
     def __init__(self):
         super().__init__()
+        # FIXME: lazy construction
         self.victor = Victor()
 
     def on_before_data_collection(self, params: Dict):

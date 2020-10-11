@@ -98,7 +98,7 @@ class ImageCondDynamics(MyKerasModel):
     # @tf.function
     def call(self, example, training, mask=None):
         batch_size = example['batch_size']
-        time = example['sequence_length']
+        time = example[self.action_keys[0]].shape[1] + 1
 
         s_0 = {k: example[k][:, 0] for k in self.state_keys}
 
@@ -242,9 +242,10 @@ class ImageCondDynamics(MyKerasModel):
 
 class ImageCondDynamicsWrapper(BaseDynamicsFunction):
 
-    @staticmethod
-    def get_net_class():
-        return ImageCondDynamics
+    def make_net_and_checkpoint(self, batch_size, scenario):
+        net = ImageCondDynamics(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        ckpt = tf.train.Checkpoint(model=net)
+        return net, ckpt
 
 
 model = ImageCondDynamics

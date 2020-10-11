@@ -23,7 +23,6 @@ class CFM(MyKerasModel):
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
         self.observation_feature_keys = self.hparams['observation_feature_keys']
-        self.image_key = 'color_depth_image'
         self.use_observation_feature_loss = self.hparams['use_observation_feature_loss']
 
         self.encoder = Encoder(hparams, batch_size, scenario)
@@ -42,38 +41,13 @@ class CFM(MyKerasModel):
         self.optimizer.apply_gradients(zip(gradients, variables))
         return {}
 
-    def normalize(self, example: Dict):
-        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
-        new_example = {}
-        for k, v in example.items():
-            # Rescale to -1 to 1
-            if k in self.obs_keys:
-                min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-                max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-                normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-                new_example[k] = normalized_observation
-            elif k in self.action_keys:
-                min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
-                max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
-                normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-                new_example[k] = normalized_action
-            else:
-                new_example[k] = v
-
-        return new_example
-
     def get_positive_pairs(self, example):
         obs = {k: example[k][:, :-1] for k in self.obs_keys}
         obs_pos = {k: example[k][:, 1:] for k in self.obs_keys}
         return obs, obs_pos
 
     def preprocess_no_gradient(self, example):
-        example = self.normalize(example)
-        augmented = augment(example[self.image_key],
-                            image_h=self.scenario.IMAGE_H,
-                            image_w=self.scenario.IMAGE_W)
-        example[self.image_key] = augmented
-        return example
+        return self.encoder.preprocess_no_gradient(example)
 
     # @tf.function
     def call(self, example, training=False, **kwargs):
@@ -142,9 +116,11 @@ class Encoder(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
+        self.scenario = scenario
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
         self.obs_keys = self.hparams['obs_keys']
+        self.image_key = 'color_depth_image'
 
         self.z_dim = self.hparams['z_dim']
         self.model = Sequential([
@@ -167,6 +143,34 @@ class Encoder(MyKerasModel):
         ], name='encoder')
         self.out = layers.Dense(self.z_dim)
 
+    def normalize(self, example: Dict):
+        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
+        new_example = {}
+        for k, v in example.items():
+            # Rescale to -1 to 1
+            if k in self.obs_keys:
+                min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+                max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
+                normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+                new_example[k] = normalized_observation
+            elif k in self.action_keys:
+                min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
+                max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
+                normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
+                new_example[k] = normalized_action
+            else:
+                new_example[k] = v
+
+        return new_example
+
+    def preprocess_no_gradient(self, example):
+        example = self.normalize(example)
+        augmented = augment(example[self.image_key],
+                            image_h=self.scenario.IMAGE_H,
+                            image_w=self.scenario.IMAGE_W)
+        example[self.image_key] = augmented
+        return example
+
     # @tf.function
     def call(self, observation: Dict, **kwargs):
         o = tf.concat([observation[k] for k in self.obs_keys], axis=-1)
@@ -179,13 +183,6 @@ class Encoder(MyKerasModel):
         return {
             'z': z
         }
-
-
-class CFMFilter(BaseFilterFunction):
-
-    @staticmethod
-    def get_net_class():
-        return Encoder
 
 
 class LocallyLinearPredictor(MyKerasModel):
@@ -252,8 +249,17 @@ class Observer(MyKerasModel):
         raise NotImplementedError()
 
 
+class CFMFilter(BaseFilterFunction):
+
+    def make_net_and_checkpoint(self, batch_size, scenario):
+        cfm = CFM(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        ckpt = tf.train.Checkpoint(model=cfm)
+        return cfm.encoder, ckpt
+
+
 class CFMLatentDynamics(BaseDynamicsFunction):
 
-    @staticmethod
-    def get_net_class():
-        return LocallyLinearPredictor
+    def make_net_and_checkpoint(self, batch_size, scenario):
+        cfm = CFM(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        ckpt = tf.train.Checkpoint(model=cfm)
+        return cfm.dynamics, ckpt

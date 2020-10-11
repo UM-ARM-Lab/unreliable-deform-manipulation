@@ -70,9 +70,10 @@ class UnconstrainedDynamicsNN(MyKerasModel):
 
 class UDNNWrapper(BaseDynamicsFunction):
 
-    @staticmethod
-    def get_net_class():
-        return UnconstrainedDynamicsNN
+    def make_net_and_checkpoint(self, batch_size, scenario):
+        net = UnconstrainedDynamicsNN(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
+        ckpt = tf.train.Checkpoint(model=net)
+        return net, ckpt
 
 
 model = UnconstrainedDynamicsNN

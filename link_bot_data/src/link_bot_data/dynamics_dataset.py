@@ -67,7 +67,7 @@ class DynamicsDataset(BaseDataset):
         for feature_name in self.constant_feature_names:
             example_t[feature_name] = example[feature_name]
 
-        for feature_name in self.state_keys:
+        for feature_name in self.state_keys + self.observation_keys + self.observation_feature_keys:
             example_t[feature_name] = example[feature_name][:, t]
 
         for feature_name in self.action_keys:

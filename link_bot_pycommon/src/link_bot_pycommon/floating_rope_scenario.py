@@ -36,6 +36,17 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 KINECT_MAX_DEPTH = 3
 
+def publish_color_image(pub : rospy.Publisher, x):
+    color = x.astype(np.uint8)
+    color_viz_msg = ros_numpy.msgify(Image, color, encoding="bgr8")
+    pub.publish(color_viz_msg)
+
+
+def publish_depth_image(pub : rospy.Publisher, x):
+    depth_viz_msg = ros_numpy.msgify(Image, x, encoding="32FC1")
+    pub.publish(depth_viz_msg)
+
+
 def make_box_marker_from_extents(extent):
     m = Marker()
     ysize, xsize, zsize = extent_to_env_size(extent)
@@ -1023,13 +1034,8 @@ class FloatingRopeScenario(Base3DScenario):
         self.state_viz_pub.publish(msg)
 
         if 'color_depth_image' in state:
-            color = state['color_depth_image'][:, :, :3].astype(np.uint8)
-            color_viz_msg = ros_numpy.msgify(Image, color, encoding="bgr8")
-            self.state_color_viz_pub.publish(color_viz_msg)
-
-            depth = state['color_depth_image'][:, :, 3].astype(np.float32)
-            depth_viz_msg = ros_numpy.msgify(Image, depth, encoding="32FC1")
-            self.state_depth_viz_pub.publish(depth_viz_msg)
+            publish_color_image(self.state_color_viz_pub, state['color_depth_image'][:, :, :3])
+            publish_depth_image(self.state_depth_viz_pub, state['color_depth_image'][:, :, 3])
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}

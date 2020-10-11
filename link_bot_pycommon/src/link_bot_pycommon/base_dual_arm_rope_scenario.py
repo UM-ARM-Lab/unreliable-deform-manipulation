@@ -31,6 +31,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
         self.exclude_from_planning_scene_srv = rospy.ServiceProxy("exclude_models_from_planning_scene", ExcludeModels)
+        # FIXME: this blocks until the robot is available, we need lazy construction
         self.robot = get_moveit_robot()
 
         # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles
