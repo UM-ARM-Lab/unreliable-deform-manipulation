@@ -45,7 +45,7 @@ class Ensemble:
         if 'batch_size' not in example:
             example['batch_size'] = self.get_batch_size(example)
 
-        outputs = [net(net.preprocess_no_gradient(example), training=training) for net in self.nets]
+        outputs = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         outputs_dict = sequence_of_dicts_to_dict_of_tensors(outputs)
         mean = {state_key: tf.math.reduce_mean(outputs_dict[state_key], axis=0) for state_key in self.get_output_keys()}
         stdev = {state_key: tf.math.reduce_std(outputs_dict[state_key], axis=0) for state_key in self.get_output_keys()}

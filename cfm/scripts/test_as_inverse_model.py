@@ -18,11 +18,12 @@ from moonshine.tests.testing_utils import is_close_tf
 from sensor_msgs.msg import Image
 from state_space_dynamics import model_utils, filter_utils
 
-limit_gpu_mem(2)
+limit_gpu_mem(10)
 
 
 def main():
     colorama.init(autoreset=True)
+    np.set_printoptions(linewidth=200, precision=3, suppress=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset_dirs", type=pathlib.Path, nargs="+")
     parser.add_argument("checkpoint", type=pathlib.Path)
@@ -35,16 +36,22 @@ def main():
     test_dataset = DynamicsDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
-    ws = []
-    for i in range(3):
-        filter_model = filter_utils.load_filter([args.checkpoint])
-        latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
+    # ws = []
+    # for i in range(3):
+    #     filter_model = filter_utils.load_filter([args.checkpoint])
+    #     latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
+    #
+    #     w = test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset)
+    #     ws.append(w)
+    #
+    # print(is_close_tf(ws[0], ws[1]))
+    # print(is_close_tf(ws[1], ws[2]))
+    #
 
-        w = test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset)
-        ws.append(w)
+    filter_model = filter_utils.load_filter([args.checkpoint])
+    latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
 
-    print(is_close_tf(ws[0], ws[1]))
-    print(is_close_tf(ws[1], ws[2]))
+    test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset)
 
 
 def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset):
@@ -54,7 +61,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                      filter_model=filter_model,
                                      scenario=scenario,
                                      params={
-                                         'n_samples': 10
+                                         'n_samples': 10000
                                      })
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
@@ -82,6 +89,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
             environment = {}
             current_observation = remove_batch(scenario.index_observation_time_batched(add_batch(example), t))
             start_state, _ = filter_model.filter(environment, state, current_observation)
+
             for j in range(action_horizon):
                 left_gripper_position = [0, 0, 0]
                 right_gripper_position = [0, 0, 0]

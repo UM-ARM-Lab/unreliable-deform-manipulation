@@ -163,12 +163,18 @@ class Encoder(MyKerasModel):
 
         return new_example
 
-    def preprocess_no_gradient(self, example):
+    def preprocess_no_gradient(self, example, training: bool):
         example = self.normalize(example)
-        augmented = augment(example[self.image_key],
-                            image_h=self.scenario.IMAGE_H,
-                            image_w=self.scenario.IMAGE_W)
-        example[self.image_key] = augmented
+        image_h = self.scenario.IMAGE_H
+        image_w = self.scenario.IMAGE_W
+        if training:
+            augmented = augment(example[self.image_key],
+                                image_h,
+                                image_w)
+            example[self.image_key] = augmented
+        else:
+            image_resized = tf.image.resize(example[self.image_key], [image_h, image_w], preserve_aspect_ratio=True)
+            example[self.image_key] = image_resized
         return example
 
     # @tf.function

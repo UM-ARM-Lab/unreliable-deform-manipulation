@@ -290,7 +290,7 @@ class NNClassifierWrapper(BaseConstraintChecker):
             self.action_keys = net.action_keys
 
     def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
-        predictions = [net(net.preprocess_no_gradient(example), training=training) for net in self.nets]
+        predictions = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_predictions = {k: tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}
         stdev_predictions = {k: tf.math.reduce_std(v, axis=0) for k, v in predictions_dict.items()}
