@@ -24,6 +24,7 @@ class CFM(MyKerasModel):
         self.action_keys = self.hparams['action_keys']
         self.observation_feature_keys = self.hparams['observation_feature_keys']
         self.use_observation_feature_loss = self.hparams['use_observation_feature_loss']
+        self.use_cfm_loss = self.hparams['use_cfm_loss']
 
         self.encoder = Encoder(hparams, batch_size, scenario)
         self.dynamics = LocallyLinearPredictor(hparams, batch_size, scenario)
@@ -37,8 +38,10 @@ class CFM(MyKerasModel):
         variables = self.trainable_variables
         gradients = tape.gradient(train_batch_loss, variables)
         # g can be None if there are parts of the network not being trained, i.e. the observer with there are no obs. feats.
-        gradients = [tf.clip_by_norm(g, 1) for g in gradients if g is not None]
-        self.optimizer.apply_gradients(zip(gradients, variables))
+        valid_grads_and_vars = [(g, v) for (g, v) in zip(gradients, variables) if g is not None]
+        # clip for training stability
+        valid_grads_and_vars = [(tf.clip_by_norm(g, 1), v) for (g, v) in valid_grads_and_vars]
+        self.optimizer.apply_gradients(valid_grads_and_vars)
         return {}
 
     def get_positive_pairs(self, example):
@@ -81,9 +84,11 @@ class CFM(MyKerasModel):
 
         cfm_loss = self.cfm_loss(batch_size, z, z_next, z_pos)
         observation_feature_loss = self.observer_loss(example, outputs)
-        loss = cfm_loss
+        loss = 0
+        if self.use_cfm_loss:
+            loss += cfm_loss
         if self.use_observation_feature_loss:
-            loss = loss + observation_feature_loss
+            loss += observation_feature_loss
 
         return {
             'loss': loss

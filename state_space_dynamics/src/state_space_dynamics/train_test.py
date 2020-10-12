@@ -28,21 +28,32 @@ def train_main(dataset_dirs: List[pathlib.Path],
                ensemble_idx: Optional[int] = None,
                trials_directory=pathlib.Path,
                ):
-    ###############
-    # Datasets
-    ###############
+    model_hparams = hjson.load(model_hparams.open('r'))
+    model_class = state_space_dynamics.get_model(model_hparams['model_class'])
+
     train_dataset = DynamicsDataset(dataset_dirs)
     val_dataset = DynamicsDataset(dataset_dirs)
 
-    ###############
-    # Model
-    ###############
-    model_hparams = hjson.load((model_hparams).open('r'))
-    model_hparams['dynamics_dataset_hparams'] = train_dataset.hparams
-    model_hparams['batch_size'] = batch_size
-    model_hparams['seed'] = seed
-    model_hparams['datasets'] = paths_to_json(dataset_dirs)
-    model_hparams['latest_training_time'] = int(time.time())
+    model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset))
+    model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
+
+    checkpoint_name, trial_path = setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory)
+
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         checkpoint=checkpoint,
+                         batch_metadata=train_dataset.batch_metadata,
+                         trial_path=trial_path)
+
+    train_tf_dataset, val_tf_dataset = setup_datasets(batch_size, seed, train_dataset, val_dataset)
+
+    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
+
+    return trial_path
+
+
+def setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
     trial_path = None
     checkpoint_name = None
     if checkpoint:
@@ -56,35 +67,33 @@ def train_main(dataset_dirs: List[pathlib.Path],
                                                         trial_path=trial_path,
                                                         trials_directory=trials_directory,
                                                         write_summary=False)
-    model_class = state_space_dynamics.get_model(model_hparams['model_class'])
+    return checkpoint_name, trial_path
 
-    model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
-    runner = ModelRunner(model=model,
-                         training=True,
-                         params=model_hparams,
-                         restore_from_name=checkpoint_name,
-                         batch_metadata=train_dataset.batch_metadata,
-                         trial_path=trial_path)
 
+def setup_hparams(batch_size, dataset_dirs, seed, train_dataset):
+    return {
+        'batch_size': batch_size,
+        'seed': seed,
+        'datasets': paths_to_json(dataset_dirs),
+        'latest_training_time': int(time.time()),
+        'dynamics_dataset_hparams': train_dataset.hparams,
+    }
+
+
+def setup_datasets(batch_size, seed, train_dataset, val_dataset):
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-
     # to mix up examples so each batch is diverse
     train_tf_dataset = train_tf_dataset.shuffle(buffer_size=64, seed=seed, reshuffle_each_iteration=True)
-
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
-
     # Shuffling adds significant overhead, nearly quadrupling the total training time.
     # train_tf_dataset = train_tf_dataset.shuffle(
     #     buffer_size=60, seed=seed, reshuffle_each_iteration=False)  # to mix up batches
-
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
-    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
-
-    return trial_path
+    return train_tf_dataset, val_tf_dataset
 
 
 def compute_classifier_threshold(dataset_dirs: List[pathlib.Path],
@@ -102,7 +111,7 @@ def compute_classifier_threshold(dataset_dirs: List[pathlib.Path],
 
     runner = ModelRunner(model=net,
                          training=False,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          batch_metadata=test_dataset.batch_metadata,
                          trial_path=trial_path,
                          params=params)
@@ -139,7 +148,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
 
     runner = ModelRunner(model=net,
                          training=False,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          batch_metadata=test_dataset.batch_metadata,
                          trial_path=trial_path,
                          params=params)
@@ -191,7 +200,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
 
     runner = ModelRunner(model=net,
                          training=False,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          batch_metadata=test_dataset.batch_metadata,
                          trial_path=trial_path,
                          params=params)

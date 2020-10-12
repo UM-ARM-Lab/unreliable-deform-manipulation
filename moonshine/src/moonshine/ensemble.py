@@ -30,8 +30,7 @@ class Ensemble:
             status = ckpt.restore(manager.latest_checkpoint).expect_partial()
             if manager.latest_checkpoint:
                 print(Fore.CYAN + "Restored from {}".format(manager.latest_checkpoint) + Fore.RESET)
-                if manager.latest_checkpoint:
-                    status.assert_existing_objects_matched()
+                status.assert_existing_objects_matched()
             else:
                 raise RuntimeError("Failed to restore!!!")
 

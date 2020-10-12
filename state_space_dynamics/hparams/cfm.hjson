@@ -21,5 +21,6 @@
   z_dim: 64
   learning_rate: 0.0005
   use_observation_feature_loss: false
+  use_cfm_loss: true
   image_augmentation: false
 }

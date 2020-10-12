@@ -52,10 +52,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
     model_hparams['latest_training_time'] = int(time.time())
     model_hparams['datasets'] = paths_to_json(dataset_dirs)
     trial_path = None
-    checkpoint_name = None
     if checkpoint:
         trial_path = checkpoint.parent.absolute()
-        checkpoint_name = checkpoint.name
     group_name = log if trial_path is None else None
     if ensemble_idx is not None:
         group_name = f"{group_name}_{ensemble_idx}"
@@ -73,7 +71,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         restore_from_name=checkpoint_name,
+                         checkpoint=checkpoint,
                          mid_epoch_val_batches=100,
                          val_every_n_batches=1000,
                          save_every_n_minutes=20,
@@ -134,7 +132,7 @@ def test_main(dataset_dirs: List[pathlib.Path],
     runner = ModelRunner(model=net,
                          training=False,
                          params=params,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
@@ -180,7 +178,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     runner = ModelRunner(model=net,
                          training=False,
                          params=params,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)

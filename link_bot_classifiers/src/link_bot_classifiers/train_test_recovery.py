@@ -95,7 +95,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          val_every_n_batches=1,
                          mid_epoch_val_batches=100,
                          validate_first=True,
-                         restore_from_name=checkpoint_name,
+                         checkpoint=checkpoint,
                          batch_metadata=train_dataset.batch_metadata)
 
     # Train
@@ -133,7 +133,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     runner = ModelRunner(model=net,
                          training=False,
                          params=params,
-                         restore_from_name=checkpoint.name,
+                         checkpoint=checkpoint,
                          trial_path=trial_path,
                          batch_metadata=test_dataset.batch_metadata)
     validation_metrics = runner.val_epoch(test_tf_dataset)
