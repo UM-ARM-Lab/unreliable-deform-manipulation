@@ -199,7 +199,7 @@ class NNClassifier(MyKerasModel):
             'loss': total_bce
         }
 
-    def calculate_metrics(self, dataset_element, outputs):
+    def compute_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
     @tf.function

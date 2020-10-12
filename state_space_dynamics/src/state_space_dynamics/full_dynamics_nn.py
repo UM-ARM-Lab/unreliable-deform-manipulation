@@ -65,7 +65,7 @@ class FullDynamicsNN(MyKerasModel):
             'loss': self.scenario.dynamics_loss_function(dataset_element, outputs)
         }
 
-    def calculate_metrics(self, dataset_element, outputs):
+    def compute_metrics(self, dataset_element, outputs):
         return self.scenario.dynamics_metrics_function(dataset_element, outputs)
 
     @tf.function

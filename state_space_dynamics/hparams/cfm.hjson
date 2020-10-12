@@ -1,6 +1,6 @@
 {
   model_class: CFM
-  sequence_length: 10
+  sequence_length: 2
   state_keys: [
     z
   ]
@@ -18,8 +18,8 @@
     64
     64
   ]
-  z_dim: 32
-  learning_rate: 0.001
-  epochs: 1
+  z_dim: 64
+  learning_rate: 0.0005
   use_observation_feature_loss: false
+  image_augmentation: false
 }

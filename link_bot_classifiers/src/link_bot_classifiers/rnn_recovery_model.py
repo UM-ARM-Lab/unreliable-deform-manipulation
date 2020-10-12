@@ -179,7 +179,7 @@ class RNNRecoveryModel(MyKerasModel):
             'valid_log_likelihood': valid_log_likelihood
         }
 
-    def calculate_metrics(self, dataset_element, outputs):
+    def compute_metrics(self, dataset_element, outputs):
         return {
             'max_mean': tf.reduce_max(outputs['means']),
             'min_mean': tf.reduce_min(outputs['means']),

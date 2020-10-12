@@ -203,7 +203,7 @@ class NNRecoveryModel(MyKerasModel):
             'loss': tf.reduce_mean(loss)
         }
 
-    def calculate_metrics(self, dataset_element, outputs):
+    def compute_metrics(self, dataset_element, outputs):
         y_true = dataset_element['recovery_probability'][:, 1]
         y_pred = tf.squeeze(outputs['probabilities'], axis=1)
         error = tf.reduce_mean(tf.math.abs(y_true - y_pred))

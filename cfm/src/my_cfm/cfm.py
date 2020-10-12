@@ -5,7 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.image_augmentation import augment
+from moonshine.image_augmentation import augment, resize_image_sequence, flatten_batch_and_sequence, unflatten_batch_and_sequence
 from moonshine.loss_utils import loss_on_dicts
 from moonshine.moonshine_utils import vector_to_dict
 from shape_completion_training.my_keras_model import MyKerasModel
@@ -46,8 +46,8 @@ class CFM(MyKerasModel):
         obs_pos = {k: example[k][:, 1:] for k in self.obs_keys}
         return obs, obs_pos
 
-    def preprocess_no_gradient(self, example):
-        return self.encoder.preprocess_no_gradient(example)
+    def preprocess_no_gradient(self, example, training: bool):
+        return self.encoder.preprocess_no_gradient(example, training)
 
     # @tf.function
     def call(self, example, training=False, **kwargs):
@@ -55,7 +55,7 @@ class CFM(MyKerasModel):
         observation, observation_pos = self.get_positive_pairs(example)
 
         # forward pass
-        z, z_pos = self.encoder(observation), self.encoder(observation_pos)  # b x z_dim
+        z, z_pos = self.encoder(observation), self.encoder(observation_pos)  # z is b x z_dim
         pred_inputs = {
             'z': z['z'],
             'z_pos': z_pos['z'],
@@ -88,6 +88,12 @@ class CFM(MyKerasModel):
         return {
             'loss': loss
         }
+
+    def compute_metrics(self, dataset_element, outputs):
+        metrics = self.dynamics.compute_metrics(dataset_element, outputs)
+        metrics.update(self.encoder.compute_metrics(dataset_element, outputs))
+        metrics.update(self.observer.compute_metrics(dataset_element, outputs))
+        return metrics
 
     def observer_loss(self, example, outputs):
         observation_feature_true = {k: example[k][:, :-1] for k in self.observation_feature_keys}
@@ -123,24 +129,28 @@ class Encoder(MyKerasModel):
         self.image_key = 'color_depth_image'
 
         self.z_dim = self.hparams['z_dim']
-        self.model = Sequential([
-            layers.Conv2D(filters=64, kernel_size=3),
-            layers.LeakyReLU(0.2),
-            layers.Conv2D(filters=64, kernel_size=4, strides=2),
-            layers.LeakyReLU(0.2),
-            # 64 x 32 x 32
-            layers.Conv2D(filters=64, kernel_size=3, strides=1),
-            layers.LeakyReLU(0.2),
-            layers.Conv2D(filters=128, kernel_size=4, strides=2),
-            layers.LeakyReLU(0.2),
-            # 128 x 16 x 16
-            layers.Conv2D(filters=256, kernel_size=4, strides=2),
-            layers.LeakyReLU(0.2),
-            # Option 1: 256 x 8 x 8
-            layers.Conv2D(filters=256, kernel_size=4, strides=2),
-            layers.LeakyReLU(0.2),
-            # 256 x 4 x 4
-        ], name='encoder')
+        # self.model = Sequential([
+        #     layers.Conv2D(filters=64, kernel_size=3),
+        #     layers.LeakyReLU(0.2),
+        #     layers.Conv2D(filters=64, kernel_size=4, strides=2),
+        #     layers.LeakyReLU(0.2),
+        #     # 64 x 32 x 32
+        #     layers.Conv2D(filters=64, kernel_size=3, strides=1),
+        #     layers.LeakyReLU(0.2),
+        #     layers.Conv2D(filters=128, kernel_size=4, strides=2),
+        #     layers.LeakyReLU(0.2),
+        #     # 128 x 16 x 16
+        #     layers.Conv2D(filters=256, kernel_size=4, strides=2),
+        #     layers.LeakyReLU(0.2),
+        #     # Option 1: 256 x 8 x 8
+        #     layers.Conv2D(filters=256, kernel_size=4, strides=2),
+        #     layers.LeakyReLU(0.2),
+        #     # 256 x 4 x 4
+        # ], name='encoder')
+
+        self.resnet = tf.keras.applications.ResNet50(include_top=False, weights=None, input_shape=(90, 160, 4))
+        # self.resnet.trainable = False
+
         self.out = layers.Dense(self.z_dim)
 
     def normalize(self, example: Dict):
@@ -167,28 +177,38 @@ class Encoder(MyKerasModel):
         example = self.normalize(example)
         image_h = self.scenario.IMAGE_H
         image_w = self.scenario.IMAGE_W
-        if training:
-            augmented = augment(example[self.image_key],
-                                image_h,
-                                image_w)
-            example[self.image_key] = augmented
+        if self.hparams['image_augmentation']:
+            if training:
+                augmented = augment(example[self.image_key],
+                                    image_h,
+                                    image_w,
+                                    seed=0)
+                example[self.image_key] = augmented
+            else:
+                image_resized = resize_image_sequence(example[self.image_key], image_h, image_w)
+                example[self.image_key] = image_resized
         else:
-            image_resized = tf.image.resize(example[self.image_key], [image_h, image_w], preserve_aspect_ratio=True)
+            image_resized = resize_image_sequence(example[self.image_key], image_h, image_w)
             example[self.image_key] = image_resized
         return example
 
     # @tf.function
     def call(self, observation: Dict, **kwargs):
         o = tf.concat([observation[k] for k in self.obs_keys], axis=-1)
-        h = self.model(o)
+
+        o_one_batch, original_batch_dims = flatten_batch_and_sequence(o)
+        h_one_batch = self.resnet(o_one_batch)
+        h = unflatten_batch_and_sequence(h_one_batch, original_batch_dims)
+
         # NOTE: [:-3] gets all but the last 3 dimensions, which are the H, W, and C of the tensor
         # doing this specifically allows x to have multiple "batch" dimensions,
         # which is useful to treating [batch, time, ...] as all just batch dimensions
         h = tf.reshape(h, h.shape.as_list()[:-3] + [-1])
         z = self.out(h)
-        return {
+        outputs = {
             'z': z
         }
+        return outputs
 
 
 class LocallyLinearPredictor(MyKerasModel):
@@ -216,14 +236,21 @@ class LocallyLinearPredictor(MyKerasModel):
         x = tf.concat((z, a), axis=-1)
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
+        eigs = tf.linalg.eigvals(linear_dynamics_matrix)
         z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
         z_seq = tf.concat([z, z_next], axis=1)
         return {
-            'z': z_seq
+            'z': z_seq,
+            'eigs': eigs,
         }
 
     def compute_loss(self, dataset_element, outputs):
         raise NotImplementedError()
+
+    def compute_metrics(self, dataset_element, outputs):
+        return {
+            'max_eig': tf.reduce_mean(tf.reduce_max(tf.math.abs(tf.squeeze(outputs['eigs'], axis=1)), axis=1)),
+        }
 
 
 class Observer(MyKerasModel):

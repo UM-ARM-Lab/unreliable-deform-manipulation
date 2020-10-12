@@ -14,7 +14,6 @@ from link_bot_pycommon.floating_rope_scenario import publish_color_image
 from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
-from moonshine.tests.testing_utils import is_close_tf
 from sensor_msgs.msg import Image
 from state_space_dynamics import model_utils, filter_utils
 
@@ -22,6 +21,8 @@ limit_gpu_mem(10)
 
 
 def main():
+    tf.random.set_seed(0)
+    np.random.seed(0)
     colorama.init(autoreset=True)
     np.set_printoptions(linewidth=200, precision=3, suppress=True)
     parser = argparse.ArgumentParser()
@@ -30,6 +31,9 @@ def main():
     parser.add_argument("--mode", type=str, choices=['train', 'val', 'test'], default='val')
 
     args = parser.parse_args()
+
+    # TODO: REMOVE ME!
+    args.mode = 'train'
 
     rospy.init_node("test_as_inverse_model")
 
@@ -61,7 +65,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                      filter_model=filter_model,
                                      scenario=scenario,
                                      params={
-                                         'n_samples': 10000
+                                         'n_samples': 5
                                      })
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
@@ -106,10 +110,12 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
             #                                          goal=goal,
             #                                          initial_actions=initial_actions,
             #                                          start_state=start_state)
+            true_action = numpify({k: example[k][0] for k in latent_dynamics_model.action_keys})
             actions, planned_path = shooting_method.optimize(current_observation=current_observation,
                                                              environment=environment,
                                                              goal=goal,
-                                                             start_state=start_state)
+                                                             start_state=start_state,
+                                                             true_action=true_action)
 
             for j in range(action_horizon):
                 optimized_action = actions[j]
@@ -132,13 +138,13 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                 publish_color_image(s_color_viz_pub, s['color_depth_image'][:, :, :3])
                 publish_color_image(s_next_color_viz_pub, s_next['color_depth_image'][:, :, :3])
 
-                stepper.step()
-
                 # Metrics
                 total_error = 0
                 for v1, v2 in zip(optimized_action.values(), true_action.values()):
-                    total_error += tf.linalg.norm(v1 - v2)
+                    total_error += -np.dot(v1, v2)
                 total_errors.append(total_error)
+
+                stepper.step()
 
         if example_idx > 100:
             break
