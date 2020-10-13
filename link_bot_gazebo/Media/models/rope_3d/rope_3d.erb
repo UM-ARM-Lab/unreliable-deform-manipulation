@@ -2,6 +2,7 @@
 mass = ENV['mass'].to_f
 length = ENV['length'].to_f
 radius = ENV['radius'].to_f
+gripper_radius = ENV['gripper_radius'].to_f
 link_length = length/n_links
 link_mass = mass/n_links
 joint_damping = 0.01 %>
@@ -170,7 +171,7 @@ joint_damping = 0.01 %>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius><%=radius%> </radius>
+                        <radius><%=gripper_radius%></radius>
                     </sphere>
                 </geometry>
                 <surface>
@@ -191,8 +192,7 @@ joint_damping = 0.01 %>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius><%=radius%>
-                        </radius>
+                        <radius><%=gripper_radius%></radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -249,7 +249,7 @@ joint_damping = 0.01 %>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius><%=radius%> </radius>
+                        <radius><%=gripper_radius%> </radius>
                     </sphere>
                 </geometry>
                 <surface>
@@ -270,7 +270,7 @@ joint_damping = 0.01 %>
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius><%=radius%></radius>
+                        <radius><%=gripper_radius%></radius>
                     </sphere>
                 </geometry>
                 <material>

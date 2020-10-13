@@ -47,7 +47,7 @@ class DualArmRealVictorRopeScenario(BaseDualArmRopeScenario):
 
         left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
 
-        color_depth_cropped = self.get_color_depth_cropped()
+        color_depth_cropped = self.get_rgbd()
 
         # rope_state_vector = self.get_rope_state()
 

@@ -244,24 +244,29 @@ class ExperimentScenario:
         state_t = {}
         for feature_name in self.states_description().keys():
             if feature_name in state:
-                state_t[feature_name] = state[feature_name][t]
-        return state_t
-
-    def index_state_time_batched(self, state, t):
-        state_t = {}
-        for feature_name in self.states_description().keys():
-            if feature_name in state:
                 state_t[feature_name] = state[feature_name][:, t]
         return state_t
 
     def index_action_time_batched(self, action, t):
         action_t = {}
         for feature_name in self.actions_description().keys():
-            if t < action[feature_name].shape[0]:
-                action_t[feature_name] = action[feature_name][:, t]
-            else:
-                action_t[feature_name] = action[feature_name][:, t - 1]
+            if feature_name in action:
+                if t < action[feature_name].shape[0]:
+                    action_t[feature_name] = action[feature_name][:, t]
+                else:
+                    action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
+
+    def index_time_batched(self, e, t):
+        e_t = {}
+        all_keys = self.all_description_keys()
+        for feature_name in all_keys:
+            if feature_name in e:
+                if t < e[feature_name].shape[0]:
+                    e_t[feature_name] = e[feature_name][:, t]
+                else:
+                    e_t[feature_name] = e[feature_name][:, t - 1]
+        return e_t
 
     @staticmethod
     def index_label_time_batched(example: Dict, t: int):
@@ -270,6 +275,13 @@ class ExperimentScenario:
             # the plotting function that consumes this should use None correctly
             return None
         return example['is_close'][:, t]
+
+    def all_description_keys(self):
+        all_keys = list(self.actions_description().keys()) \
+                   + list(self.states_description().keys()) \
+                   + list(self.observation_features_description().keys()) \
+                   + list(self.observations_description().keys())
+        return all_keys
 
     def randomization_initialization(self):
         raise NotImplementedError()

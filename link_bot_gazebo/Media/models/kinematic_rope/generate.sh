@@ -1,0 +1,1 @@
+n_links=25 mass=0.1 length=0.8 radius=0.01 gripper_radius=0.024 erb kinematic_rope.erb > kinematic_rope.sdf

@@ -10,11 +10,15 @@ import tensorflow as tf
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.floating_rope_scenario import publish_color_image
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
+from sensor_msgs.msg import Image
 
 
 def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
+    scenario = dataset.scenario
+    image_diff_viz_pub = rospy.Publisher("image_diff_viz", Image, queue_size=10, latch=True)
     for i, example in enumerate(tf_dataset):
         print(i)
         if args.start_at is not None and i < args.start_at:
@@ -23,13 +27,22 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
         example = numpify(example)
         time_steps = example['time_idx']
 
-        dataset.scenario.plot_environment_rviz(example)
+        scenario.plot_environment_rviz(example)
         anim = RvizAnimationController(time_steps)
+
         while not anim.done:
             t = anim.t()
             example_t = remove_batch(dataset.index_time(add_batch(example), t))
-            dataset.scenario.plot_state_rviz(example_t, label='')
-            dataset.scenario.plot_action_rviz_internal(example_t, label='')
+            scenario.plot_state_rviz(example_t, label='')
+            scenario.plot_action_rviz_internal(example_t, label='')
+
+            if t < dataset.steps_per_traj - 1:
+                s = numpify(remove_batch(scenario.index_observation_time_batched(add_batch(example), t)))
+                s.update(numpify(remove_batch(scenario.index_observation_features_time_batched(add_batch(example), t))))
+                s_next = numpify(remove_batch(scenario.index_observation_time_batched(add_batch(example), t + 1)))
+                s_next.update(numpify(remove_batch(scenario.index_observation_features_time_batched(add_batch(example), t + 1))))
+                diff = s['color_depth_image'][:, :, :3] - s_next['color_depth_image'][:, :, :3]
+                publish_color_image(image_diff_viz_pub, diff)
 
             # this will return when either the animation is "playing" or because the user stepped forward
             anim.step()

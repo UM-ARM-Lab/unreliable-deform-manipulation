@@ -12,6 +12,9 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
+from moonshine.gpu_config import limit_gpu_mem
+
+limit_gpu_mem(1)
 
 
 def main():
@@ -35,7 +38,11 @@ def main():
             out_example['time_idx'] = tf.range(0, args.desired_sequence_length, dtype=tf.float32)
             yield out_example
 
-    hparams_update = {'steps_per_traj': args.desired_sequence_length}
+    hparams_update = {
+        'data_collection_params': {
+            'steps_per_traj': args.desired_sequence_length
+        }
+    }
     modify_dynamics_dataset(args.dataset_dir, outdir, _process_example, hparams_update=hparams_update)
 
 

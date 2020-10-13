@@ -11,7 +11,7 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
 from link_bot_pycommon.floating_rope_scenario import publish_color_image
-from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
+from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper, RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
@@ -65,7 +65,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                      filter_model=filter_model,
                                      scenario=scenario,
                                      params={
-                                         'n_samples': 5
+                                         'n_samples': 100
                                      })
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
@@ -82,14 +82,16 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
 
     s_color_viz_pub = rospy.Publisher("s_state_color_viz", Image, queue_size=10, latch=True)
     s_next_color_viz_pub = rospy.Publisher("s_next_state_color_viz", Image, queue_size=10, latch=True)
+    image_diff_viz_pub = rospy.Publisher("image_diff_viz", Image, queue_size=10, latch=True)
 
     state = None
     action_horizon = 1
     initial_actions = []
     total_errors = []
-    stepper = RvizSimpleStepper()
     for example_idx, example in enumerate(test_tf_dataset):
+        stepper = RvizAnimationController(n_time_steps=test_dataset.steps_per_traj)
         for t in range(test_dataset.steps_per_traj - 1):
+            print(example_idx)
             environment = {}
             current_observation = remove_batch(scenario.index_observation_time_batched(add_batch(example), t))
             start_state, _ = filter_model.filter(environment, state, current_observation)
@@ -137,6 +139,8 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
 
                 publish_color_image(s_color_viz_pub, s['color_depth_image'][:, :, :3])
                 publish_color_image(s_next_color_viz_pub, s_next['color_depth_image'][:, :, :3])
+                diff = s['color_depth_image'][:, :, :3] - s_next['color_depth_image'][:, :, :3]
+                publish_color_image(image_diff_viz_pub, diff)
 
                 # Metrics
                 total_error = 0

@@ -12,6 +12,8 @@ from std_msgs.msg import Int64
 class RvizAnimationController:
 
     def __init__(self, time_steps=None, n_time_steps: int = None):
+        if time_steps is None and n_time_steps is None:
+            raise ValueError("you have to pass either n_time_steps or time_steps")
         if time_steps is not None:
             self.time_steps = np.array(time_steps, dtype=np.int64)
         if n_time_steps is not None:
