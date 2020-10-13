@@ -4,6 +4,7 @@
 
 #include <link_bot_gazebo/gazebo_plugin_utils.h>
 #include <boost/range/combine.hpp>
+#include <ros/duration.h>
 #include <functional>
 
 #define create_service_options(type, name, bind)                                                                       \
@@ -104,14 +105,15 @@ bool DualGripperPlugin::OnAction(peter_msgs::DualGripperTrajectoryRequest &req,
       boost::tie(point1, point2) = point_pair;
       left_gripper_->SetWorldPose({point1.x, point1.y, point1.z, 0, 0, 0});
       right_gripper_->SetWorldPose({point2.x, point2.y, point2.z, 0, 0, 0});
-      for (auto t{0}; t <= steps; ++t)
-      {
-        world_->Step(1);
-        if (interrupted_)
-        {
-          return true;
-        }
-      }
+      ros::Duration(req.settling_time_seconds).sleep();
+//      for (auto t{0}; t <= steps; ++t)
+//      {
+//        world_->Step(1);
+//        if (interrupted_)
+//        {
+//          return true;
+//        }
+//      }
     }
   }
   return true;

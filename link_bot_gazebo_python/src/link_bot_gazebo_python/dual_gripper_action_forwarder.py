@@ -25,8 +25,8 @@ def interpolate_dual_gripper_trajectory(step_size: float, get_response, start_en
     distance = max(np.linalg.norm(left_gripper_displacement), np.linalg.norm(right_gripper_displacement))
 
     waypoint_traj_req = DualGripperTrajectoryRequest()
+    waypoint_traj_req.settling_time_seconds = 0.02
     n_steps = max(np.int64(distance / step_size), 5)
-    waypoint_traj_req.settling_time_seconds = 0.1
     for left_gripper_waypoint in np.linspace(current_left_gripper_point, target_left_gripper_point, n_steps):
         waypoint_traj_req.left_gripper_points.append(ros_numpy.msgify(Point, left_gripper_waypoint))
     for right_gripper_waypoint in np.linspace(current_right_gripper_point, target_right_gripper_point, n_steps):

@@ -1,5 +1,5 @@
 <launch>
-    <arg name="gui"         default="true"/>
+    <arg name="gui" default="true"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
         <arg name="world" value="dual_floating_grippers.world"/>
@@ -12,8 +12,13 @@
         <arg name="debug_moveit" value="false"/>
     </include>
 
-    <node name="shim" type="dual_gripper_action_forwarder_node.py" pkg="link_bot_gazebo_python" >
-         <param name="rope_ns" value="kinematic_rope"/>
+    <node name="shim" type="dual_gripper_action_forwarder_node.py" pkg="link_bot_gazebo_python">
+        <param name="rope_ns" value="kinematic_rope"/>
     </node>
 
+    <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">
+    </include>
+
+    <include file="$(find cdcpd_ros)/launch/gazebo_floating_tracking.launch">
+    </include>
 </launch>

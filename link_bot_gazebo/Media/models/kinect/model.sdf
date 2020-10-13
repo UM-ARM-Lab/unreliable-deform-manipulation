@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
-  <model name="kinect">
+  <model name="kinect2">
     <pose>0 0 0.036 0 0 0</pose>
     <link name="link">
       <kinematic>true</kinematic>
@@ -15,7 +15,7 @@
         </geometry>
       </visual>
       <sensor name="camera" type="depth">
-        <update_rate>60</update_rate>
+        <update_rate>30</update_rate>
         <camera>
           <horizontal_fov>1.563</horizontal_fov>
           <image>
@@ -40,12 +40,11 @@
             will control the frame rate. -->
           <updateRate>0.0</updateRate>
           <cameraName>camera_ir</cameraName>
-          <imageTopicName>/camera/color/image_raw</imageTopicName>
-          <cameraInfoTopicName>/camera/color/camera_info</cameraInfoTopicName>
-          <depthImageTopicName>/camera/depth/image_raw</depthImageTopicName>
-          <depthImageCameraInfoTopicName>/camera/depth/camera_info</depthImageCameraInfoTopicName>
-          <pointCloudTopicName>/camera/depth/points</pointCloudTopicName>
-          <frameName>kinect::camera_frame_link</frameName>
+          <cameraInfoTopicName>/kinect2/qhd/camera_info</cameraInfoTopicName>
+          <imageTopicName>/kinect2/qhd/image_color_rect</imageTopicName>
+          <depthImageTopicName>/kinect2/qhd/image_depth_rect</depthImageTopicName>
+          <pointCloudTopicName>/kinect2/qhd/points</pointCloudTopicName>
+          <frameName>kinect2/camera_frame_link</frameName>
           <pointCloudCutoff>0.5</pointCloudCutoff>
           <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
           <distortionK1>0</distortionK1>

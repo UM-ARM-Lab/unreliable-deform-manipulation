@@ -8,23 +8,23 @@
     rope
   ]
   obs_keys: [
-      rgbd
-      left_gripper
-      right_gripper
+    rgbd
+    left_gripper
+    right_gripper
   ]
   action_keys: [
-    left_gripper_delta
-    right_gripper_delta
+    left_gripper_position
+    right_gripper_position
   ]
   observer_fc_layer_sizes: [
     64
     64
   ]
   dynamics_fc_layer_sizes: [
-    32
-    32
+    64
+    64
   ]
-  z_dim: 32
+  z_dim: 64
   learning_rate: 0.001
   shuffle_buffer_size: 2048
   use_observation_feature_loss: false

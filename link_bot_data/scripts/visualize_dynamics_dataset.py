@@ -10,7 +10,7 @@ import tensorflow as tf
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.floating_rope_scenario import publish_color_image
+from link_bot_pycommon.ros_pycommon import publish_color_image
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 from sensor_msgs.msg import Image

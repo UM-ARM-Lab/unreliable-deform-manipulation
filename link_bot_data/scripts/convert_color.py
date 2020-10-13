@@ -11,7 +11,7 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.floating_rope_scenario import publish_color_image, publish_depth_image
+from link_bot_pycommon.ros_pycommon import publish_color_image, publish_depth_image
 from moonshine.moonshine_utils import numpify
 
 

@@ -1,5 +1,4 @@
 import warnings
-from time import sleep
 from typing import Dict, Optional
 
 import numpy as np
@@ -8,6 +7,7 @@ from matplotlib import colors
 
 import ros_numpy
 from arm_robots_msgs.msg import Points
+from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
 from rosgraph.names import ns_join
 
 with warnings.catch_warnings():
@@ -30,23 +30,10 @@ from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynami
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
     GetDualGripperPointsRequest, GetDualGripperPointsResponse
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, PointCloud2
 from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
-
-KINECT_MAX_DEPTH = 3
-
-
-def publish_color_image(pub: rospy.Publisher, x):
-    color = x.astype(np.uint8)
-    color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
-    pub.publish(color_viz_msg)
-
-
-def publish_depth_image(pub: rospy.Publisher, x):
-    depth_viz_msg = ros_numpy.msgify(Image, x, encoding="32FC1")
-    pub.publish(depth_viz_msg)
 
 
 def make_box_marker_from_extents(extent):
@@ -126,8 +113,8 @@ class FloatingRopeScenario(Base3DScenario):
     IMAGE_H = 90
     IMAGE_W = 160
     n_links = 25
-    COLOR_IMAGE_TOPIC = "/camera/color/image_raw"
-    DEPTH_IMAGE_TOPIC = "/camera/depth/image_raw"
+    COLOR_IMAGE_TOPIC = "/kinect2/qhd/image_color_rect"
+    DEPTH_IMAGE_TOPIC = "/kinect2/qhd/image_depth_rect"
     crop_region = {
         'min_y': 0,
         'min_x': 0,
@@ -147,6 +134,7 @@ class FloatingRopeScenario(Base3DScenario):
         self.get_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_dual_gripper_points"),
                                                           GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_rope_state"), GetRopeState)
+        self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
@@ -459,6 +447,16 @@ class FloatingRopeScenario(Base3DScenario):
         gripper_position2 = np.reshape(state['right_gripper'], [3])
         return gripper_position1, gripper_position2
 
+    def get_cdcpd_state(self):
+        cdcpd_msg: PointCloud2 = self.cdcpd_listener.get()
+        cdcpd_point_cloud_array = ros_numpy.numpify(cdcpd_msg)
+        x = cdcpd_point_cloud_array['x']
+        y = cdcpd_point_cloud_array['y']
+        z = cdcpd_point_cloud_array['z']
+        cdcpd_vector = np.stack([x, y, z], axis=-1)
+        cdcpd_vector = cdcpd_vector.flatten()
+        return cdcpd_vector
+
     def get_rope_state(self):
         while True:
             try:
@@ -492,29 +490,35 @@ class FloatingRopeScenario(Base3DScenario):
         color_depth_cropped = self.get_rgbd()
 
         rope_state_vector = self.get_rope_state()
+        cdcpd_vector = self.get_cdcpd_state()
         left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
 
         return {
             'left_gripper': left_rope_point_position,
             'right_gripper': right_rope_point_position,
             'rope': np.array(rope_state_vector, np.float32),
+            'cdcpd': np.array(cdcpd_vector, np.float32),
             'rgbd': color_depth_cropped,
         }
 
     def get_rgbd(self):
-        while True:
-            color_msg: Image = self.color_image_listener.get(block_until_data=True)
-            dt = (rospy.Time.now() - color_msg.header.stamp).to_sec()
-            sleep(0.01)
-            if dt <= 0.05:
-                break
+        # from time import perf_counter
+        # t0 = perf_counter()
+        # while True:
+        #     color_msg: Image = self.color_image_listener.get()
+        #     dt = (rospy.Time.now() - color_msg.header.stamp).to_sec()
+        #     if dt <= 0.1:
+        #         break
+        #
+        # while True:
+        #     depth_msg = self.depth_image_listener.get()
+        #     dt = (rospy.Time.now() - depth_msg.header.stamp).to_sec()
+        #     if dt <= 0.1:
+        #         break
+        # print(perf_counter() - t0)
 
-        while True:
-            depth_msg = self.depth_image_listener.get(block_until_data=True)
-            dt = (rospy.Time.now() - depth_msg.header.stamp).to_sec()
-            sleep(0.01)
-            if dt <= 0.05:
-                break
+        color_msg: Image = self.color_image_listener.get()
+        depth_msg = self.depth_image_listener.get()
 
         depth = np.expand_dims(ros_numpy.numpify(depth_msg), axis=-1)
         bgr = ros_numpy.numpify(color_msg)
@@ -529,9 +533,9 @@ class FloatingRopeScenario(Base3DScenario):
                                     self.crop_region['max_x'] / rgb.shape[1]], dtype=tf.float32)
         # this operates on a batch
         rgbd_cropped = tf.image.crop_and_resize(image=tf.expand_dims(rgbd, axis=0),
-                                                       boxes=tf.expand_dims(box, axis=0),
-                                                       box_indices=[0],
-                                                       crop_size=[self.IMAGE_H, self.IMAGE_W])
+                                                boxes=tf.expand_dims(box, axis=0),
+                                                box_indices=[0],
+                                                crop_size=[self.IMAGE_H, self.IMAGE_W])
         rgbd_cropped = remove_batch(rgbd_cropped)
 
         def _debug_show_image(_rgb_depth_cropped):
@@ -560,6 +564,7 @@ class FloatingRopeScenario(Base3DScenario):
     def observation_features_description() -> Dict:
         return {
             'rope': FloatingRopeScenario.n_links * 3,
+            'cdcpd': FloatingRopeScenario.n_links * 3,
         }
 
     @staticmethod

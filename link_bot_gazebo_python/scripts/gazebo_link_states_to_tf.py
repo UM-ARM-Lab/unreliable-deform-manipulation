@@ -14,14 +14,14 @@ class GazeboLinkStatesToTF:
 
     def __init__(self):
         self.tf_broadcaster = tf.TransformBroadcaster()
-        self.link_states_sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.on_link_states)
-        config_file = pathlib.Path(rospy.get_param("~config_file", None))
-        if config_file is None:
-            self.excluded_names = []
-        else:
+        self.excluded_names = []
+        if rospy.has_param('~config_file'):
+            config_file = pathlib.Path(rospy.get_param("~config_file"))
             with config_file.open('r') as config_file:
                 config = hjson.load(config_file)
             self.excluded_names = config['exclude']
+
+        self.link_states_sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.on_link_states)
 
     def on_link_states(self, msg: LinkStates):
         for link_name, link_pose in zip(msg.name, msg.pose):
@@ -31,7 +31,6 @@ class GazeboLinkStatesToTF:
             parent = link_name.replace("::", "/")
             if link_name not in self.excluded_names:
                 self.tf_broadcaster.sendTransform(translation, rotation, rospy.Time.now(), parent, child)
-        rospy.sleep(0.1)
 
 
 def main():

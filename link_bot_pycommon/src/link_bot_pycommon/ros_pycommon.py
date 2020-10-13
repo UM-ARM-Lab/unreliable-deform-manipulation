@@ -1,10 +1,12 @@
 import numpy as np
 
+import ros_numpy
 import rospy
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.grid_utils import extent_to_center, extent_to_env_shape
 from peter_msgs.srv import ComputeOccupancyRequest, Position3DEnable, GetPosition3D, Position3DAction
+from sensor_msgs.msg import Image
 from std_srvs.srv import Empty
 
 
@@ -109,3 +111,17 @@ def make_movable_object_services(object_name):
         'move': rospy.ServiceProxy(f'{object_name}/move', Position3DAction),
         'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
     }
+
+
+KINECT_MAX_DEPTH = 3
+
+
+def publish_color_image(pub: rospy.Publisher, x):
+    color = x.astype(np.uint8)
+    color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
+    pub.publish(color_viz_msg)
+
+
+def publish_depth_image(pub: rospy.Publisher, x):
+    depth_viz_msg = ros_numpy.msgify(Image, x, encoding="32FC1")
+    pub.publish(depth_viz_msg)

@@ -5,7 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.floating_rope_scenario import KINECT_MAX_DEPTH
+from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH
 from moonshine.image_augmentation import augment, resize_image_sequence, flatten_batch_and_sequence, unflatten_batch_and_sequence
 from moonshine.loss_utils import loss_on_dicts
 from moonshine.moonshine_utils import vector_to_dict
@@ -119,7 +119,7 @@ class CFM(MyKerasModel):
         tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
         neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
         # Subtracting a large positive values should make the loss for diagonal elements be 0
-        # which means we don't want to separate the representation of z from z_next
+        # which means we don't encourage separating the representation of z from z_next
         neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
         pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
         dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
@@ -231,6 +231,9 @@ class LocallyLinearPredictor(MyKerasModel):
         new_example = {k: v for k, v in example.items()}
         observations = {k: example[k][:, :-1] for k in self.obs_keys}
         local_action = self.scenario.put_action_local_frame(observations, example)
+
+        local_action = {k: v * 10 for k, v in local_action.items()}
+
         new_example.update(local_action)
         return new_example
 

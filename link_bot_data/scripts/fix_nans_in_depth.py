@@ -11,7 +11,7 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.floating_rope_scenario import KINECT_MAX_DEPTH
+from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH
 from moonshine.moonshine_utils import numpify
 
 

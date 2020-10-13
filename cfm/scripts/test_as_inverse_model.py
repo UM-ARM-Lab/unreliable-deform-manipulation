@@ -10,7 +10,7 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
-from link_bot_pycommon.floating_rope_scenario import publish_color_image
+from link_bot_pycommon.ros_pycommon import publish_color_image
 from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper, RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch

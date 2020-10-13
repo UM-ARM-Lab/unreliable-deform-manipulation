@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="gazebo_kinect_static_tf"
+          args="0 0 0 0 0 0 kinect2/camera_frame_link kinect2_rgb_optical_frame">
+    </node>
+</launch>
