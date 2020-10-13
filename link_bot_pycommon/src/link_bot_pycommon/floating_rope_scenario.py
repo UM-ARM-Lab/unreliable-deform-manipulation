@@ -1,4 +1,5 @@
 import warnings
+from time import sleep
 from typing import Dict, Optional
 
 import numpy as np
@@ -36,13 +37,14 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 KINECT_MAX_DEPTH = 3
 
-def publish_color_image(pub : rospy.Publisher, x):
+
+def publish_color_image(pub: rospy.Publisher, x):
     color = x.astype(np.uint8)
-    color_viz_msg = ros_numpy.msgify(Image, color, encoding="bgr8")
+    color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")
     pub.publish(color_viz_msg)
 
 
-def publish_depth_image(pub : rospy.Publisher, x):
+def publish_depth_image(pub: rospy.Publisher, x):
     depth_viz_msg = ros_numpy.msgify(Image, x, encoding="32FC1")
     pub.publish(depth_viz_msg)
 
@@ -487,7 +489,7 @@ class FloatingRopeScenario(Base3DScenario):
         return left_rope_point_position, right_rope_point_position
 
     def get_state(self):
-        color_depth_cropped = self.get_color_depth_cropped()
+        color_depth_cropped = self.get_rgbd()
 
         rope_state_vector = self.get_rope_state()
         left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
@@ -496,44 +498,57 @@ class FloatingRopeScenario(Base3DScenario):
             'left_gripper': left_rope_point_position,
             'right_gripper': right_rope_point_position,
             'rope': np.array(rope_state_vector, np.float32),
-            'color_depth_image': color_depth_cropped,
+            'rgbd': color_depth_cropped,
         }
 
-    def get_color_depth_cropped(self):
-        # make color + depth image
-        color_msg: Image = self.color_image_listener.get(block_until_data=False)
-        color = ros_numpy.numpify(color_msg)
+    def get_rgbd(self):
+        while True:
+            color_msg: Image = self.color_image_listener.get(block_until_data=True)
+            dt = (rospy.Time.now() - color_msg.header.stamp).to_sec()
+            sleep(0.01)
+            if dt <= 0.05:
+                break
 
-        depth = np.expand_dims(ros_numpy.numpify(self.depth_image_listener.get(block_until_data=False)), axis=-1)
+        while True:
+            depth_msg = self.depth_image_listener.get(block_until_data=True)
+            dt = (rospy.Time.now() - depth_msg.header.stamp).to_sec()
+            sleep(0.01)
+            if dt <= 0.05:
+                break
+
+        depth = np.expand_dims(ros_numpy.numpify(depth_msg), axis=-1)
+        bgr = ros_numpy.numpify(color_msg)
+        rgb = np.flip(bgr, axis=2)
+
         # NaN Depths means out of range, so clip to the max range
         depth = np.clip(np.nan_to_num(depth, nan=KINECT_MAX_DEPTH), 0, KINECT_MAX_DEPTH)
-        color_depth = np.concatenate([color, depth], axis=2)
-        box = tf.convert_to_tensor([self.crop_region['min_y'] / color.shape[0],
-                                    self.crop_region['min_x'] / color.shape[1],
-                                    self.crop_region['max_y'] / color.shape[0],
-                                    self.crop_region['max_x'] / color.shape[1]], dtype=tf.float32)
+        rgbd = np.concatenate([rgb, depth], axis=2)
+        box = tf.convert_to_tensor([self.crop_region['min_y'] / rgb.shape[0],
+                                    self.crop_region['min_x'] / rgb.shape[1],
+                                    self.crop_region['max_y'] / rgb.shape[0],
+                                    self.crop_region['max_x'] / rgb.shape[1]], dtype=tf.float32)
         # this operates on a batch
-        color_depth_cropped = tf.image.crop_and_resize(image=tf.expand_dims(color_depth, axis=0),
+        rgbd_cropped = tf.image.crop_and_resize(image=tf.expand_dims(rgbd, axis=0),
                                                        boxes=tf.expand_dims(box, axis=0),
                                                        box_indices=[0],
                                                        crop_size=[self.IMAGE_H, self.IMAGE_W])
-        color_depth_cropped = remove_batch(color_depth_cropped)
+        rgbd_cropped = remove_batch(rgbd_cropped)
 
-        def _debug_show_image(_color_depth_cropped):
+        def _debug_show_image(_rgb_depth_cropped):
             import matplotlib.pyplot as plt
-            plt.imshow(tf.cast(_color_depth_cropped[:, :, :3], tf.int32))
+            plt.imshow(tf.cast(_rgb_depth_cropped[:, :, :3], tf.int32))
             plt.show()
 
         # BEGIN DEBUG
-        # _debug_show_image(color_depth_cropped)
+        # _debug_show_image(rgbd_cropped)
         # END DEBUG
-        return color_depth_cropped.numpy()
+        return rgbd_cropped.numpy()
 
     def observations_description(self) -> Dict:
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'color_depth_image': [self.IMAGE_H, self.IMAGE_W, 4],
+            'rgbd': [self.IMAGE_H, self.IMAGE_W, 4],
         }
 
     @staticmethod
@@ -948,9 +963,33 @@ class FloatingRopeScenario(Base3DScenario):
             midpoint_sphere.color.b = b * 0.8
             midpoint_sphere.color.a = a
 
+            first_point_text = Marker()
+            first_point_text.action = Marker.ADD  # create or modify
+            first_point_text.type = Marker.TEXT_VIEW_FACING
+            first_point_text.header.frame_id = "world"
+            first_point_text.header.stamp = rospy.Time.now()
+            first_point_text.ns = label
+            first_point_text.id = 6 * idx + 4
+            first_point_text.text = "0"
+            first_point_text.scale.z = 0.015
+
+            first_point_text.pose.position.x = rope_points[0, 0]
+            first_point_text.pose.position.y = rope_points[0, 1]
+            first_point_text.pose.position.z = rope_points[0, 2] + 0.015
+            first_point_text.pose.orientation.x = 0
+            first_point_text.pose.orientation.y = 0
+            first_point_text.pose.orientation.z = 0
+            first_point_text.pose.orientation.w = 1
+
+            first_point_text.color.r = 1.0
+            first_point_text.color.g = 1.0
+            first_point_text.color.b = 1.0
+            first_point_text.color.a = 1.0
+
             msg.markers.append(spheres)
             msg.markers.append(lines)
             msg.markers.append(midpoint_sphere)
+            msg.markers.append(first_point_text)
 
         if 'left_gripper' in state:
             left_gripper_sphere = Marker()
@@ -961,9 +1000,9 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper_sphere.ns = label
             left_gripper_sphere.id = 6 * idx + 2
 
-            left_gripper_sphere.scale.x = 0.02
-            left_gripper_sphere.scale.y = 0.02
-            left_gripper_sphere.scale.z = 0.02
+            left_gripper_sphere.scale.x = 0.04
+            left_gripper_sphere.scale.y = 0.04
+            left_gripper_sphere.scale.z = 0.04
 
             left_gripper_sphere.pose.position.x = state['left_gripper'][0]
             left_gripper_sphere.pose.position.y = state['left_gripper'][1]
@@ -976,33 +1015,9 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper_sphere.color.r = 0.2
             left_gripper_sphere.color.g = 0.2
             left_gripper_sphere.color.b = 0.8
-            left_gripper_sphere.color.a = a
-
-            left_gripper_text = Marker()
-            left_gripper_text.action = Marker.ADD  # create or modify
-            left_gripper_text.type = Marker.TEXT_VIEW_FACING
-            left_gripper_text.header.frame_id = "world"
-            left_gripper_text.header.stamp = rospy.Time.now()
-            left_gripper_text.ns = label
-            left_gripper_text.id = 6 * idx + 4
-            left_gripper_text.text = "L"
-            left_gripper_text.scale.z = 0.015
-
-            left_gripper_text.pose.position.x = state['left_gripper'][0]
-            left_gripper_text.pose.position.y = state['left_gripper'][1]
-            left_gripper_text.pose.position.z = state['left_gripper'][2] + 0.015
-            left_gripper_text.pose.orientation.x = 0
-            left_gripper_text.pose.orientation.y = 0
-            left_gripper_text.pose.orientation.z = 0
-            left_gripper_text.pose.orientation.w = 1
-
-            left_gripper_text.color.r = 1.0
-            left_gripper_text.color.g = 1.0
-            left_gripper_text.color.b = 1.0
-            left_gripper_text.color.a = 1.0
+            left_gripper_sphere.color.a = a * 0.6
 
             msg.markers.append(left_gripper_sphere)
-            msg.markers.append(left_gripper_text)
 
         if 'right_gripper' in state:
             right_gripper_sphere = Marker()
@@ -1013,9 +1028,9 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_sphere.ns = label
             right_gripper_sphere.id = 6 * idx + 3
 
-            right_gripper_sphere.scale.x = 0.02
-            right_gripper_sphere.scale.y = 0.02
-            right_gripper_sphere.scale.z = 0.02
+            right_gripper_sphere.scale.x = 0.04
+            right_gripper_sphere.scale.y = 0.04
+            right_gripper_sphere.scale.z = 0.04
 
             right_gripper_sphere.pose.position.x = state['right_gripper'][0]
             right_gripper_sphere.pose.position.y = state['right_gripper'][1]
@@ -1026,16 +1041,16 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_sphere.pose.orientation.w = 1
 
             right_gripper_sphere.color.r = 0.8
-            right_gripper_sphere.color.g = 0.2
+            right_gripper_sphere.color.g = 0.8
             right_gripper_sphere.color.b = 0.2
-            right_gripper_sphere.color.a = a
+            right_gripper_sphere.color.a = a * 0.6
 
             msg.markers.append(right_gripper_sphere)
         self.state_viz_pub.publish(msg)
 
-        if 'color_depth_image' in state:
-            publish_color_image(self.state_color_viz_pub, state['color_depth_image'][:, :, :3])
-            publish_depth_image(self.state_depth_viz_pub, state['color_depth_image'][:, :, 3])
+        if 'rgbd' in state:
+            publish_color_image(self.state_color_viz_pub, state['rgbd'][:, :, :3])
+            publish_depth_image(self.state_depth_viz_pub, state['rgbd'][:, :, 3])
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}

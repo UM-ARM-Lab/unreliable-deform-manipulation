@@ -5,6 +5,7 @@ from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.floating_rope_scenario import KINECT_MAX_DEPTH
 from moonshine.image_augmentation import augment, resize_image_sequence, flatten_batch_and_sequence, unflatten_batch_and_sequence
 from moonshine.loss_utils import loss_on_dicts
 from moonshine.moonshine_utils import vector_to_dict
@@ -30,6 +31,8 @@ class CFM(MyKerasModel):
         self.dynamics = LocallyLinearPredictor(hparams, batch_size, scenario)
         self.observer = Observer(hparams, batch_size, scenario)
 
+        self.encoder.trainable = hparams['encoder_trainable']
+
         # check for NaNs, because the Kinect uses NaN to indicate "missing" data (usually out of range)
         # tf.debugging.enable_check_numerics()
 
@@ -50,7 +53,9 @@ class CFM(MyKerasModel):
         return obs, obs_pos
 
     def preprocess_no_gradient(self, example, training: bool):
-        return self.encoder.preprocess_no_gradient(example, training)
+        example = self.encoder.preprocess_no_gradient(example, training)
+        example = self.dynamics.preprocess_no_gradient(example, training)
+        return example
 
     # @tf.function
     def call(self, example, training=False, **kwargs):
@@ -128,53 +133,41 @@ class Encoder(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
         self.scenario = scenario
+        self.obs_keys = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
-        self.obs_keys = self.hparams['obs_keys']
-        self.image_key = 'color_depth_image'
+        self.image_key = 'rgbd'
 
         self.z_dim = self.hparams['z_dim']
-        # self.model = Sequential([
-        #     layers.Conv2D(filters=64, kernel_size=3),
-        #     layers.LeakyReLU(0.2),
-        #     layers.Conv2D(filters=64, kernel_size=4, strides=2),
-        #     layers.LeakyReLU(0.2),
-        #     # 64 x 32 x 32
-        #     layers.Conv2D(filters=64, kernel_size=3, strides=1),
-        #     layers.LeakyReLU(0.2),
-        #     layers.Conv2D(filters=128, kernel_size=4, strides=2),
-        #     layers.LeakyReLU(0.2),
-        #     # 128 x 16 x 16
-        #     layers.Conv2D(filters=256, kernel_size=4, strides=2),
-        #     layers.LeakyReLU(0.2),
-        #     # Option 1: 256 x 8 x 8
-        #     layers.Conv2D(filters=256, kernel_size=4, strides=2),
-        #     layers.LeakyReLU(0.2),
-        #     # 256 x 4 x 4
-        # ], name='encoder')
+        self.model = Sequential([
+            layers.Conv2D(filters=64, kernel_size=3),
+            layers.LeakyReLU(0.2),
+            layers.Conv2D(filters=64, kernel_size=4, strides=2),
+            layers.LeakyReLU(0.2),
+            layers.Conv2D(filters=64, kernel_size=3, strides=1),
+            layers.LeakyReLU(0.2),
+            layers.Conv2D(filters=128, kernel_size=4, strides=2),
+            layers.LeakyReLU(0.2),
+            layers.Conv2D(filters=256, kernel_size=4, strides=2),
+            layers.LeakyReLU(0.2),
+            layers.Conv2D(filters=256, kernel_size=4, strides=2),
+            layers.LeakyReLU(0.2),
+        ])
 
-        self.resnet = tf.keras.applications.ResNet50(include_top=False, weights=None, input_shape=(90, 160, 4))
-        # self.resnet.trainable = False
+        # self.model = tf.keras.applications.ResNet50(include_top=False, weights=None, input_shape=(90, 160, 4))
+        # self.model.trainable = False
 
         self.out = layers.Dense(self.z_dim)
 
     def normalize(self, example: Dict):
         # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
-        new_example = {}
-        for k, v in example.items():
-            # Rescale to -1 to 1
-            if k in self.obs_keys:
-                min_value = tf.math.reduce_min(tf.math.reduce_min(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-                max_value = tf.math.reduce_max(tf.math.reduce_max(example[k], axis=2, keepdims=True), axis=3, keepdims=True)
-                normalized_observation = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-                new_example[k] = normalized_observation
-            elif k in self.action_keys:
-                min_value = tf.math.reduce_min(example[k], axis=2, keepdims=True)
-                max_value = tf.math.reduce_max(example[k], axis=2, keepdims=True)
-                normalized_action = 2 * (example[k] - min_value) / (max_value - min_value) - 1
-                new_example[k] = normalized_action
-            else:
-                new_example[k] = v
+        new_example = {k: v for k, v in example.items()}
+
+        # normalize to 0-1
+        min_value = tf.constant([[[0, 0, 0, 0]]], dtype=tf.float32)
+        max_value = tf.constant([[[255, 255, 255, KINECT_MAX_DEPTH]]], dtype=tf.float32)
+        normalized_observation = (example[self.image_key] - min_value) / (max_value - min_value)
+        new_example[self.image_key] = normalized_observation
 
         return new_example
 
@@ -182,27 +175,26 @@ class Encoder(MyKerasModel):
         example = self.normalize(example)
         image_h = self.scenario.IMAGE_H
         image_w = self.scenario.IMAGE_W
-        if self.hparams['image_augmentation']:
-            if training:
-                augmented = augment(example[self.image_key],
-                                    image_h,
-                                    image_w,
-                                    seed=0)
-                example[self.image_key] = augmented
-            else:
-                image_resized = resize_image_sequence(example[self.image_key], image_h, image_w)
-                example[self.image_key] = image_resized
-        else:
-            image_resized = resize_image_sequence(example[self.image_key], image_h, image_w)
-            example[self.image_key] = image_resized
+
+        # always resize
+        example[self.image_key] = resize_image_sequence(example[self.image_key], image_h, image_w)
+
+        ## BEGIN DEBUG
+        # show_image_grid(example[self.image_key])
+        ## END DEBUG
+
+        if self.hparams['image_augmentation'] and training:
+            augmented = augment(example[self.image_key], image_h, image_w, seed=0)
+            example[self.image_key] = augmented
         return example
 
     # @tf.function
     def call(self, observation: Dict, **kwargs):
-        o = tf.concat([observation[k] for k in self.obs_keys], axis=-1)
+        # NOTE: currently this encoder only handles one image as the observation input
+        o = observation[self.image_key]
 
         o_one_batch, original_batch_dims = flatten_batch_and_sequence(o)
-        h_one_batch = self.resnet(o_one_batch)
+        h_one_batch = self.model(o_one_batch)
         h = unflatten_batch_and_sequence(h_one_batch, original_batch_dims)
 
         # NOTE: [:-3] gets all but the last 3 dimensions, which are the H, W, and C of the tensor
@@ -220,18 +212,27 @@ class LocallyLinearPredictor(MyKerasModel):
 
     def __init__(self, hparams: Dict, batch_size: int, scenario: ExperimentScenario):
         super().__init__(hparams=hparams, batch_size=batch_size)
-        self.observation_key = self.hparams['obs_keys']
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
+        self.obs_keys = self.hparams['obs_keys']
+        self.scenario = scenario
 
         self.z_dim = self.hparams['z_dim']
 
         my_layers = []
-        for h in self.hparams['fc_layer_sizes']:
+        for h in self.hparams['dynamics_fc_layer_sizes']:
             my_layers.append(layers.Dense(h, activation="relu"))
         my_layers.append(layers.Dense(self.z_dim * self.z_dim, activation=None))
 
         self.model = Sequential(my_layers)
+
+    def preprocess_no_gradient(self, example, training: bool):
+        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
+        new_example = {k: v for k, v in example.items()}
+        observations = {k: example[k][:, :-1] for k in self.obs_keys}
+        local_action = self.scenario.put_action_local_frame(observations, example)
+        new_example.update(local_action)
+        return new_example
 
     # @tf.function
     def call(self, inputs, **kwargs):
@@ -270,7 +271,7 @@ class Observer(MyKerasModel):
         final_dim = sum(list(self.observation_features_description.values()))
 
         my_layers = []
-        for h in self.hparams['fc_layer_sizes']:
+        for h in self.hparams['observer_fc_layer_sizes']:
             my_layers.append(layers.Dense(h, activation="relu"))
         my_layers.append(layers.Dense(final_dim, activation=None))
 
@@ -301,3 +302,24 @@ class CFMLatentDynamics(BaseDynamicsFunction):
         cfm = CFM(hparams=self.hparams, batch_size=batch_size, scenario=scenario)
         ckpt = tf.train.Checkpoint(model=cfm)
         return cfm.dynamics, ckpt
+
+
+def show_image_grid(images):
+    import matplotlib.pyplot as plt
+    from grid_strategy import strategies
+    batch_size = images.shape[0]
+    specs = strategies.SquareStrategy("center").get_grid(batch_size)
+    for b, subplot in enumerate(specs):
+        plt.subplot(subplot)
+        plt.xticks([])
+        plt.yticks([])
+        ax = plt.gca()
+        if b == 0:
+            ax.set_title(r"$I_t$")
+            ax.imshow(images[b, 0, :, :, :3])
+        elif b == 1:
+            ax.set_title(r"$I_{t+1}$")
+            ax.imshow(images[b - 1, 1, :, :, :3])
+        else:
+            ax.imshow(images[b - 1, 1, :, :, :3])
+    plt.show()

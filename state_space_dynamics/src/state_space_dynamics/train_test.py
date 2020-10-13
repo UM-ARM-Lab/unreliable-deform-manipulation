@@ -46,7 +46,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          batch_metadata=train_dataset.batch_metadata,
                          trial_path=trial_path)
 
-    train_tf_dataset, val_tf_dataset = setup_datasets(batch_size, seed, train_dataset, val_dataset)
+    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset)
 
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
@@ -80,19 +80,23 @@ def setup_hparams(batch_size, dataset_dirs, seed, train_dataset):
     }
 
 
-def setup_datasets(batch_size, seed, train_dataset, val_dataset):
+def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):
     # Dataset preprocessing
     train_tf_dataset = train_dataset.get_datasets(mode='train')
     val_tf_dataset = val_dataset.get_datasets(mode='val')
-    # to mix up examples so each batch is diverse
-    train_tf_dataset = train_tf_dataset.shuffle(buffer_size=64, seed=seed, reshuffle_each_iteration=True)
+
+    # mix up examples before batching
+    train_tf_dataset = train_tf_dataset.shuffle(model_hparams['shuffle_buffer_size'])
+
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
-    # Shuffling adds significant overhead, nearly quadrupling the total training time.
-    # train_tf_dataset = train_tf_dataset.shuffle(
-    #     buffer_size=60, seed=seed, reshuffle_each_iteration=False)  # to mix up batches
+
+    # shuffle again so batches are not presented in the same order
+    train_tf_dataset = train_tf_dataset.shuffle(16)
+
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+
     return train_tf_dataset, val_tf_dataset
 
 
@@ -195,27 +199,20 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
     _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
-    model = state_space_dynamics.get_model(params['model_class'])
-    net = model(hparams=params, batch_size=1, scenario=test_dataset.scenario)
-
-    runner = ModelRunner(model=net,
-                         training=False,
-                         checkpoint=checkpoint,
-                         batch_metadata=test_dataset.batch_metadata,
-                         trial_path=trial_path,
-                         params=params)
+    model_class_name = state_space_dynamics.get_model(params['model_class'])
+    model = model_class_name(hparams=params, batch_size=1, scenario=test_dataset.scenario)
 
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, 1, drop_remainder=True)
 
     for i, batch in enumerate(test_tf_dataset):
         batch.update(test_dataset.batch_metadata)
-        predictions = runner.model(batch, training=False)
+        outputs = model(model.preprocess_no_gradient(batch, training=False), training=False)
 
-        viz_func(batch, predictions, test_dataset)
+        viz_func(batch, outputs, test_dataset)
 
 
-def viz_example(batch, predictions, test_dataset):
+def viz_example(batch, outputs, test_dataset):
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
@@ -224,7 +221,7 @@ def viz_example(batch, predictions, test_dataset):
         action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
         test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-        prediction_t = remove_batch(test_dataset.scenario.index_state_time(predictions, t))
+        prediction_t = remove_batch(test_dataset.scenario.index_state_time(outputs, t))
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()

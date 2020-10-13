@@ -8,19 +8,28 @@
     rope
   ]
   obs_keys: [
-      color_depth_image
+      rgbd
+      left_gripper
+      right_gripper
   ]
   action_keys: [
-    left_gripper_position
-    right_gripper_position
+    left_gripper_delta
+    right_gripper_delta
   ]
-  fc_layer_sizes: [
+  observer_fc_layer_sizes: [
     64
     64
   ]
-  z_dim: 64
-  learning_rate: 0.0005
+  dynamics_fc_layer_sizes: [
+    32
+    32
+  ]
+  z_dim: 32
+  learning_rate: 0.001
+  shuffle_buffer_size: 2048
   use_observation_feature_loss: false
+  encoder_trainable: true
+  epochs: 50
   use_cfm_loss: true
   image_augmentation: false
 }

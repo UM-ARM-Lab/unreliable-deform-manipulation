@@ -105,7 +105,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                 }
                 initial_actions.append(initial_action)
             goal = {
-                'color_depth_image': example['color_depth_image'][1]
+                'rgbd': example['rgbd'][1]
             }
             # actions should just be a single vector with key 'a'
             # actions, planned_path = trajopt.optimize(environment=environment,
@@ -137,9 +137,9 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                 scenario.plot_action_rviz(s, optimized_action, label='inferred', color='#00ff00', id=1)
                 scenario.plot_action_rviz(s, true_action, label='true', color='#0000ff55', id=2)
 
-                publish_color_image(s_color_viz_pub, s['color_depth_image'][:, :, :3])
-                publish_color_image(s_next_color_viz_pub, s_next['color_depth_image'][:, :, :3])
-                diff = s['color_depth_image'][:, :, :3] - s_next['color_depth_image'][:, :, :3]
+                publish_color_image(s_color_viz_pub, s['rgbd'][:, :, :3])
+                publish_color_image(s_next_color_viz_pub, s_next['rgbd'][:, :, :3])
+                diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
                 publish_color_image(image_diff_viz_pub, diff)
 
                 # Metrics

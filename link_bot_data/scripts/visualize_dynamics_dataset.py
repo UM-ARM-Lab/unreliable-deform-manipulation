@@ -37,11 +37,9 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
             scenario.plot_action_rviz_internal(example_t, label='')
 
             if t < dataset.steps_per_traj - 1:
-                s = numpify(remove_batch(scenario.index_observation_time_batched(add_batch(example), t)))
-                s.update(numpify(remove_batch(scenario.index_observation_features_time_batched(add_batch(example), t))))
-                s_next = numpify(remove_batch(scenario.index_observation_time_batched(add_batch(example), t + 1)))
-                s_next.update(numpify(remove_batch(scenario.index_observation_features_time_batched(add_batch(example), t + 1))))
-                diff = s['color_depth_image'][:, :, :3] - s_next['color_depth_image'][:, :, :3]
+                s = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t)))
+                s_next = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t + 1)))
+                diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
                 publish_color_image(image_diff_viz_pub, diff)
 
             # this will return when either the animation is "playing" or because the user stepped forward

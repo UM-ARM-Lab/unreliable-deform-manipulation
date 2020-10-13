@@ -11,6 +11,7 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
+from link_bot_pycommon.floating_rope_scenario import publish_color_image, publish_depth_image
 from moonshine.moonshine_utils import numpify
 
 
@@ -31,7 +32,13 @@ def main():
     def _process_example(dataset: DynamicsDataset, example: Dict):
         example = numpify(example)
         color_depth_image = example.pop('color_depth_image')
-        rgbd = np.flip(color_depth_image, axis=2)
+        b = color_depth_image[:, :, :, 0]
+        g = color_depth_image[:, :, :, 1]
+        r = color_depth_image[:, :, :, 2]
+        d = color_depth_image[:, :, :, 3]
+        rgbd = np.stack([r, g, b, d], axis=-1)
+        publish_color_image(dataset.scenario.state_color_viz_pub, rgbd[0, :, :, :3])
+        publish_depth_image(dataset.scenario.state_depth_viz_pub, rgbd[0, :, :, 3])
         example['rgbd'] = rgbd
         yield example
 

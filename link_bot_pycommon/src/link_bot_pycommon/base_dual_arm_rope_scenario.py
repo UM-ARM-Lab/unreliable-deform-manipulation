@@ -79,7 +79,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             'joint_names': joint_state.name,
             'left_gripper': ros_numpy.numpify(left_gripper_position),
             'right_gripper': ros_numpy.numpify(right_gripper_position),
-            'color_depth_image': color_depth_cropped,
+            'rgbd': color_depth_cropped,
             'rope': np.array(rope_state_vector, np.float32),
         }
 
@@ -90,14 +90,14 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             'right_gripper': 3,
             'rope': FloatingRopeScenario.n_links * 3,
             'joint_positions': n_joints,
-            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
+            'rgbd': self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     def observations_description(self) -> Dict:
         return {
             'left_gripper': 3,
             'right_gripper': 3,
-            'color_depth_image': self.IMAGE_H * self.IMAGE_W * 4,
+            'rgbd': self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
