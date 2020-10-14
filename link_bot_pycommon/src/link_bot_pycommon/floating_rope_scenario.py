@@ -36,6 +36,100 @@ from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
 
+def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a):
+    lines = Marker()
+    lines.action = Marker.ADD  # create or modify
+    lines.type = Marker.LINE_STRIP
+    lines.header.frame_id = frame_id
+    lines.header.stamp = rospy.Time.now()
+    lines.ns = label
+    lines.id = 6 * idx + 0
+    lines.pose.position.x = 0
+    lines.pose.position.y = 0
+    lines.pose.position.z = 0
+    lines.pose.orientation.x = 0
+    lines.pose.orientation.y = 0
+    lines.pose.orientation.z = 0
+    lines.pose.orientation.w = 1
+    lines.scale.x = 0.01
+    lines.color.r = r
+    lines.color.g = g
+    lines.color.b = b
+    lines.color.a = a
+    spheres = Marker()
+    spheres.action = Marker.ADD  # create or modify
+    spheres.type = Marker.SPHERE_LIST
+    spheres.header.frame_id = frame_id
+    spheres.header.stamp = rospy.Time.now()
+    spheres.ns = label
+    spheres.id = 6 * idx + 1
+    spheres.scale.x = 0.02
+    spheres.scale.y = 0.02
+    spheres.scale.z = 0.02
+    spheres.pose.position.x = 0
+    spheres.pose.position.y = 0
+    spheres.pose.position.z = 0
+    spheres.pose.orientation.x = 0
+    spheres.pose.orientation.y = 0
+    spheres.pose.orientation.z = 0
+    spheres.pose.orientation.w = 1
+    spheres.color.r = r
+    spheres.color.g = g
+    spheres.color.b = b
+    spheres.color.a = a
+    for i, (x, y, z) in enumerate(rope_points):
+        point = Point()
+        point.x = x
+        point.y = y
+        point.z = z
+
+        spheres.points.append(point)
+        lines.points.append(point)
+    midpoint_sphere = Marker()
+    midpoint_sphere.action = Marker.ADD  # create or modify
+    midpoint_sphere.type = Marker.SPHERE
+    midpoint_sphere.header.frame_id = frame_id
+    midpoint_sphere.header.stamp = rospy.Time.now()
+    midpoint_sphere.ns = label
+    midpoint_sphere.id = 6 * idx + 5
+    midpoint_sphere.scale.x = 0.03
+    midpoint_sphere.scale.y = 0.03
+    midpoint_sphere.scale.z = 0.03
+    rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
+    midpoint_sphere.pose.position.x = rope_midpoint[0]
+    midpoint_sphere.pose.position.y = rope_midpoint[1]
+    midpoint_sphere.pose.position.z = rope_midpoint[2]
+    midpoint_sphere.pose.orientation.x = 0
+    midpoint_sphere.pose.orientation.y = 0
+    midpoint_sphere.pose.orientation.z = 0
+    midpoint_sphere.pose.orientation.w = 1
+    midpoint_sphere.color.r = r * 0.8
+    midpoint_sphere.color.g = g * 0.8
+    midpoint_sphere.color.b = b * 0.8
+    midpoint_sphere.color.a = a
+    first_point_text = Marker()
+    first_point_text.action = Marker.ADD  # create or modify
+    first_point_text.type = Marker.TEXT_VIEW_FACING
+    first_point_text.header.frame_id = frame_id
+    first_point_text.header.stamp = rospy.Time.now()
+    first_point_text.ns = label
+    first_point_text.id = 6 * idx + 4
+    first_point_text.text = "0"
+    first_point_text.scale.z = 0.015
+    first_point_text.pose.position.x = rope_points[0, 0]
+    first_point_text.pose.position.y = rope_points[0, 1]
+    first_point_text.pose.position.z = rope_points[0, 2] + 0.015
+    first_point_text.pose.orientation.x = 0
+    first_point_text.pose.orientation.y = 0
+    first_point_text.pose.orientation.z = 0
+    first_point_text.pose.orientation.w = 1
+    first_point_text.color.r = 1.0
+    first_point_text.color.g = 1.0
+    first_point_text.color.b = 1.0
+    first_point_text.color.a = 1.0
+    return [spheres, lines, midpoint_sphere, first_point_text]
+
+
 def make_box_marker_from_extents(extent):
     m = Marker()
     ysize, xsize, zsize = extent_to_env_size(extent)
@@ -885,116 +979,14 @@ class FloatingRopeScenario(Base3DScenario):
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
 
-            lines = Marker()
-            lines.action = Marker.ADD  # create or modify
-            lines.type = Marker.LINE_STRIP
-            lines.header.frame_id = "world"
-            lines.header.stamp = rospy.Time.now()
-            lines.ns = label
-            lines.id = 6 * idx + 0
+            markers = make_rope_marker(rope_points, 'world', label, idx, r, g, b, a)
+            msg.markers.extend(markers)
 
-            lines.pose.position.x = 0
-            lines.pose.position.y = 0
-            lines.pose.position.z = 0
-            lines.pose.orientation.x = 0
-            lines.pose.orientation.y = 0
-            lines.pose.orientation.z = 0
-            lines.pose.orientation.w = 1
+        if 'cdcpd' in state:
+            rope_points = np.reshape(state['cdcpd'], [-1, 3])
 
-            lines.scale.x = 0.01
-
-            lines.color.r = r
-            lines.color.g = g
-            lines.color.b = b
-            lines.color.a = a
-
-            spheres = Marker()
-            spheres.action = Marker.ADD  # create or modify
-            spheres.type = Marker.SPHERE_LIST
-            spheres.header.frame_id = "world"
-            spheres.header.stamp = rospy.Time.now()
-            spheres.ns = label
-            spheres.id = 6 * idx + 1
-
-            spheres.scale.x = 0.02
-            spheres.scale.y = 0.02
-            spheres.scale.z = 0.02
-
-            spheres.pose.position.x = 0
-            spheres.pose.position.y = 0
-            spheres.pose.position.z = 0
-            spheres.pose.orientation.x = 0
-            spheres.pose.orientation.y = 0
-            spheres.pose.orientation.z = 0
-            spheres.pose.orientation.w = 1
-
-            spheres.color.r = r
-            spheres.color.g = g
-            spheres.color.b = b
-            spheres.color.a = a
-
-            for i, (x, y, z) in enumerate(rope_points):
-                point = Point()
-                point.x = x
-                point.y = y
-                point.z = z
-
-                spheres.points.append(point)
-                lines.points.append(point)
-
-            midpoint_sphere = Marker()
-            midpoint_sphere.action = Marker.ADD  # create or modify
-            midpoint_sphere.type = Marker.SPHERE
-            midpoint_sphere.header.frame_id = "world"
-            midpoint_sphere.header.stamp = rospy.Time.now()
-            midpoint_sphere.ns = label
-            midpoint_sphere.id = 6 * idx + 5
-
-            midpoint_sphere.scale.x = 0.03
-            midpoint_sphere.scale.y = 0.03
-            midpoint_sphere.scale.z = 0.03
-
-            rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
-            midpoint_sphere.pose.position.x = rope_midpoint[0]
-            midpoint_sphere.pose.position.y = rope_midpoint[1]
-            midpoint_sphere.pose.position.z = rope_midpoint[2]
-            midpoint_sphere.pose.orientation.x = 0
-            midpoint_sphere.pose.orientation.y = 0
-            midpoint_sphere.pose.orientation.z = 0
-            midpoint_sphere.pose.orientation.w = 1
-
-            midpoint_sphere.color.r = r * 0.8
-            midpoint_sphere.color.g = g * 0.8
-            midpoint_sphere.color.b = b * 0.8
-            midpoint_sphere.color.a = a
-
-            first_point_text = Marker()
-            first_point_text.action = Marker.ADD  # create or modify
-            first_point_text.type = Marker.TEXT_VIEW_FACING
-            first_point_text.header.frame_id = "world"
-            first_point_text.header.stamp = rospy.Time.now()
-            first_point_text.ns = label
-            first_point_text.id = 6 * idx + 4
-            first_point_text.text = "0"
-            first_point_text.scale.z = 0.015
-
-            first_point_text.pose.position.x = rope_points[0, 0]
-            first_point_text.pose.position.y = rope_points[0, 1]
-            first_point_text.pose.position.z = rope_points[0, 2] + 0.015
-            first_point_text.pose.orientation.x = 0
-            first_point_text.pose.orientation.y = 0
-            first_point_text.pose.orientation.z = 0
-            first_point_text.pose.orientation.w = 1
-
-            first_point_text.color.r = 1.0
-            first_point_text.color.g = 1.0
-            first_point_text.color.b = 1.0
-            first_point_text.color.a = 1.0
-
-            msg.markers.append(spheres)
-            msg.markers.append(lines)
-            msg.markers.append(midpoint_sphere)
-            msg.markers.append(first_point_text)
+            markers = make_rope_marker(rope_points, 'kinect2_rgb_optical_frame', label, 1000 + idx, 1 - r, g, 1 - b, a)
+            msg.markers.extend(markers)
 
         if 'left_gripper' in state:
             left_gripper_sphere = Marker()

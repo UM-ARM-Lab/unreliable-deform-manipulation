@@ -13,8 +13,8 @@
     right_gripper
   ]
   action_keys: [
-    left_gripper_position
-    right_gripper_position
+    left_gripper_delta
+    right_gripper_delta
   ]
   observer_fc_layer_sizes: [
     64

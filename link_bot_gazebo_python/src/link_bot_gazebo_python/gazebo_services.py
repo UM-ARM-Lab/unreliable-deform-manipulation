@@ -68,7 +68,7 @@ class GazeboServices(BaseServices):
         set_physics_msg = SetPhysicsPropertiesRequest()
         set_physics_msg.gravity = current_physics.gravity
         set_physics_msg.ode_config = current_physics.ode_config
-        set_physics_msg.max_update_rate = real_time_rate * 1000.0
+        set_physics_msg.max_update_rate = real_time_rate / max_step_size
         if max_step_size is None:
             max_step_size = current_physics.time_step
         self.max_step_size = max_step_size

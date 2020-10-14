@@ -10,7 +10,7 @@ import tensorflow as tf
 from moonshine.gpu_config import limit_gpu_mem
 from state_space_dynamics import train_test
 
-limit_gpu_mem(11)
+# limit_gpu_mem(10)
 
 
 def train_main(args, seed: int):

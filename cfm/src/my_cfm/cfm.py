@@ -45,7 +45,9 @@ class CFM(MyKerasModel):
         # clip for training stability
         valid_grads_and_vars = [(tf.clip_by_norm(g, 1), v) for (g, v) in valid_grads_and_vars]
         self.optimizer.apply_gradients(valid_grads_and_vars)
-        return {}
+        return {
+
+        }
 
     def get_positive_pairs(self, example):
         obs = {k: example[k][:, :-1] for k in self.obs_keys}
@@ -81,13 +83,7 @@ class CFM(MyKerasModel):
         return output
 
     def compute_loss(self, example, outputs):
-        z = outputs['z'][:, 0]
-        z_pos = outputs['z_pos'][:, 0]
-        z_next = outputs['z'][:, 1]  # this assumes single transitions
-
-        batch_size = z.shape[0]
-
-        cfm_loss = self.cfm_loss(batch_size, z, z_next, z_pos)
+        cfm_loss = self.cfm_loss(outputs)
         observation_feature_loss = self.observer_loss(example, outputs)
         loss = 0
         if self.use_cfm_loss:
@@ -100,7 +96,16 @@ class CFM(MyKerasModel):
         }
 
     def compute_metrics(self, dataset_element, outputs):
-        metrics = self.dynamics.compute_metrics(dataset_element, outputs)
+        neg_dists, pos_dists = self.contrastive_distances(outputs)
+        metrics = {
+            'min_neg_d': tf.reduce_min(neg_dists),
+            'mean_neg_d': tf.reduce_mean(neg_dists),
+            'max_neg_d': tf.reduce_max(neg_dists),
+            'min_pos_d': tf.reduce_min(pos_dists),
+            'mean_pos_d': tf.reduce_mean(pos_dists),
+            'max_pos_d': tf.reduce_max(pos_dists),
+        }
+        metrics.update(self.dynamics.compute_metrics(dataset_element, outputs))
         metrics.update(self.encoder.compute_metrics(dataset_element, outputs))
         metrics.update(self.observer.compute_metrics(dataset_element, outputs))
         return metrics
@@ -113,19 +118,33 @@ class CFM(MyKerasModel):
                                                  dict_pred=observation_feature_predictions)
         return observation_feature_loss
 
-    def cfm_loss(self, batch_size, z, z_next, z_pos):
+    def cfm_loss(self, outputs):
+        neg_dists, pos_dists = self.contrastive_distances(outputs)
+        batch_size = outputs['z'].shape[0]
+        neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
+        dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
+        log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
+
+        dists_debug = tf.concat((neg_dists, pos_dists), axis=1)  # b x b+1
+        log_probabilities_debug = tf.nn.log_softmax(logits=dists_debug, axis=-1)  # b x b+1
+        l = log_probabilities_debug.numpy()
+
+        loss = -tf.reduce_mean(log_probabilities[:, -1])  # Get last column which is the true pos sample
+        return loss
+
+    def contrastive_distances(self, outputs):
+        z = outputs['z'][:, 0]
+        z_pos = outputs['z_pos'][:, 0]
+        z_next = outputs['z'][:, 1]  # this assumes single transitions
+        batch_size = z.shape[0]
         # NOTE: z could be z_next here? probably doesn't matter
         tiled_z = tf.tile(z[tf.newaxis], [batch_size, 1, 1])
         tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
         neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
         # Subtracting a large positive values should make the loss for diagonal elements be 0
         # which means we don't encourage separating the representation of z from z_next
-        neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
         pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
-        dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
-        log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
-        loss = -tf.reduce_mean(log_probabilities[:, -1])  # Get last column which is the true pos sample
-        return loss
+        return neg_dists, pos_dists
 
 
 class Encoder(MyKerasModel):
@@ -232,9 +251,13 @@ class LocallyLinearPredictor(MyKerasModel):
         observations = {k: example[k][:, :-1] for k in self.obs_keys}
         local_action = self.scenario.put_action_local_frame(observations, example)
 
-        local_action = {k: v * 10 for k, v in local_action.items()}
+        local_action = {k: v for k, v in local_action.items()}
 
         new_example.update(local_action)
+
+        # for k in self.action_keys:
+        #     new_example[k] = example[k] * 10
+
         return new_example
 
     # @tf.function
@@ -245,12 +268,12 @@ class LocallyLinearPredictor(MyKerasModel):
         x = tf.concat((z, a), axis=-1)
         linear_dynamics_params = self.model(x)
         linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
-        eigs = tf.linalg.eigvals(linear_dynamics_matrix)
         z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
         z_seq = tf.concat([z, z_next], axis=1)
+        # eigs = tf.linalg.eigvals(linear_dynamics_matrix)
         return {
             'z': z_seq,
-            'eigs': eigs,
+            # 'eigs': eigs,
         }
 
     def compute_loss(self, dataset_element, outputs):
@@ -258,7 +281,7 @@ class LocallyLinearPredictor(MyKerasModel):
 
     def compute_metrics(self, dataset_element, outputs):
         return {
-            'max_eig': tf.reduce_mean(tf.reduce_max(tf.math.abs(tf.squeeze(outputs['eigs'], axis=1)), axis=1)),
+            # 'max_eig': tf.reduce_mean(tf.reduce_max(tf.math.abs(tf.squeeze(outputs['eigs'], axis=1)), axis=1)),
         }
 
 
