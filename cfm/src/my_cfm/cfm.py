@@ -234,6 +234,7 @@ class LocallyLinearPredictor(MyKerasModel):
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
         self.obs_keys = self.hparams['obs_keys']
+        self.dynamics_type = self.hparams['dynamics_type']
         self.scenario = scenario
 
         self.z_dim = self.hparams['z_dim']
@@ -241,7 +242,11 @@ class LocallyLinearPredictor(MyKerasModel):
         my_layers = []
         for h in self.hparams['dynamics_fc_layer_sizes']:
             my_layers.append(layers.Dense(h, activation="relu"))
-        my_layers.append(layers.Dense(self.z_dim * self.z_dim, activation=None))
+
+        if self.dynamics_type == 'locally-linear':
+            my_layers.append(layers.Dense(self.z_dim * self.z_dim, activation=None))
+        elif self.dynamics_type == 'mlp':
+            my_layers.append(layers.Dense(self.z_dim, activation=None))
 
         self.model = Sequential(my_layers)
 
@@ -255,9 +260,6 @@ class LocallyLinearPredictor(MyKerasModel):
 
         new_example.update(local_action)
 
-        # for k in self.action_keys:
-        #     new_example[k] = example[k] * 10
-
         return new_example
 
     # @tf.function
@@ -266,10 +268,16 @@ class LocallyLinearPredictor(MyKerasModel):
 
         z = inputs['z']
         x = tf.concat((z, a), axis=-1)
-        linear_dynamics_params = self.model(x)
-        linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
-        z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
+
+        if self.dynamics_type == 'locally-linear':
+            linear_dynamics_params = self.model(x)
+            linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
+            z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
+        elif self.dynamics_type == 'mlp':
+            z_next = self.model(x)
+
         z_seq = tf.concat([z, z_next], axis=1)
+
         # eigs = tf.linalg.eigvals(linear_dynamics_matrix)
         return {
             'z': z_seq,
