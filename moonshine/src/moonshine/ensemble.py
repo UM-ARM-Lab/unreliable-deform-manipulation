@@ -5,7 +5,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, flatten_after
 from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
@@ -46,9 +46,16 @@ class Ensemble:
 
         outputs = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         outputs_dict = sequence_of_dicts_to_dict_of_tensors(outputs)
-        mean = {state_key: tf.math.reduce_mean(outputs_dict[state_key], axis=0) for state_key in self.get_output_keys()}
-        stdev = {state_key: tf.math.reduce_std(outputs_dict[state_key], axis=0) for state_key in self.get_output_keys()}
-        all_stdevs = tf.concat(list(stdev.values()), axis=2)
+
+        outputs_dict = {k: flatten_after(outputs_dict[k], axis=self.get_num_batch_axes()) for k in self.get_output_keys()}
+
+        # axis 0 is the different networks
+        mean = {k: tf.math.reduce_mean(outputs_dict[k], axis=0) for k in self.get_output_keys()}
+        stdev = {k: tf.math.reduce_std(outputs_dict[k], axis=0) for k in self.get_output_keys()}
+
+        # each output variable has its own vector of variances,
+        # and here we sum all the elements of all the vectors to get a single scalar
+        all_stdevs = tf.concat(list(stdev.values()), axis=-1)
         mean['stdev'] = tf.reduce_sum(all_stdevs, axis=-1, keepdims=True)
         return mean, stdev
 
@@ -56,4 +63,8 @@ class Ensemble:
         raise NotImplementedError()
 
     def get_output_keys(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_num_batch_axes():
         raise NotImplementedError()

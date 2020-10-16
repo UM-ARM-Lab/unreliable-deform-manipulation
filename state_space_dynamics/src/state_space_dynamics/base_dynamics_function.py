@@ -7,7 +7,7 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.ensemble import Ensemble
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors, add_batch, remove_batch, \
-    dict_of_sequences_to_sequence_of_dicts_tf, numpify
+    dict_of_sequences_to_sequence_of_dicts_tf, numpify, flatten_after
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
@@ -42,7 +42,8 @@ class BaseDynamicsFunction(Ensemble):
         return mean_predictions, stdev_predictions
 
     def propagate_differentiable_batched(self, environment: Dict, state: Dict, actions: Dict) -> Tuple[Dict, Dict]:
-        net_inputs = state
+        net_inputs = {}
+        net_inputs.update(state)
         net_inputs.update(actions)
         net_inputs.update(environment)
         net_inputs = make_dict_tf_float32(net_inputs)
@@ -51,6 +52,10 @@ class BaseDynamicsFunction(Ensemble):
 
     def get_batch_size(self, example: Dict):
         return example[self.state_keys[0]].shape[0]
+
+    @staticmethod
+    def get_num_batch_axes():
+        return 2
 
     def get_output_keys(self):
         return self.state_keys

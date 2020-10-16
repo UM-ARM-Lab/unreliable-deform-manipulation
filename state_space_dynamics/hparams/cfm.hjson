@@ -13,8 +13,8 @@
     right_gripper
   ]
   action_keys: [
-    left_gripper_position
-    right_gripper_position
+    left_gripper_delta
+    right_gripper_delta
   ]
   observer_fc_layer_sizes: [
     64
@@ -26,11 +26,13 @@
   ]
   z_dim: 64
   learning_rate: 0.001
-  shuffle_buffer_size: 2048
+  shuffle_buffer_size: 8000
   use_observation_feature_loss: false
-  encoder_trainable: true
+  encoder_trainable: false
   epochs: 50
   use_cfm_loss: true
-  image_augmentation: false
+  image_augmentation: true
   dynamics_type: locally-linear
+  use_z_next_as_neg: true
+  use_stability_loss: true
 }

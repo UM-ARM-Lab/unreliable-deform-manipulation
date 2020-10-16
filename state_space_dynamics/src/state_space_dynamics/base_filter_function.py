@@ -6,7 +6,7 @@ import tensorflow as tf
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from moonshine.ensemble import Ensemble
-from moonshine.moonshine_utils import add_batch, remove_batch, numpify
+from moonshine.moonshine_utils import add_batch, remove_batch, numpify, flatten_after
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
@@ -22,7 +22,8 @@ class BaseFilterFunction(Ensemble):
         return numpify(mean_state), numpify(stdev_state)
 
     def filter_differentiable(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
-        net_inputs = environment
+        net_inputs = {}
+        net_inputs.update(environment)
         net_inputs.update(observation)
         if state is not None:
             net_inputs.update(state)
@@ -35,7 +36,8 @@ class BaseFilterFunction(Ensemble):
         return mean_state, stdev_state
 
     def filter_differentiable_batched(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
-        net_inputs = environment
+        net_inputs = {}
+        net_inputs.update(environment)
         net_inputs.update(observation)
         if state is not None:
             net_inputs.update(state)
@@ -46,8 +48,12 @@ class BaseFilterFunction(Ensemble):
     def get_batch_size(self, example: Dict):
         return example[self.obs_keys[0]].shape[0]
 
+    @staticmethod
+    def get_num_batch_axes():
+        return 1
+
     def get_output_keys(self):
-        return self.state_keys
+        return self.state_keys + self.obs_keys
 
     def make_net_and_checkpoint(self, batch_size, scenario) -> Tuple[MyKerasModel, tf.train.Checkpoint]:
         raise NotImplementedError()

@@ -20,6 +20,8 @@ class BaseDataset:
         self.hparams = {}
         for dataset_dir in dataset_dirs:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
+            if not dataset_hparams_filename.exists():
+                dataset_hparams_filename = dataset_dir / 'hparams.hjson'
 
             # to merge dataset hparams
             hparams = hjson.load(dataset_hparams_filename.open('r'))

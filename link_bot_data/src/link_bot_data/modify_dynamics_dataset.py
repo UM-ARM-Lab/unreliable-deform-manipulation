@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import pathlib
-import shutil
 from typing import Callable, Optional, Dict
 
 import hjson
 import tensorflow as tf
 
+from arc_utilities import algorithms
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
 
@@ -19,7 +19,7 @@ def modify_hparams(in_dir: pathlib.Path, out_dir: pathlib.Path, update: Optional
     in_hparams = hjson.loads(in_hparams_str)
 
     out_hparams = in_hparams
-    out_hparams.update(update)
+    algorithms.update(out_hparams, update)
     out_hparams_str = hjson.dumps(out_hparams)
     with (out_dir / 'hparams.json').open("w") as out_f:
         out_f.write(out_hparams_str)

@@ -7,7 +7,6 @@ from more_itertools import pairwise
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
-from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 
 def make_tf_variables(initial_actions):
@@ -26,14 +25,12 @@ class TrajectoryOptimizer:
     def __init__(self,
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: Optional[BaseConstraintChecker],
-                 filter_model: BaseFilterFunction,
                  scenario: ExperimentScenario,
                  params: Dict,
                  verbose: Optional[int] = 0,
                  ):
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
-        self.filter_model = filter_model
         self.verbose = verbose
         self.scenario = scenario
         self.iters = params["iters"]
@@ -45,7 +42,7 @@ class TrajectoryOptimizer:
 
     def optimize(self,
                  environment: Dict,
-                 goal: Dict,
+                 goal_state: Dict,
                  initial_actions: List[Dict],
                  start_state: Dict,
                  ):
@@ -54,7 +51,7 @@ class TrajectoryOptimizer:
         start_smoothing_time = perf_counter()
         planned_path = None
         for i in range(self.iters):
-            actions, planned_path, _, _ = self.step(environment, goal, actions, start_state)
+            actions, planned_path, _, _ = self.step(environment, goal_state, actions, start_state)
         smoothing_time = perf_counter() - start_smoothing_time
 
         if self.verbose >= 1:
@@ -62,7 +59,7 @@ class TrajectoryOptimizer:
 
         return actions, planned_path
 
-    def step(self, environment: Dict, goal: Dict, actions: List[Dict], start_state: Dict):
+    def step(self, environment: Dict, goal_state: Dict, actions: List[Dict], start_state: Dict):
         with tf.GradientTape(watch_accessed_variables=True, persistent=True) as tape:
             # Compute the states predicted given the actions
             mean_predictions, _ = self.fwd_model.propagate_differentiable(environment=environment,
@@ -75,7 +72,6 @@ class TrajectoryOptimizer:
 
             # Compute various loss terms
             final_state = mean_predictions[-1]
-            goal_state, _ = self.filter_model.filter(environment, None, goal)
 
             goal_loss = self.scenario.trajopt_distance_to_goal_differentiable(final_state, goal_state)
 

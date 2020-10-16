@@ -332,6 +332,9 @@ class ExperimentScenario:
     def get_excluded_models_for_env(self):
         raise NotImplementedError()
 
+    def cfm_distance(self, z1, z2):
+        raise NotImplementedError()
+
     def on_after_data_collection(self, params):
         pass
 

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Dict
 
 import tensorflow as tf
@@ -32,6 +33,8 @@ class CFM(MyKerasModel):
         self.observer = Observer(hparams, batch_size, scenario)
 
         self.encoder.trainable = hparams['encoder_trainable']
+
+        self.tf_rng = tf.random.Generator.from_seed(1)
 
         # check for NaNs, because the Kinect uses NaN to indicate "missing" data (usually out of range)
         # tf.debugging.enable_check_numerics()
@@ -83,13 +86,16 @@ class CFM(MyKerasModel):
         return output
 
     def compute_loss(self, example, outputs):
-        cfm_loss = self.cfm_loss(outputs)
-        observation_feature_loss = self.observer_loss(example, outputs)
         loss = 0
         if self.use_cfm_loss:
+            cfm_loss = self.cfm_loss(outputs)
             loss += cfm_loss
         if self.use_observation_feature_loss:
+            observation_feature_loss = self.observer_loss(example, outputs)
             loss += observation_feature_loss
+        if self.hparams['use_stability_loss']:
+            stability_loss = self.dynamics.stability_loss(example, outputs)
+            loss += stability_loss
 
         return {
             'loss': loss
@@ -97,6 +103,8 @@ class CFM(MyKerasModel):
 
     def compute_metrics(self, dataset_element, outputs):
         neg_dists, pos_dists = self.contrastive_distances(outputs)
+        dists_matrix = tf.concat((neg_dists, pos_dists), axis=1)  # b x b+1
+        dists_image = dists_matrix[tf.newaxis, :, :, tf.newaxis] / 0.005
         metrics = {
             'min_neg_d': tf.reduce_min(neg_dists),
             'mean_neg_d': tf.reduce_mean(neg_dists),
@@ -104,6 +112,7 @@ class CFM(MyKerasModel):
             'min_pos_d': tf.reduce_min(pos_dists),
             'mean_pos_d': tf.reduce_mean(pos_dists),
             'max_pos_d': tf.reduce_max(pos_dists),
+            'dists_matrix': dists_image,
         }
         metrics.update(self.dynamics.compute_metrics(dataset_element, outputs))
         metrics.update(self.encoder.compute_metrics(dataset_element, outputs))
@@ -121,13 +130,10 @@ class CFM(MyKerasModel):
     def cfm_loss(self, outputs):
         neg_dists, pos_dists = self.contrastive_distances(outputs)
         batch_size = outputs['z'].shape[0]
-        neg_dists_masked = neg_dists - tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)  # b x b+1
+        mask = tf.one_hot(tf.range(batch_size), batch_size, on_value=1e12)
+        neg_dists_masked = neg_dists - mask  # b x b+1
         dists = tf.concat((neg_dists_masked, pos_dists), axis=1)  # b x b+1
         log_probabilities = tf.nn.log_softmax(logits=dists, axis=-1)  # b x b+1
-
-        dists_debug = tf.concat((neg_dists, pos_dists), axis=1)  # b x b+1
-        log_probabilities_debug = tf.nn.log_softmax(logits=dists_debug, axis=-1)  # b x b+1
-        l = log_probabilities_debug.numpy()
 
         loss = -tf.reduce_mean(log_probabilities[:, -1])  # Get last column which is the true pos sample
         return loss
@@ -136,14 +142,20 @@ class CFM(MyKerasModel):
         z = outputs['z'][:, 0]
         z_pos = outputs['z_pos'][:, 0]
         z_next = outputs['z'][:, 1]  # this assumes single transitions
-        batch_size = z.shape[0]
-        # NOTE: z could be z_next here? probably doesn't matter
-        tiled_z = tf.tile(z[tf.newaxis], [batch_size, 1, 1])
+        batch_size = z_pos.shape[0]
+        tiled_z = tf.tile(z[tf.newaxis, :], [batch_size, 1, 1])
         tiled_z_next = tf.tile(z_next[:, tf.newaxis], [1, batch_size, 1])
-        neg_dists = tf.math.reduce_sum(tf.math.square(tiled_z - tiled_z_next), axis=-1)
+        tiled_z_next2 = tf.transpose(tiled_z_next, [1, 0, 2])
+
+        # NOTE: z could be z_next here? probably doesn't matter, but using z_next makes the distances matrix symmetric
+        if self.hparams['use_z_next_as_neg']:
+            neg_dists = tf.squeeze(self.scenario.cfm_distance(tiled_z_next2, tiled_z_next), axis=2)
+        else:
+            neg_dists = tf.squeeze(self.scenario.cfm_distance(tiled_z, tiled_z_next), axis=2)
+
         # Subtracting a large positive values should make the loss for diagonal elements be 0
         # which means we don't encourage separating the representation of z from z_next
-        pos_dists = tf.math.reduce_sum(tf.math.square(z_pos - z_next), axis=-1, keepdims=True)
+        pos_dists = self.scenario.cfm_distance(z_pos, z_next)
         return neg_dists, pos_dists
 
 
@@ -178,9 +190,11 @@ class Encoder(MyKerasModel):
 
         self.out = layers.Dense(self.z_dim)
 
+        self.tf_rng = tf.random.Generator.from_seed(1)
+
     def normalize(self, example: Dict):
-        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
-        new_example = {k: v for k, v in example.items()}
+        # this copy is required otherwise calling this inside @tf.function complains about modifying python arguments
+        new_example = deepcopy(example)
 
         # normalize to 0-1
         min_value = tf.constant([[[0, 0, 0, 0]]], dtype=tf.float32)
@@ -203,7 +217,7 @@ class Encoder(MyKerasModel):
         ## END DEBUG
 
         if self.hparams['image_augmentation'] and training:
-            augmented = augment(example[self.image_key], image_h, image_w, seed=0)
+            augmented = augment(example[self.image_key], image_h, image_w, generator=self.tf_rng)
             example[self.image_key] = augmented
         return example
 
@@ -224,6 +238,7 @@ class Encoder(MyKerasModel):
         outputs = {
             'z': z
         }
+        outputs.update({k: observation[k] for k in self.obs_keys})
         return outputs
 
 
@@ -238,29 +253,33 @@ class LocallyLinearPredictor(MyKerasModel):
         self.scenario = scenario
 
         self.z_dim = self.hparams['z_dim']
+        # sum([self.hparams['dynamics_dataset_hparams']['action_description'][k] for k in self.action_keys])
+        self.u_dim = 6
 
         my_layers = []
         for h in self.hparams['dynamics_fc_layer_sizes']:
-            my_layers.append(layers.Dense(h, activation="relu"))
+            my_layers.append(layers.Dense(h))
+            my_layers.append(layers.LeakyReLU(0.2))
 
         if self.dynamics_type == 'locally-linear':
-            my_layers.append(layers.Dense(self.z_dim * self.z_dim, activation=None))
+            self.a_out = layers.Dense(self.z_dim * self.z_dim, activation='tanh')
+            self.b_out = layers.Dense(self.z_dim * self.u_dim, activation='tanh')
         elif self.dynamics_type == 'mlp':
             my_layers.append(layers.Dense(self.z_dim, activation=None))
 
         self.model = Sequential(my_layers)
 
     def preprocess_no_gradient(self, example, training: bool):
-        # this nonsense is required otherwise calling this inside @tf.function complains about modifying python arguments
-        new_example = {k: v for k, v in example.items()}
-        observations = {k: example[k][:, :-1] for k in self.obs_keys}
-        local_action = self.scenario.put_action_local_frame(observations, example)
-
-        local_action = {k: v for k, v in local_action.items()}
-
+        # this copy is required otherwise calling this inside @tf.function complains about modifying python arguments
+        new_example = deepcopy(example)  # https://stackoverflow.com/questions/3975376
+        local_action = self.scenario.put_action_local_frame(example, example)
         new_example.update(local_action)
 
         return new_example
+
+    def stability_loss(self, example, outputs):
+        stability_loss = tf.reduce_mean(tf.nn.relu(outputs['max_eig'] - 1))
+        return stability_loss
 
     # @tf.function
     def call(self, inputs, **kwargs):
@@ -268,28 +287,40 @@ class LocallyLinearPredictor(MyKerasModel):
 
         z = inputs['z']
         x = tf.concat((z, a), axis=-1)
+        out = self.model(x)
 
         if self.dynamics_type == 'locally-linear':
-            linear_dynamics_params = self.model(x)
-            linear_dynamics_matrix = tf.reshape(linear_dynamics_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
-            z_next = tf.squeeze(tf.linalg.matmul(linear_dynamics_matrix, tf.expand_dims(z, axis=-1)), axis=-1)
+            a_params = self.a_out(out)
+            b_params = self.b_out(out)
+            identity = tf.eye(self.z_dim)[tf.newaxis, tf.newaxis]
+            a_matrix = tf.reshape(a_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim]) + identity
+            b_matrix = tf.reshape(b_params, x.shape.as_list()[:-1] + [self.z_dim, self.u_dim]) * 100.0
+            z_col = tf.expand_dims(z, axis=-1)
+            a_col = tf.expand_dims(a, axis=-1)
+            # z_next = tf.linalg.matmul(a_matrix, z_col) + tf.linalg.matmul(b_matrix, a_col)
+            z_next = z_col + tf.linalg.matmul(b_matrix, a_col)
+            z_next = tf.squeeze(z_next, axis=-1)
+            eigs = tf.squeeze(tf.linalg.eigvals(a_matrix), axis=1)
+            max_eig = tf.math.reduce_max(tf.math.abs(eigs), axis=1)
+            z_seq = tf.concat([z, z_next], axis=1)
+            return {
+                'z': z_seq,
+                'max_eig': max_eig,
+            }
         elif self.dynamics_type == 'mlp':
             z_next = self.model(x)
-
-        z_seq = tf.concat([z, z_next], axis=1)
-
-        # eigs = tf.linalg.eigvals(linear_dynamics_matrix)
-        return {
-            'z': z_seq,
-            # 'eigs': eigs,
-        }
+            z_seq = tf.concat([z, z_next], axis=1)
+            return {
+                'z': z_seq,
+            }
+        else:
+            raise NotImplementedError(f"unimplemented dynamics type {self.dynamics_type}")
 
     def compute_loss(self, dataset_element, outputs):
         raise NotImplementedError()
 
     def compute_metrics(self, dataset_element, outputs):
         return {
-            # 'max_eig': tf.reduce_mean(tf.reduce_max(tf.math.abs(tf.squeeze(outputs['eigs'], axis=1)), axis=1)),
         }
 
 

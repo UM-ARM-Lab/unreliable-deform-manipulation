@@ -6,7 +6,7 @@ import tensorflow as tf
 # CuRL and other papers suggest that random crop is the most important data augmentation for learning state/dynamics
 # https://arxiv.org/pdf/2004.13649.pdf
 # https://www.tensorflow.org/tutorials/images/data_augmentation
-def augment(image_sequence, image_h: int, image_w: int, seed: int = 0):
+def augment(image_sequence, image_h: int, image_w: int, generator: tf.random.Generator):
     def _random_crop(images):
         # Add 6 pixels of padding
         images_padded = tf.pad(images, [[0, 0], [6, 6], [6, 6], [0, 0]])
@@ -14,8 +14,8 @@ def augment(image_sequence, image_h: int, image_w: int, seed: int = 0):
         # Random crop back to the original size. I believe this crops every image in the batch the same way, which should be fine
         # since the batches are assembled randomly, and is good because then the cropping is consistent over time,
         # since time is currently shoved into batch dimension for these operations
-        random_crop_shape = images_padded.shape[:-3].as_list() + [image_h, image_w] + images_padded.shape[-1]
-        out_images = tf.image.random_crop(images_padded, size=random_crop_shape, seed=seed)
+        random_crop_shape = images_padded.shape[:-3].as_list() + [image_h, image_w] + [images_padded.shape[-1]]
+        out_images = tf.image.random_crop(images_padded, size=random_crop_shape)
         return out_images
 
     return apply_to_image_sequence(image_sequence, _random_crop)

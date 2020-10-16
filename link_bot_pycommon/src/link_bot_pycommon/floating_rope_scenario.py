@@ -238,14 +238,14 @@ class FloatingRopeScenario(Base3DScenario):
 
         self.robot_reset_rng = np.random.RandomState(0)
 
-    def trajopt_distance_to_goal_differentiable(self, final_state, goal: Dict):
-        distances = tf.stack([tf.linalg.norm(v1 - v2, axis=-1) for v1, v2 in zip(final_state.values(), goal.values())],
-                             axis=-1)
-        total_distances = tf.math.reduce_sum(distances, axis=-1)
-        return total_distances
+    def trajopt_distance_to_goal_differentiable(self, final_state, goal_state: Dict):
+        return self.cfm_distance(final_state['z'], goal_state['z'])
 
     def trajopt_distance_differentiable(self, s1, s2):
-        return tf.math.reduce_sum([tf.linalg.norm(v1 - v2) for v1, v2 in zip(s1.values(), s2.values())])
+        return self.cfm_distance(s1['z'], s2['z'])
+
+    def cfm_distance(self, z1, z2):
+        return tf.math.reduce_sum(tf.math.square(z1 - z2), axis=-1, keepdims=True)
 
     def get_environment(self, params: Dict, **kwargs):
         return {}
@@ -523,12 +523,13 @@ class FloatingRopeScenario(Base3DScenario):
     def put_action_local_frame(state: Dict, action: Dict):
         target_left_gripper_position = action['left_gripper_position']
         target_right_gripper_position = action['right_gripper_position']
+        n_action = target_left_gripper_position.shape[1]
 
         current_left_gripper_point = state['left_gripper']
         current_right_gripper_point = state['right_gripper']
 
-        left_gripper_delta = target_left_gripper_position - current_left_gripper_point
-        right_gripper_delta = target_right_gripper_position - current_right_gripper_point
+        left_gripper_delta = target_left_gripper_position - current_left_gripper_point[:, :n_action]
+        right_gripper_delta = target_right_gripper_position - current_right_gripper_point[:, :n_action]
 
         return {
             'left_gripper_delta': left_gripper_delta,

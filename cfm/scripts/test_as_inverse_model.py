@@ -11,7 +11,7 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
 from link_bot_pycommon.ros_pycommon import publish_color_image
-from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper, RvizAnimationController
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
@@ -62,14 +62,12 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
     scenario = test_dataset.scenario
     shooting_method = ShootingMethod(fwd_model=latent_dynamics_model,
                                      classifier_model=None,
-                                     filter_model=filter_model,
                                      scenario=scenario,
                                      params={
                                          'n_samples': 100
                                      })
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
-                                  filter_model=filter_model,
                                   scenario=scenario,
                                   params={
                                       "iters": 100,
@@ -104,18 +102,17 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                     'right_gripper_position': right_gripper_position,
                 }
                 initial_actions.append(initial_action)
-            goal = {
-                'rgbd': example['rgbd'][1]
-            }
+            goal_observation = {k: example[k][1] for k in filter_model.obs_keys}
+            goal_state, _ = filter_model.filter(environment, None, goal_observation)
             # actions should just be a single vector with key 'a'
             # actions, planned_path = trajopt.optimize(environment=environment,
-            #                                          goal=goal,
+            #                                          goal_state=goal_state,
             #                                          initial_actions=initial_actions,
             #                                          start_state=start_state)
             true_action = numpify({k: example[k][0] for k in latent_dynamics_model.action_keys})
             actions, planned_path = shooting_method.optimize(current_observation=current_observation,
                                                              environment=environment,
-                                                             goal=goal,
+                                                             goal_state=goal_state,
                                                              start_state=start_state,
                                                              true_action=true_action)
 
