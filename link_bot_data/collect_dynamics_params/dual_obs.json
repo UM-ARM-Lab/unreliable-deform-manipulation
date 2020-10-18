@@ -49,17 +49,10 @@
     0.6251
   ],
   "objects": [
-    "box1",
-    "box2",
-    "box3",
-    "box4",
-    "box5",
-    "hook1",
-    "hook2"
   ],
   "res": 0.02,
   "max_step_size": 0.001,
-  "steps_per_traj": 20,
+  "steps_per_traj": 10,
   "no_objects": false,
   "randomize_n": 8,
   "repeat_delta_gripper_motion_probability": 0.8,

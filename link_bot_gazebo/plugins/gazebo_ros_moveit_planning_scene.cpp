@@ -493,8 +493,8 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
 
           object.primitives.push_back(primitive_msg);
         }
-        ROS_DEBUG_NAMED("model %s has %zu links", model_name.c_str(), links.size());
-        ROS_DEBUG_NAMED("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
+        ROS_DEBUG("model %s has %zu links", model_name.c_str(), links.size());
+        ROS_DEBUG("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
                         object.mesh_poses.size());
       }
     }

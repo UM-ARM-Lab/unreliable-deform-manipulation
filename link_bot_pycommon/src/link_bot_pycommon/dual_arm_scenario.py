@@ -28,7 +28,7 @@ class DualArmScenario(FloatingRopeScenario):
         pass
 
     def get_state(self):
-        joint_state = self.robot.base_robot.joint_state_listener.get()
+        joint_state = self.robot.joint_state_listener.get()
         left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
         return {
             'left_gripper': left_gripper_position,
@@ -38,7 +38,7 @@ class DualArmScenario(FloatingRopeScenario):
         }
 
     def states_description(self) -> Dict:
-        n_joints = len(self.robot.base_robot.robot_commander.get_joint_names())
+        n_joints = len(self.robot.robot_commander.get_joint_names())
         return {
             'left_gripper': 3,
             'right_gripper': 3,
@@ -67,7 +67,7 @@ class DualArmScenario(FloatingRopeScenario):
         self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_state = self.robot.base_robot.joint_state_listener.get()
+        joint_state = self.robot.joint_state_listener.get()
         return {
             'joint_names': joint_state.name
         }

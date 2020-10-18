@@ -19,6 +19,7 @@
 
   <depend>pybind11_catkin</depend>
   <depend>std_msgs</depend>
+  <depend>tf2-sensors-msgs</depend>
   <depend>roscpp</depend>
 
 </package>

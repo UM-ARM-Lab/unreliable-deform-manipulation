@@ -5,7 +5,9 @@ import numpy as np
 import moveit_commander
 import ros_numpy
 import rospy
+from arc_utilities.ros_helpers import Listener
 from arm_robots.get_moveit_robot import get_moveit_robot
+from control_msgs.msg import FollowJointTrajectoryResult
 from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
@@ -14,32 +16,37 @@ from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from peter_msgs.srv import SetDualGripperPoints, \
     ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
 from rosgraph.names import ns_join
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Empty
 
 
 class BaseDualArmRopeScenario(FloatingRopeScenario):
     ROPE_NAMESPACE = 'rope_3d'
 
-    def __init__(self):
+    def __init__(self, robot_namespace):
         super().__init__()
-        self.service_provider = GazeboServices()  # FIXME: won't work on real robot...
-        self.joint_state_viz_pub = rospy.Publisher("joint_states_viz", JointState, queue_size=10)
+        self.robot_namespace = robot_namespace
+        self.service_provider = GazeboServices()  # FIXME: sketchy, because what about with the real robot?
+        self.joint_state_viz_pub = rospy.Publisher(ns_join(self.robot_namespace, "joint_states_viz"), JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
+        self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_dual_gripper_points"),
                                                           SetDualGripperPoints)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
-        self.exclude_from_planning_scene_srv = rospy.ServiceProxy("exclude_models_from_planning_scene", ExcludeModels)
-        # FIXME: this blocks until the robot is available, we need lazy construction
-        self.robot = get_moveit_robot()
 
+        exclude_srv_name = ns_join(self.robot_namespace, "exclude_models_from_planning_scene")
+        self.exclude_from_planning_scene_srv = rospy.ServiceProxy(exclude_srv_name, ExcludeModels)
+        # FIXME: this blocks until the robot is available, we need lazy construction
+        self.robot = get_moveit_robot(self.robot_namespace)
+
+    def add_boxes_around_tools(self):
         # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles
-        self.moveit_scene = moveit_commander.PlanningSceneInterface()
+        self.moveit_scene = moveit_commander.PlanningSceneInterface(ns=self.robot_namespace)
         self.robust_add_to_scene('left_tool_placeholder', 'left_tool_box',
-                                 self.robot.base_robot.get_left_gripper_links())
+                                 self.robot.get_left_gripper_links())
         self.robust_add_to_scene('right_tool_placeholder', 'right_tool_box',
-                                 self.robot.base_robot.get_right_gripper_links())
+                                 self.robot.get_right_gripper_links())
 
     def robust_add_to_scene(self, link: str, new_object_name: str, touch_links: List[str]):
         box_pose = PoseStamped()
@@ -61,12 +68,13 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             if is_attached and not is_known:
                 break
 
-    def reset_robot(self, data_collection_params: Dict):
-        raise NotImplementedError()
+    def on_before_data_collection(self, params: Dict):
+        self.robot.connect()
+        self.add_boxes_around_tools()
 
     def get_state(self):
         # TODO: this should be composed of function calls to get_state for arm_no_rope and get_state for rope?
-        joint_state = self.robot.base_robot.joint_state_listener.get()
+        joint_state = self.robot.joint_state_listener.get()
 
         left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
 
@@ -74,11 +82,14 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
 
         rope_state_vector = self.get_rope_state()
 
+        cdcpd_vector = self.get_cdcpd_state()
+
         return {
             'joint_positions': joint_state.position,
             'joint_names': joint_state.name,
             'left_gripper': ros_numpy.numpify(left_gripper_position),
             'right_gripper': ros_numpy.numpify(right_gripper_position),
+            'cdcpd': np.array(cdcpd_vector, np.float32),
             'rgbd': color_depth_cropped,
             'rope': np.array(rope_state_vector, np.float32),
         }
@@ -116,7 +127,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_state = self.robot.base_robot.joint_state_listener.get()
+        joint_state = self.robot.joint_state_listener.get()
         return {
             'joint_names': joint_state.name
         }
@@ -147,7 +158,8 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         right_gripper_points = [action['right_gripper_position']]
         tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
         grippers = [left_gripper_points, right_gripper_points]
-        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
+        traj, result = self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
+        return traj, result
 
     def get_environment(self, params: Dict, **kwargs):
         res = params.get("res", 0.01)

@@ -5,27 +5,21 @@ from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
 
+scenario_map = {
+    'link_bot': RopeDraggingScenario,
+    'rope dragging': RopeDraggingScenario,
+    'rope_dragging': RopeDraggingScenario,
+    'dragging': RopeDraggingScenario,
+    'dual_arm_real_victor': DualArmRealVictorRopeScenario,
+    'dual_arm_rope_sim_victor': SimDualArmRopeScenario,
+    'dual_arm_rope': SimDualArmRopeScenario,
+    'dual_floating_gripper_rope': FloatingRopeScenario,
+    'dual_floating': FloatingRopeScenario,
+    'dual_arm_no_rope': DualArmScenario,
+}
+
 
 def get_scenario(scenario_name: str) -> ExperimentScenario:
-    if scenario_name == 'link_bot':
-        return RopeDraggingScenario()
-    elif scenario_name == 'rope dragging':
-        return RopeDraggingScenario()
-    elif scenario_name == 'rope_dragging':
-        return RopeDraggingScenario()
-    elif scenario_name == 'dragging':
-        return RopeDraggingScenario()
-    elif scenario_name == 'dual_arm_real_victor':
-        return DualArmRealVictorRopeScenario()
-    elif scenario_name == 'dual_arm_rope':
-        return SimDualArmRopeScenario()
-    elif scenario_name == 'dual_arm_rope':
-        return DualArmRealVictorRopeScenario()
-    elif scenario_name == 'dual_floating_gripper_rope':
-        return FloatingRopeScenario()
-    elif scenario_name == 'dual_floating':
-        return FloatingRopeScenario()
-    elif scenario_name == 'dual_arm_no_rope':
-        return DualArmScenario()
-    else:
+    if scenario_name not in scenario_map:
         raise NotImplementedError(scenario_name)
+    return scenario_map[scenario_name]()

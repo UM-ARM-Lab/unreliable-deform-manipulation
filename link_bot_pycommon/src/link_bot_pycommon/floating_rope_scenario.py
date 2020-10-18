@@ -16,6 +16,7 @@ with warnings.catch_warnings():
     import ompl.control as oc
 
 import rospy
+import tf2_sensor_msgs
 from arc_utilities.ros_helpers import Listener
 from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
@@ -217,6 +218,8 @@ class FloatingRopeScenario(Base3DScenario):
     }
     ROPE_NAMESPACE = 'kinematic_rope'
 
+    # TODO: break out the different pieces of get_state to make them composable,
+    #  since there are just a few shared amongst all the scenarios
     def __init__(self):
         super().__init__()
         self.color_image_listener = Listener(self.COLOR_IMAGE_TOPIC, Image)
@@ -290,9 +293,6 @@ class FloatingRopeScenario(Base3DScenario):
         reset.right_gripper.z = numpify(data_collection_params['right_gripper_reset_position'][2])
 
         self.set_rope_state_srv(reset)
-
-    def reset_robot(self, data_collection_params: Dict):
-        pass
 
     def batch_stateless_sample_action(self,
                                       environment: Dict,
@@ -544,12 +544,18 @@ class FloatingRopeScenario(Base3DScenario):
 
     def get_cdcpd_state(self):
         cdcpd_msg: PointCloud2 = self.cdcpd_listener.get()
-        cdcpd_point_cloud_array = ros_numpy.numpify(cdcpd_msg)
-        x = cdcpd_point_cloud_array['x']
-        y = cdcpd_point_cloud_array['y']
-        z = cdcpd_point_cloud_array['z']
-        cdcpd_vector = np.stack([x, y, z], axis=-1)
-        cdcpd_vector = cdcpd_vector.flatten()
+
+        # transform into robot-frame
+        transform = self.tf.get_transform_msg("robot_root", "kinect2_rgb_optical_frame")
+        cdcpd_points_robot_frame = tf2_sensor_msgs.do_transform_cloud(cdcpd_msg, transform)
+
+        cdcpd_points_array = ros_numpy.numpify(cdcpd_points_robot_frame)
+        x = cdcpd_points_array['x']
+        y = cdcpd_points_array['y']
+        z = cdcpd_points_array['z']
+        points = np.stack([x, y, z], axis=-1)
+
+        cdcpd_vector = points.flatten()
         return cdcpd_vector
 
     def get_rope_state(self):
@@ -986,7 +992,7 @@ class FloatingRopeScenario(Base3DScenario):
         if 'cdcpd' in state:
             rope_points = np.reshape(state['cdcpd'], [-1, 3])
 
-            markers = make_rope_marker(rope_points, 'kinect2_rgb_optical_frame', label, 1000 + idx, 1 - r, g, 1 - b, a)
+            markers = make_rope_marker(rope_points, 'world', label, 1000 + idx, 1 - r, g, 1 - b, a)
             msg.markers.extend(markers)
 
         if 'left_gripper' in state:

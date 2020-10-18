@@ -13,7 +13,7 @@ class DualArmRealVictorRopeScenario(BaseDualArmRopeScenario):
     DEPTH_IMAGE_TOPIC = "/kinect2_victor_head/qhd/image_depth_rect"
 
     def __init__(self):
-        super().__init__()
+        super().__init__('victor')
         # FIXME: lazy construction
         self.victor = Victor()
 
@@ -43,7 +43,7 @@ class DualArmRealVictorRopeScenario(BaseDualArmRopeScenario):
 
     def get_state(self):
         # TODO: this should be composed of function calls to get_state for arm_no_rope and get_state for rope?
-        joint_state = self.robot.base_robot.joint_state_listener.get()
+        joint_state = self.robot.joint_state_listener.get()
 
         left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
 
