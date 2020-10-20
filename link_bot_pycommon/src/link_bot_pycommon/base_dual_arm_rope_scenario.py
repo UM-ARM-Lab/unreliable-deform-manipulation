@@ -7,7 +7,6 @@ import ros_numpy
 import rospy
 from arc_utilities.ros_helpers import Listener
 from arm_robots.get_moveit_robot import get_moveit_robot
-from control_msgs.msg import FollowJointTrajectoryResult
 from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices

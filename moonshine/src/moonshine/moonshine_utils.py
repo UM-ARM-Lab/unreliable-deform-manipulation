@@ -256,5 +256,5 @@ def vector_to_dict(description: Dict, z):
 
 def flatten_after(x, axis: int = 0):
     """ [N1, N2, ...] -> [N1, ..., N[axis], -1] """
-    new_shape = x.shape.as_list()[:axis+1] + [-1]
+    new_shape = x.shape.as_list()[:axis + 1] + [-1]
     return tf.reshape(x, new_shape)

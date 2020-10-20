@@ -6,7 +6,6 @@ import rospkg
 from python_qt_binding.QtWidgets import QWidget
 
 import rospy
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import scenario_map, get_scenario
 from python_qt_binding import loadUi
 from qt_gui.plugin import Plugin

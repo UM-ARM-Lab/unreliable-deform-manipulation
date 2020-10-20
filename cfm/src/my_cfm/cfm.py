@@ -104,7 +104,9 @@ class CFM(MyKerasModel):
     def compute_metrics(self, dataset_element, outputs):
         neg_dists, pos_dists = self.contrastive_distances(outputs)
         dists_matrix = tf.concat((neg_dists, pos_dists), axis=1)  # b x b+1
-        dists_image = dists_matrix[tf.newaxis, :, :, tf.newaxis] / 0.005
+        softmax_dists_matrix = tf.nn.softmax(dists_matrix)
+        softmax_dists_matrix = softmax_dists_matrix / tf.reduce_max(softmax_dists_matrix)
+        dists_image = softmax_dists_matrix[tf.newaxis, :, :, tf.newaxis]
         metrics = {
             'min_neg_d': tf.reduce_min(neg_dists),
             'mean_neg_d': tf.reduce_mean(neg_dists),
@@ -263,6 +265,8 @@ class LocallyLinearPredictor(MyKerasModel):
 
         if self.dynamics_type == 'locally-linear':
             self.a_out = layers.Dense(self.z_dim * self.z_dim, activation='tanh')
+        elif self.dynamics_type == 'quasi-static':
+            self.a_out = layers.Dense(self.z_dim * self.z_dim, activation='tanh')
             self.b_out = layers.Dense(self.z_dim * self.u_dim, activation='tanh')
         elif self.dynamics_type == 'mlp':
             my_layers.append(layers.Dense(self.z_dim, activation=None))
@@ -290,6 +294,19 @@ class LocallyLinearPredictor(MyKerasModel):
         out = self.model(x)
 
         if self.dynamics_type == 'locally-linear':
+            a_params = self.a_out(out)
+            a_matrix = tf.reshape(a_params, x.shape.as_list()[:-1] + [self.z_dim, self.z_dim])
+            z_col = tf.expand_dims(z, axis=-1)
+            z_next = tf.linalg.matmul(a_matrix, z_col)
+            z_next = tf.squeeze(z_next, axis=-1)
+            eigs = tf.squeeze(tf.linalg.eigvals(a_matrix), axis=1)
+            max_eig = tf.math.reduce_max(tf.math.abs(eigs), axis=1)
+            z_seq = tf.concat([z, z_next], axis=1)
+            return {
+                'z': z_seq,
+                'max_eig': max_eig,
+            }
+        elif self.dynamics_type == 'quasi-static':
             a_params = self.a_out(out)
             b_params = self.b_out(out)
             identity = tf.eye(self.z_dim)[tf.newaxis, tf.newaxis]

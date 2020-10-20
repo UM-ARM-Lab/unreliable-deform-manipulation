@@ -17,7 +17,7 @@ from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
 from state_space_dynamics import model_utils, filter_utils
 
-limit_gpu_mem(10)
+# limit_gpu_mem(10)
 
 
 def main():
@@ -64,7 +64,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                      classifier_model=None,
                                      scenario=scenario,
                                      params={
-                                         'n_samples': 100
+                                         'n_samples': 1000
                                      })
     trajopt = TrajectoryOptimizer(fwd_model=latent_dynamics_model,
                                   classifier_model=None,
@@ -114,7 +114,7 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                                              environment=environment,
                                                              goal_state=goal_state,
                                                              start_state=start_state,
-                                                             true_action=true_action)
+                                                             )
 
             for j in range(action_horizon):
                 optimized_action = actions[j]
@@ -131,8 +131,8 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                 s_next.update(numpify(remove_batch(scenario.index_observation_features_time_batched(add_batch(example), 1))))
                 scenario.plot_state_rviz(s, label='t', color="#ff000055", id=1)
                 scenario.plot_state_rviz(s_next, label='t+1', color="#aa222255", id=2)
-                scenario.plot_action_rviz(s, optimized_action, label='inferred', color='#00ff00', id=1)
-                scenario.plot_action_rviz(s, true_action, label='true', color='#0000ff55', id=2)
+                # scenario.plot_action_rviz(s, optimized_action, label='inferred', color='#00ff00', id=1)
+                # scenario.plot_action_rviz(s, true_action, label='true', color='#ee770055', id=2)
 
                 publish_color_image(s_color_viz_pub, s['rgbd'][:, :, :3])
                 publish_color_image(s_next_color_viz_pub, s_next['rgbd'][:, :, :3])

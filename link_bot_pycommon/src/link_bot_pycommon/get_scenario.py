@@ -1,25 +1,46 @@
-from link_bot_pycommon.dual_arm_real_victor_rope_scenario import DualArmRealVictorRopeScenario
-from link_bot_pycommon.dual_arm_scenario import DualArmScenario
-from link_bot_pycommon.dual_arm_sim_rope_scenario import SimDualArmRopeScenario
-from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
+
+
+# With this approach, we only ever import the scenario we want to use. Nice!
+def make_rope_dragging_scenario():
+    from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
+    return RopeDraggingScenario
+
+
+def make_dual_arm_real_victor_rope_scenario():
+    from link_bot_pycommon.dual_arm_real_victor_rope_scenario import DualArmRealVictorRopeScenario
+    return DualArmRealVictorRopeScenario
+
+
+def make_dual_arm_scenario():
+    from link_bot_pycommon.dual_arm_scenario import DualArmScenario
+    return DualArmScenario
+
+
+def make_dual_arm_sim_victor_scenario():
+    from link_bot_pycommon.dual_arm_sim_rope_scenario import SimDualArmRopeScenario
+    return SimDualArmRopeScenario
+
+
+def make_floating_rope_scenario():
+    from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
+    return FloatingRopeScenario
 
 scenario_map = {
-    'link_bot': RopeDraggingScenario,
-    'rope dragging': RopeDraggingScenario,
-    'rope_dragging': RopeDraggingScenario,
-    'dragging': RopeDraggingScenario,
-    'dual_arm_real_victor': DualArmRealVictorRopeScenario,
-    'dual_arm_rope_sim_victor': SimDualArmRopeScenario,
-    'dual_arm_rope': SimDualArmRopeScenario,
-    'dual_floating_gripper_rope': FloatingRopeScenario,
-    'dual_floating': FloatingRopeScenario,
-    'dual_arm_no_rope': DualArmScenario,
+    'link_bot': make_rope_dragging_scenario,
+    'rope dragging': make_rope_dragging_scenario,
+    'rope_dragging': make_rope_dragging_scenario,
+    'dragging': make_rope_dragging_scenario,
+    'dual_arm_real_victor': make_dual_arm_real_victor_rope_scenario,
+    'dual_arm_rope_sim_victor': make_dual_arm_sim_victor_scenario,
+    'dual_arm_rope': make_dual_arm_sim_victor_scenario,
+    'dual_floating_gripper_rope': make_floating_rope_scenario,
+    'dual_floating': make_floating_rope_scenario,
+    'dual_arm_no_rope': make_dual_arm_scenario,
 }
 
 
 def get_scenario(scenario_name: str) -> ExperimentScenario:
     if scenario_name not in scenario_map:
         raise NotImplementedError(scenario_name)
-    return scenario_map[scenario_name]()
+    return scenario_map[scenario_name]()()

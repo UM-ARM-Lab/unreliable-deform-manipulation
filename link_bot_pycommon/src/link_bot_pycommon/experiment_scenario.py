@@ -34,29 +34,47 @@ class ExperimentScenario:
                       environment: Dict,
                       state: Dict,
                       data_collection_params: Dict,
-                      action_params: Dict):
+                      action_params: Dict,
+                      stateless: Optional[bool] = False):
         raise NotImplementedError()
 
-    def sample_actions(self,
-                       environment: Dict,
-                       start_state: Dict,
-                       params: Dict,
-                       n_action_sequences: int,
-                       action_sequence_length: int,
-                       rng: np.random.RandomState):
+    def sample_action_sequences(self,
+                                environment: Dict,
+                                state: Dict,
+                                data_collection_params: Dict,
+                                action_params: Dict,
+                                n_action_sequences: int,
+                                action_sequence_length: int,
+                                action_rng: np.random.RandomState):
         action_sequences = []
 
         for _ in range(n_action_sequences):
-            action_sequence = []
-            for __ in range(action_sequence_length):
-                action = self.sample_action(action_rng=rng,
-                                            environment=environment,
-                                            state=start_state,
-                                            data_collection_params=params,
-                                            action_params=params)
-                action_sequence.append(action)
+            action_sequence = self.sample_action_batch(environment=environment,
+                                                       state=state,
+                                                       data_collection_params=data_collection_params,
+                                                       action_params=action_params,
+                                                       batch_size=action_sequence_length,
+                                                       action_rng=action_rng)
             action_sequences.append(action_sequence)
         return action_sequences
+
+    def sample_action_batch(self,
+                            environment: Dict,
+                            state: Dict,
+                            data_collection_params: Dict,
+                            action_params: Dict,
+                            batch_size: int,
+                            action_rng: np.random.RandomState):
+        action_sequence = []
+        for __ in range(batch_size):
+            action = self.sample_action(action_rng=action_rng,
+                                        environment=environment,
+                                        state=state,
+                                        data_collection_params=data_collection_params,
+                                        action_params=action_params,
+                                        stateless=True)
+            action_sequence.append(action)
+        return action_sequence
 
     @staticmethod
     def local_environment_center_differentiable(state):

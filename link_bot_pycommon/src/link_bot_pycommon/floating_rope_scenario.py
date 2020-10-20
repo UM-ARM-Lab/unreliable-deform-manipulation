@@ -26,7 +26,7 @@ from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_to_bbox, extent_array_to_bbox
-from link_bot_pycommon.pycommon import default_if_none, directions_3d
+from link_bot_pycommon.pycommon import default_if_none
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
@@ -294,55 +294,19 @@ class FloatingRopeScenario(Base3DScenario):
 
         self.set_rope_state_srv(reset)
 
-    def batch_stateless_sample_action(self,
-                                      environment: Dict,
-                                      state: Dict,
-                                      batch_size: int,
-                                      n_action_samples: int,
-                                      n_actions: int,
-                                      data_collection_params: Dict,
-                                      action_params: Dict,
-                                      action_rng: np.random.RandomState):
-        del action_rng  # unused, we used tf here
-        # Sample a new random action
-        pitch_1 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
-        pitch_2 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
-        yaw_1 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
-        yaw_2 = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
-        max_d = action_params['max_distance_gripper_can_move']
-
-        displacement1 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
-        displacement2 = tf.random.uniform([batch_size, n_action_samples, n_actions], 0, max_d)
-
-        random_directions_1 = directions_3d(pitch_1, yaw_1)
-        left_gripper_delta_position = random_directions_1 * displacement1[:, :, :, tf.newaxis]
-
-        random_directions_2 = directions_3d(pitch_2, yaw_2)
-        right_gripper_delta_position = random_directions_2 * displacement2[:, :, :, tf.newaxis]
-
-        # Apply delta
-        left_gripper_position = state['left_gripper'][:, tf.newaxis, tf.newaxis] + left_gripper_delta_position
-        right_gripper_position = state['right_gripper'][:, tf.newaxis, tf.newaxis] + right_gripper_delta_position
-
-        actions = {
-            'left_gripper_position': left_gripper_position,
-            'right_gripper_position': right_gripper_position,
-        }
-        return actions
-
     def sample_action(self,
                       action_rng: np.random.RandomState,
                       environment: Dict,
                       state,
                       data_collection_params: Dict,
                       action_params: Dict,
-                      no_repeat: Optional[bool] = False,
+                      stateless: Optional[bool] = False,
                       ):
         action = None
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
             repeat_probability = data_collection_params['repeat_delta_gripper_motion_probability']
-            if not no_repeat and self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
+            if not stateless and self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
                 left_gripper_delta_position = self.last_action['left_gripper_delta_position']
                 right_gripper_delta_position = self.last_action['right_gripper_delta_position']
             else:
