@@ -31,6 +31,7 @@ def train_main(args):
     trial_path, params = load_trial(checkpoint.parent.absolute())
     now = str(time())
     trial_path = trial_path.parent / (trial_path.name + '-observer-' + now)
+    trial_path.mkdir(parents=True)
     batch_size = params['batch_size']
     params['encoder_trainable'] = False
     params['use_observation_feature_loss'] = True
@@ -55,7 +56,11 @@ def train_main(args):
                          batch_metadata=train_dataset.batch_metadata,
                          trial_path=trial_path)
 
-    train_tf_dataset, val_tf_dataset = train_test.setup_datasets(batch_size, seed, train_dataset, val_dataset)
+    train_tf_dataset, val_tf_dataset = train_test.setup_datasets(model_hparams=params,
+                                                                 batch_size=batch_size,
+                                                                 seed=seed,
+                                                                 train_dataset=train_dataset,
+                                                                 val_dataset=val_dataset)
 
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
@@ -88,10 +93,14 @@ def viz_main(args):
         stepper = RvizAnimationController(n_time_steps=dataset.steps_per_traj)
         for t in range(dataset.steps_per_traj):
             output = model(model.preprocess_no_gradient(example, training=False))
-            example_t = numpify(remove_batch(scenario.index_time_batched(example, t)))
-            output_t = numpify(remove_batch(scenario.index_time_batched(output, t)))
-            scenario.plot_state_rviz(example_t, label='true')
-            scenario.plot_state_rviz(output_t, label='pred')
+
+            actual_t = numpify(remove_batch(scenario.index_time_batched(example, t)))
+            action_t = numpify(remove_batch(scenario.index_time_batched(example, t)))
+            scenario.plot_state_rviz(actual_t, label='actual', color='red')
+            scenario.plot_action_rviz(actual_t, action_t, color='gray')
+            prediction_t = remove_batch(scenario.index_time_batched(output, t))
+            scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
+
             stepper.step()
 
 

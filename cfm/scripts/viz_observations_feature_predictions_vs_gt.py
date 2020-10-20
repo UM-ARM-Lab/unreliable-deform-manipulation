@@ -9,7 +9,7 @@ import colorama
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch, numpify
 from state_space_dynamics.train_test import viz_dataset
 
 
@@ -19,11 +19,11 @@ def viz_func(batch, predictions, test_dataset: DynamicsDataset):
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
-        actual_t = remove_batch(test_dataset.scenario.index_observation_features_time_batched(batch, t))
-        action_t = remove_batch(test_dataset.scenario.index_action_time_batched(batch, t))
+        actual_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
+        action_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
         test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-        prediction_t = remove_batch(test_dataset.scenario.index_observation_features_time_batched(predictions, t))
+        prediction_t = remove_batch(test_dataset.scenario.index_time_batched(predictions, t))
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()
