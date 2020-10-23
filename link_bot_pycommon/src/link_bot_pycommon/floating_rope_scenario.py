@@ -519,13 +519,7 @@ class FloatingRopeScenario(Base3DScenario):
         return cdcpd_vector
 
     def get_rope_state(self):
-        while True:
-            try:
-                rope_res = self.get_rope_srv(GetRopeStateRequest())
-                break
-            except Exception:
-                print("CDCPD failed? Restart it!")
-                input("press enter.")
+        rope_res = self.get_rope_srv(GetRopeStateRequest())
         rope_state_vector = []
         for p in rope_res.positions:
             rope_state_vector.append(p.x)

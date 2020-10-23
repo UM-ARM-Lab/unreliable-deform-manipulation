@@ -1,11 +1,14 @@
 from typing import Dict
 
+import numpy as np
+
 import rospy
 from arm_robots.get_moveit_robot import get_moveit_robot
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty
+from tf.transformations import quaternion_from_euler
 
 
 class DualArmScenario(FloatingRopeScenario):
@@ -24,6 +27,13 @@ class DualArmScenario(FloatingRopeScenario):
         self.robot.close_left_gripper()
         self.robot.close_right_gripper()
 
+        # Set the preferred tool orientations
+        down = quaternion_from_euler(np.pi, 0, 0)
+        self.robot.store_tool_orientations({
+            'left_tool_placeholder':  down,
+            'right_tool_placeholder': down,
+        })
+
     def reset_robot(self, data_collection_params: Dict):
         pass
 
@@ -31,17 +41,17 @@ class DualArmScenario(FloatingRopeScenario):
         joint_state = self.robot.joint_state_listener.get()
         left_gripper_position, right_gripper_position = self.robot.get_gripper_positions()
         return {
-            'left_gripper': left_gripper_position,
-            'right_gripper': right_gripper_position,
+            'left_gripper':    left_gripper_position,
+            'right_gripper':   right_gripper_position,
             'joint_positions': joint_state.position,
-            'joint_names': joint_state.name,
+            'joint_names':     joint_state.name,
         }
 
     def states_description(self) -> Dict:
         n_joints = len(self.robot.robot_commander.get_joint_names())
         return {
-            'left_gripper': 3,
-            'right_gripper': 3,
+            'left_gripper':    3,
+            'right_gripper':   3,
             'joint_positions': n_joints
         }
 
@@ -50,7 +60,10 @@ class DualArmScenario(FloatingRopeScenario):
         right_gripper_points = [action['right_gripper_position']]
         tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
         grippers = [left_gripper_points, right_gripper_points]
-        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
+        self.robot.follow_jacobian_to_position(group_name="both_arms",
+                                               tool_names=tool_names,
+                                               preferred_tool_orientations=None,
+                                               points=grippers)
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         # TODO: de-duplicate

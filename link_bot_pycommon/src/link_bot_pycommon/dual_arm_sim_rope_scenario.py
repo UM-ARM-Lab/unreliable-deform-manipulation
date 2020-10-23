@@ -11,7 +11,6 @@ from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
 from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse
 from rosgraph.names import ns_join
-from tf.transformations import quaternion_from_euler
 
 
 class SimDualArmRopeScenario(BaseDualArmRopeScenario):
@@ -49,7 +48,11 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
                 return not self.overstretching_stop_condition(feedback)
 
             rev_grippers = [[ros_numpy.numpify(start_left_gripper_position)], [ros_numpy.numpify(start_right_gripper_position)]]
-            self.robot.follow_jacobian_to_position("both_arms", tool_names, rev_grippers, stop_condition=_rev_stop_condition)
+            self.robot.follow_jacobian_to_position(group_name="both_arms",
+                                                   tool_names=tool_names,
+                                                   preferred_tool_orientations=None,
+                                                   points=rev_grippers,
+                                                   stop_condition=_rev_stop_condition)
 
     def stop_on_rope_overstretching(self,
                                     client: SimpleActionClient,
@@ -61,13 +64,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
     def on_before_data_collection(self, params: Dict):
         super().on_before_data_collection(params)
-
-        # Set the preferred tool orientations
-        down = quaternion_from_euler(np.pi, 0, 0)
-        self.robot.store_tool_orientations({
-                                               'left_tool_placeholder':  down,
-                                               'right_tool_placeholder': down,
-                                           })
 
         # Mark the rope as a not-obstacle
         exclude = ExcludeModelsRequest()

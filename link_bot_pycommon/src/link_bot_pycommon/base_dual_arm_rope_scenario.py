@@ -18,6 +18,7 @@ from peter_msgs.srv import SetDualGripperPoints, \
 from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Empty
+from tf.transformations import quaternion_from_euler
 
 
 class BaseDualArmRopeScenario(FloatingRopeScenario):
@@ -71,6 +72,13 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     def on_before_data_collection(self, params: Dict):
         self.robot.connect()
         self.add_boxes_around_tools()
+
+        # Set the preferred tool orientations
+        down = quaternion_from_euler(np.pi, 0, 0)
+        self.robot.store_tool_orientations({
+            'left_tool_placeholder':  down,
+            'right_tool_placeholder': down,
+        })
 
     def get_state(self):
         # TODO: this should be composed of function calls to get_state for arm_no_rope and get_state for rope?

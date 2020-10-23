@@ -16,7 +16,10 @@ class DynamicsDataset(BaseDataset):
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
         self.step_size = step_size
-        self.scenario = get_scenario(self.hparams['scenario'])
+        try:
+            self.scenario = get_scenario(self.hparams['scenario'])
+        except RuntimeError:
+            pass
 
         if 'observation_features_description' in self.hparams:
             self.observation_feature_keys = list(self.hparams['observation_features_description'].keys())

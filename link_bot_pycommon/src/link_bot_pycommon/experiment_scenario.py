@@ -287,11 +287,18 @@ class ExperimentScenario:
             return None
         return example['is_close'][:, t]
 
-    def all_description_keys(self):
-        all_keys = list(self.actions_description().keys()) \
-                   + list(self.states_description().keys()) \
+    def state_like_keys(self):
+        all_keys = list(self.states_description().keys()) \
                    + list(self.observation_features_description().keys()) \
                    + list(self.observations_description().keys())
+        # make sure there are no duplicates
+        all_keys = list(set(all_keys))
+        return all_keys
+
+    def all_description_keys(self):
+        all_keys = list(self.actions_description().keys()) + list(self.state_like_keys())
+        # make sure there are no duplicates
+        all_keys = list(set(all_keys))
         return all_keys
 
     def randomization_initialization(self):

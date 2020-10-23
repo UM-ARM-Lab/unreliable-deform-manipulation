@@ -63,9 +63,7 @@ class DataCollector:
         self.scenario.plot_traj_idx_rviz(traj_idx)
 
         actions = {k: [] for k in self.scenario.actions_description().keys()}
-        states = {k: [] for k in self.scenario.states_description().keys()}
-        states.update({k: [] for k in self.scenario.observations_description().keys()})
-        states.update({k: [] for k in self.scenario.observation_features_description().keys()})
+        states = {k: [] for k in self.scenario.state_like_keys()}
 
         # sanity check!
         for k in self.scenario.actions_description().keys():
@@ -77,7 +75,9 @@ class DataCollector:
             # get current state and sample action
             state = self.scenario.get_state()
             # TODO: sample the entire action sequence in advance?
-            action = self.scenario.sample_action(action_rng=action_rng, environment=environment, state=state,
+            action = self.scenario.sample_action(action_rng=action_rng,
+                                                 environment=environment,
+                                                 state=state,
                                                  action_params=self.params)
 
             # execute action
@@ -88,13 +88,8 @@ class DataCollector:
                 for action_name in self.scenario.actions_description().keys():
                     action_component = action[action_name]
                     actions[action_name].append(action_component)
-            for state_component_name in self.scenario.states_description().keys():
-                state_component = state[state_component_name]
-                states[state_component_name].append(state_component)
-            for state_component_name in self.scenario.observations_description().keys():
-                state_component = state[state_component_name]
-                states[state_component_name].append(state_component)
-            for state_component_name in self.scenario.observation_features_description().keys():
+            state_like_keys = self.scenario.state_like_keys()
+            for state_component_name in state_like_keys:
                 state_component = state[state_component_name]
                 states[state_component_name].append(state_component)
             time_indices.append(time_idx)
@@ -128,17 +123,17 @@ class DataCollector:
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         dataset_hparams = {
-            'nickname': nickname,
-            'robot_namespace': robot_namespace,
-            'seed': self.seed,
-            'n_trajs': n_trajs,
-            'data_collection_params': self.params,
-            'states_description': self.scenario.states_description(),
-            'action_description': self.scenario.actions_description(),
-            'observations_description': self.scenario.observations_description(),
+            'nickname':                         nickname,
+            'robot_namespace':                  robot_namespace,
+            'seed':                             self.seed,
+            'n_trajs':                          n_trajs,
+            'data_collection_params':           self.params,
+            'states_description':               self.scenario.states_description(),
+            'action_description':               self.scenario.actions_description(),
+            'observations_description':         self.scenario.observations_description(),
             'observation_features_description': self.scenario.observation_features_description(),
-            'scenario': self.scenario_name,
-            'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
+            'scenario':                         self.scenario_name,
+            'scenario_metadata':                self.scenario.dynamics_dataset_metadata(),
         }
         with (full_output_directory / 'hparams.json').open('w') as dataset_hparams_file:
             json.dump(dataset_hparams, dataset_hparams_file, indent=2)
