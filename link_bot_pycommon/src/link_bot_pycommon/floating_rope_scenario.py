@@ -220,6 +220,8 @@ class FloatingRopeScenario(Base3DScenario):
 
     # TODO: break out the different pieces of get_state to make them composable,
     #  since there are just a few shared amongst all the scenarios
+    # TODO: about this... maybe they should all be pure functions? do we really need "self" at all?
+    #  the one reason we have classes at all is so that we can describe interfaces via type hints
     def __init__(self):
         super().__init__()
         self.color_image_listener = Listener(self.COLOR_IMAGE_TOPIC, Image)
@@ -263,7 +265,7 @@ class FloatingRopeScenario(Base3DScenario):
         left_gripper_position = np.array([1.0, 0.2, 1.0])
         right_gripper_position = np.array([1.0, -0.2, 1.0])
         init_action = {
-            'left_gripper_position': left_gripper_position,
+            'left_gripper_position':  left_gripper_position,
             'right_gripper_position': right_gripper_position,
         }
         self.execute_action(init_action)
@@ -281,31 +283,25 @@ class FloatingRopeScenario(Base3DScenario):
         req.grippers.append(right_gripper_points)
         self.action_srv(req)
 
-    def reset_rope(self, data_collection_params: Dict):
+    def reset_rope(self, action_params: Dict):
         reset = SetRopeStateRequest()
 
         # TODO: rename this to rope endpoints reset positions or something
-        reset.left_gripper.x = numpify(data_collection_params['left_gripper_reset_position'][0])
-        reset.left_gripper.y = numpify(data_collection_params['left_gripper_reset_position'][1])
-        reset.left_gripper.z = numpify(data_collection_params['left_gripper_reset_position'][2])
-        reset.right_gripper.x = numpify(data_collection_params['right_gripper_reset_position'][0])
-        reset.right_gripper.y = numpify(data_collection_params['right_gripper_reset_position'][1])
-        reset.right_gripper.z = numpify(data_collection_params['right_gripper_reset_position'][2])
+        reset.left_gripper.x = numpify(action_params['left_gripper_reset_position'][0])
+        reset.left_gripper.y = numpify(action_params['left_gripper_reset_position'][1])
+        reset.left_gripper.z = numpify(action_params['left_gripper_reset_position'][2])
+        reset.right_gripper.x = numpify(action_params['right_gripper_reset_position'][0])
+        reset.right_gripper.y = numpify(action_params['right_gripper_reset_position'][1])
+        reset.right_gripper.z = numpify(action_params['right_gripper_reset_position'][2])
 
         self.set_rope_state_srv(reset)
 
-    def sample_action(self,
-                      action_rng: np.random.RandomState,
-                      environment: Dict,
-                      state,
-                      data_collection_params: Dict,
-                      action_params: Dict,
-                      stateless: Optional[bool] = False,
-                      ):
+    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict,
+                      stateless: Optional[bool] = False):
         action = None
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
-            repeat_probability = data_collection_params['repeat_delta_gripper_motion_probability']
+            repeat_probability = action_params['repeat_delta_gripper_motion_probability']
             if not stateless and self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability:
                 left_gripper_delta_position = self.last_action['left_gripper_delta_position']
                 right_gripper_delta_position = self.last_action['right_gripper_delta_position']
@@ -331,32 +327,32 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_position = state['right_gripper'] + right_gripper_delta_position
 
             action = {
-                'left_gripper_position': left_gripper_position,
-                'right_gripper_position': right_gripper_position,
-                'left_gripper_delta_position': left_gripper_delta_position,
+                'left_gripper_position':        left_gripper_position,
+                'right_gripper_position':       right_gripper_position,
+                'left_gripper_delta_position':  left_gripper_delta_position,
                 'right_gripper_delta_position': right_gripper_delta_position,
             }
             out_of_bounds = FloatingRopeScenario.grippers_out_of_bounds(left_gripper_position,
                                                                         right_gripper_position,
-                                                                        data_collection_params)
+                                                                        action_params)
 
-            max_gripper_d = default_if_none(data_collection_params['max_distance_between_grippers'], 1000)
+            max_gripper_d = default_if_none(action_params['max_distance_between_grippers'], 1000)
             too_far = np.linalg.norm(left_gripper_position - right_gripper_position) > max_gripper_d
 
-            if 'left_gripper_action_sample_extent' in data_collection_params:
-                left_gripper_extent = np.array(data_collection_params['left_gripper_action_sample_extent']).reshape(
+            if 'left_gripper_action_sample_extent' in action_params:
+                left_gripper_extent = np.array(action_params['left_gripper_action_sample_extent']).reshape(
                     [3, 2])
             else:
-                left_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+                left_gripper_extent = np.array(action_params['extent']).reshape([3, 2])
             left_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
             left_gripper_bbox_msg.header.frame_id = 'world'
             self.left_gripper_bbox_pub.publish(left_gripper_bbox_msg)
 
-            if 'right_gripper_action_sample_extent' in data_collection_params:
-                right_gripper_extent = np.array(data_collection_params['right_gripper_action_sample_extent']).reshape(
+            if 'right_gripper_action_sample_extent' in action_params:
+                right_gripper_extent = np.array(action_params['right_gripper_action_sample_extent']).reshape(
                     [3, 2])
             else:
-                right_gripper_extent = np.array(data_collection_params['extent']).reshape([3, 2])
+                right_gripper_extent = np.array(action_params['extent']).reshape([3, 2])
             right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
             right_gripper_bbox_msg.header.frame_id = 'world'
             self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
@@ -368,9 +364,9 @@ class FloatingRopeScenario(Base3DScenario):
         return action
 
     @staticmethod
-    def grippers_out_of_bounds(left_gripper, right_gripper, data_collection_params: Dict):
-        left_gripper_extent = data_collection_params['left_gripper_action_sample_extent']
-        right_gripper_extent = data_collection_params['right_gripper_action_sample_extent']
+    def grippers_out_of_bounds(left_gripper, right_gripper, action_params: Dict):
+        left_gripper_extent = action_params['left_gripper_action_sample_extent']
+        right_gripper_extent = action_params['right_gripper_action_sample_extent']
         return FloatingRopeScenario.is_out_of_bounds(left_gripper, left_gripper_extent) \
                or FloatingRopeScenario.is_out_of_bounds(right_gripper, right_gripper_extent)
 
@@ -402,7 +398,7 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper_i = left_gripper_start + left_gripper_delta * t
             right_gripper_i = right_gripper_start + right_gripper_delta * t
             action = {
-                'left_gripper_position': left_gripper_i,
+                'left_gripper_position':  left_gripper_i,
                 'right_gripper_position': right_gripper_i,
             }
             interpolated_actions.append(action)
@@ -413,7 +409,7 @@ class FloatingRopeScenario(Base3DScenario):
     def robot_name():
         return "rope_3d"
 
-    def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
+    def randomize_environment(self, env_rng, objects_params: Dict, action_params: Dict):
         pass
 
     @staticmethod
@@ -431,9 +427,9 @@ class FloatingRopeScenario(Base3DScenario):
         rope_robot = tf.reshape(rope_points_robot, rope.shape)
 
         return {
-            'left_gripper': left_gripper_robot,
+            'left_gripper':  left_gripper_robot,
             'right_gripper': right_gripper_robot,
-            'rope': rope_robot,
+            'rope':          rope_robot,
         }
 
     @staticmethod
@@ -451,9 +447,9 @@ class FloatingRopeScenario(Base3DScenario):
         rope_local = tf.reshape(rope_points_local, rope.shape)
 
         return {
-            'left_gripper': left_gripper_local,
+            'left_gripper':  left_gripper_local,
             'right_gripper': right_gripper_local,
-            'rope': rope_local,
+            'rope':          rope_local,
         }
 
     @staticmethod
@@ -466,7 +462,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def apply_local_action_at_state(state, local_action):
         return {
-            'left_gripper_position': state['left_gripper'] + local_action['left_gripper_delta'],
+            'left_gripper_position':  state['left_gripper'] + local_action['left_gripper_delta'],
             'right_gripper_position': state['right_gripper'] + local_action['right_gripper_delta']
         }
 
@@ -475,7 +471,7 @@ class FloatingRopeScenario(Base3DScenario):
         left_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         right_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         return {
-            'left_gripper_position': action['left_gripper_position'] + left_gripper_noise,
+            'left_gripper_position':  action['left_gripper_position'] + left_gripper_noise,
             'right_gripper_position': action['right_gripper_position'] + right_gripper_noise
         }
 
@@ -496,7 +492,7 @@ class FloatingRopeScenario(Base3DScenario):
         right_gripper_delta = target_right_gripper_position - current_right_gripper_point[:, :n_action]
 
         return {
-            'left_gripper_delta': left_gripper_delta,
+            'left_gripper_delta':  left_gripper_delta,
             'right_gripper_delta': right_gripper_delta,
         }
 
@@ -559,11 +555,11 @@ class FloatingRopeScenario(Base3DScenario):
         left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
 
         return {
-            'left_gripper': left_rope_point_position,
+            'left_gripper':  left_rope_point_position,
             'right_gripper': right_rope_point_position,
-            'rope': np.array(rope_state_vector, np.float32),
-            'cdcpd': np.array(cdcpd_vector, np.float32),
-            'rgbd': color_depth_cropped,
+            'rope':          np.array(rope_state_vector, np.float32),
+            'cdcpd':         np.array(cdcpd_vector, np.float32),
+            'rgbd':          color_depth_cropped,
         }
 
     def get_rgbd(self):
@@ -615,9 +611,9 @@ class FloatingRopeScenario(Base3DScenario):
 
     def observations_description(self) -> Dict:
         return {
-            'left_gripper': 3,
+            'left_gripper':  3,
             'right_gripper': 3,
-            'rgbd': [self.IMAGE_H, self.IMAGE_W, 4],
+            'rgbd':          [self.IMAGE_H, self.IMAGE_W, 4],
         }
 
     @staticmethod
@@ -628,7 +624,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def observation_features_description() -> Dict:
         return {
-            'rope': FloatingRopeScenario.n_links * 3,
+            'rope':  FloatingRopeScenario.n_links * 3,
             'cdcpd': FloatingRopeScenario.n_links * 3,
         }
 
@@ -636,7 +632,7 @@ class FloatingRopeScenario(Base3DScenario):
     def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
-            'left_gripper_position': 3,
+            'left_gripper_position':  3,
             'right_gripper_position': 3,
         }
 
@@ -661,7 +657,7 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper = rng.uniform(extent[:, 0], extent[:, 1])
             right_gripper = rng.uniform(extent[:, 0], extent[:, 1])
             goal = {
-                'left_gripper': left_gripper,
+                'left_gripper':  left_gripper,
                 'right_gripper': right_gripper,
             }
             row1, col1, channel1 = grid_utils.point_to_idx_3d_in_env(
@@ -674,8 +670,11 @@ class FloatingRopeScenario(Base3DScenario):
                 return goal
 
     def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        if planner_params['goal_type'] == 'midpoint':
+        goal_type = planner_params['goal_type']
+        if goal_type == 'midpoint':
             return self.sample_midpoint_goal(environment, rng, planner_params)
+        elif goal_type == 'rgbd':
+            return self.sample_rgbd_goal(environment, rng, planner_params)
         else:
             raise NotImplementedError(planner_params['goal_type'])
 
@@ -688,13 +687,23 @@ class FloatingRopeScenario(Base3DScenario):
         return max(distance1, distance2)
 
     def sample_midpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
+        goal_extent = planner_params['goal_extent']
+
+        if environment == {}:
+            rospy.loginfo("Assuming no obstacles in the environment")
+            extent = np.array(goal_extent).reshape(3, 2)
+            p = rng.uniform(extent[:, 0], extent[:, 1])
+            goal = {'midpoint': p}
+            return goal
+
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_threshold'], res=environment['res'])
+        # DEBUG visualize the inflated env
         # from copy import deepcopy
         # environment_ = deepcopy(environment)
         # environment_['env'] = env_inflated
         # self.plot_environment_rviz(environment_)
-        goal_extent = planner_params['goal_extent']
+        # END DEBUG
 
         while True:
             extent = np.array(goal_extent).reshape(3, 2)
@@ -956,7 +965,7 @@ class FloatingRopeScenario(Base3DScenario):
         if 'cdcpd' in state:
             rope_points = np.reshape(state['cdcpd'], [-1, 3])
 
-            markers = make_rope_marker(rope_points, 'world', label, 1000 + idx, 1 - r, g, 1 - b, a)
+            markers = make_rope_marker(rope_points, 'world', label, 1000 + idx, r * 1.5, g * 1.5, b * 1.5, a)
             msg.markers.extend(markers)
 
         if 'left_gripper' in state:
@@ -1082,11 +1091,11 @@ class FloatingRopeScenario(Base3DScenario):
             rope.append(ompl_state[2][3 * i + 2])
         rope = np.array(rope)
         return {
-            'left_gripper': left_gripper,
+            'left_gripper':  left_gripper,
             'right_gripper': right_gripper,
-            'rope': rope,
-            'stdev': np.array([ompl_state[3][0]]),
-            'num_diverged': np.array([ompl_state[4][0]]),
+            'rope':          rope,
+            'stdev':         np.array([ompl_state[3][0]]),
+            'num_diverged':  np.array([ompl_state[4][0]]),
         }
 
     @staticmethod
@@ -1100,11 +1109,11 @@ class FloatingRopeScenario(Base3DScenario):
             rope.append(ompl_state[2 + i][2])
         rope = np.array(rope)
         return {
-            'left_gripper': left_gripper,
+            'left_gripper':  left_gripper,
             'right_gripper': right_gripper,
-            'rope': rope,
-            'stdev': np.array([ompl_state[FloatingRopeScenario.n_links + 2][0]]),
-            'num_diverged': np.array([ompl_state[FloatingRopeScenario.n_links + 3][0]]),
+            'rope':          rope,
+            'stdev':         np.array([ompl_state[FloatingRopeScenario.n_links + 2][0]]),
+            'num_diverged':  np.array([ompl_state[FloatingRopeScenario.n_links + 3][0]]),
         }
 
     @staticmethod
@@ -1124,7 +1133,7 @@ class FloatingRopeScenario(Base3DScenario):
         target_left_gripper_position = current_left_gripper_position + left_gripper_delta_position
         target_right_gripper_position = current_right_gripper_position + right_gripper_delta_position
         return {
-            'left_gripper_position': target_left_gripper_position,
+            'left_gripper_position':  target_left_gripper_position,
             'right_gripper_position': target_right_gripper_position,
         }
 
@@ -1357,11 +1366,11 @@ class DualGripperStateSampler(ob.CompoundStateSampler):
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
         random_point_rope = np.concatenate([random_point] * FloatingRopeScenario.n_links)
         state_np = {
-            'left_gripper': random_point,
+            'left_gripper':  random_point,
             'right_gripper': random_point,
-            'rope': random_point_rope,
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          random_point_rope,
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
         self.scenario.numpy_to_ompl_state(state_np, state_out)
 
@@ -1410,11 +1419,11 @@ class DualGripperGoalRegion(ob.GoalSampleableRegion):
                                     FloatingRopeScenario.n_links)
 
         goal_state_np = {
-            'left_gripper': self.goal['left_gripper'],
+            'left_gripper':  self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'rope': rope.flatten(),
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          rope.flatten(),
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
@@ -1467,11 +1476,11 @@ class RopeMidpointGoalRegion(ob.GoalSampleableRegion):
         right_gripper = rope[0] + self.rng.uniform(-kd, kd, 3)
 
         goal_state_np = {
-            'left_gripper': left_gripper,
+            'left_gripper':  left_gripper,
             'right_gripper': right_gripper,
-            'rope': rope.flatten(),
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          rope.flatten(),
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
@@ -1524,11 +1533,11 @@ class RopeAnyPointGoalRegion(ob.GoalSampleableRegion):
         right_gripper = rope[0] + self.rng.uniform(-kd, kd, 3)
 
         goal_state_np = {
-            'left_gripper': left_gripper,
+            'left_gripper':  left_gripper,
             'right_gripper': right_gripper,
-            'rope': rope.flatten(),
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          rope.flatten(),
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
@@ -1574,11 +1583,11 @@ class RopeAndGrippersGoalRegion(ob.GoalSampleableRegion):
             kd)
 
         goal_state_np = {
-            'left_gripper': self.goal['left_gripper'],
+            'left_gripper':  self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'rope': rope.flatten(),
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          rope.flatten(),
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)
@@ -1638,11 +1647,11 @@ class RopeAndGrippersBoxesGoalRegion(ob.GoalSampleableRegion):
             kd)
 
         goal_state_np = {
-            'left_gripper': self.goal['left_gripper'],
+            'left_gripper':  self.goal['left_gripper'],
             'right_gripper': self.goal['right_gripper'],
-            'rope': rope.flatten(),
-            'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'rope':          rope.flatten(),
+            'num_diverged':  np.zeros(1, dtype=np.float64),
+            'stdev':         np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)

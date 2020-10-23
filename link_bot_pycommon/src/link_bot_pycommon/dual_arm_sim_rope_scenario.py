@@ -7,15 +7,19 @@ import rospy
 from actionlib import SimpleActionClient, GoalStatus
 from control_msgs.msg import FollowJointTrajectoryFeedback, FollowJointTrajectoryGoal
 from gazebo_ros_link_attacher.srv import AttachRequest
+from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
 from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse
 from rosgraph.names import ns_join
+from tf.transformations import quaternion_from_euler
 
 
 class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
     def __init__(self):
         super().__init__('victor')
+
+        self.service_provider = GazeboServices()
 
         # register a new callback to stop when the rope is overstretched
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
@@ -34,7 +38,11 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         def _stop_condition(feedback):
             return self.overstretching_stop_condition(feedback)
 
-        traj, result, state = self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers, stop_condition=_stop_condition)
+        traj, result, state = self.robot.follow_jacobian_to_position(group_name=r"both_arms",
+                                                                     tool_names=tool_names,
+                                                                     preferred_tool_orientations=None,
+                                                                     points=grippers,
+                                                                     stop_condition=_stop_condition)
 
         if state == GoalStatus.PREEMPTED:
             def _rev_stop_condition(feedback):
@@ -53,6 +61,13 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
     def on_before_data_collection(self, params: Dict):
         super().on_before_data_collection(params)
+
+        # Set the preferred tool orientations
+        down = quaternion_from_euler(np.pi, 0, 0)
+        self.robot.store_tool_orientations({
+                                               'left_tool_placeholder':  down,
+                                               'right_tool_placeholder': down,
+                                           })
 
         # Mark the rope as a not-obstacle
         exclude = ExcludeModelsRequest()

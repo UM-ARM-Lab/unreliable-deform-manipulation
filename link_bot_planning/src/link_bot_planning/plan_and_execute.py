@@ -16,11 +16,12 @@ from arc_utilities.ros_helpers import Listener
 from gazebo_msgs.msg import LinkStates
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers import recovery_policy_utils
-from link_bot_planning.my_planner import MyPlanner, MyPlannerStatus, PlanningResult, PlanningQuery
+from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.grid_utils import extent_to_bbox
-from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
+from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 
 class TrialStatus(Enum):
@@ -66,6 +67,7 @@ class PlanAndExecute:
                  save_test_scenes_dir: Optional[pathlib.Path] = None,
                  ):
         self.planner = planner
+        self.scenario = self.planner.scenario
         self.trials = trials
         self.planner_params = planner_params
         self.verbose = verbose
@@ -79,7 +81,7 @@ class PlanAndExecute:
         if self.planner_params['recovery']['use_recovery']:
             recovery_model_dir = pathlib.Path(self.planner_params['recovery']['recovery_model_dir'])
             self.recovery_policy = recovery_policy_utils.load_generic_model(model_dir=recovery_model_dir,
-                                                                            scenario=self.planner.scenario,
+                                                                            scenario=self.scenario,
                                                                             rng=self.recovery_rng)
         else:
             self.recovery_policy = None
@@ -96,8 +98,29 @@ class PlanAndExecute:
             bbox_msg.header.frame_id = 'world'
             self.goal_bbox_pub.publish(bbox_msg)
 
+        goal_params = self.planner_params['goal_params']
+        if goal_params['type'] == 'fixed':
+            self.generator = lambda e: numpify(goal_params['goal_fixed'])
+        elif goal_params['type'] == 'random':
+            self.generator = lambda e: self.scenario.sample_goal(environment=e,
+                                                                 rng=self.goal_rng,
+                                                                 planner_params=self.planner_params)
+        elif goal_params['type'] == 'dataset':
+            test_dataset = DynamicsDataset([pathlib.Path(goal_params['goals_dataset'])])
+            test_tf_dataset = test_dataset.get_datasets(mode='val')
+            goal_dataset_iterator = iter(test_tf_dataset)
+
+            def _gen(e):
+                example = next(goal_dataset_iterator)
+                goal = remove_batch(self.scenario.index_time_batched(add_batch(example), 1))
+                return goal
+
+            self.goal_generator = _gen
+        else:
+            raise NotImplementedError(f"invalid goal param type {goal_params['type']}")
+
     def run(self):
-        self.planner.scenario.randomization_initialization()
+        self.scenario.randomization_initialization()
         for trial_idx in self.trials:
             self.env_rng.seed(trial_idx)
             self.recovery_rng.seed(trial_idx)
@@ -129,7 +152,7 @@ class PlanAndExecute:
 
         self.on_complete()
 
-    def plan(self, planning_query: Dict):
+    def plan(self, planning_query: PlanningQuery):
         ############
         # Planning #
         ############
@@ -142,17 +165,17 @@ class PlanAndExecute:
 
         return planning_result
 
-    def execute(self, planning_query: Dict, planning_result: PlanningResult):
+    def execute(self, planning_query: PlanningQuery, planning_result: PlanningResult):
         # execute the plan, collecting the states that actually occurred
         self.on_before_execute()
         if self.no_execution:
-            state_t = self.planner.scenario.get_state()
+            state_t = self.scenario.get_state()
             actual_path = [state_t]
         else:
             if self.verbose >= 2 and not self.no_execution:
                 rospy.loginfo(Fore.CYAN + "Executing Plan" + Fore.RESET)
             actual_path = execute_actions(self.service_provider,
-                                          self.planner.scenario,
+                                          self.scenario,
                                           planning_query.start,
                                           planning_result.actions,
                                           plot=True)
@@ -164,26 +187,16 @@ class PlanAndExecute:
         if self.no_execution:
             actual_path = []
         else:
-            before_state = self.planner.scenario.get_state()
-            self.planner.scenario.execute_action(action)
-            after_state = self.planner.scenario.get_state()
+            before_state = self.scenario.get_state()
+            self.scenario.execute_action(action)
+            after_state = self.scenario.get_state()
             actual_path = [before_state, after_state]
         execution_result = ExecutionResult(path=actual_path)
         return execution_result
 
     def get_environment(self):
         # get the environment, which here means anything which is assumed constant during planning
-        # This includes the occupancy map but can also include things like the initial state of the tether
-        # using the res from the classifier data collection params is a bad idea
-        try:
-            res = self.planner.classifier_model.data_collection_params['res']
-        except Exception:
-            res = 0.02
-        # the fact that a fwd model owns the scenario is also maybe a bad design???
-        return get_environment_for_extents_3d(extent=self.planner_params['extent'],
-                                              res=res,
-                                              service_provider=self.service_provider,
-                                              robot_name=self.planner.fwd_model.scenario.robot_name())
+        return self.scenario.get_environment(self.planner_params)
 
     def plan_and_execute(self, trial_idx: int):
         self.on_start_trial(trial_idx)
@@ -199,7 +212,7 @@ class PlanAndExecute:
         planning_queries = []
         while True:
             # get start states
-            start_state = self.planner.scenario.get_state()
+            start_state = self.scenario.get_state()
 
             # get the environment, which here means anything which is assumed constant during planning
             # This includes the occupancy map but can also include things like the initial state of the tether
@@ -220,18 +233,18 @@ class PlanAndExecute:
             elif planning_result.status == MyPlannerStatus.NotProgressing:
                 if self.recovery_policy is None:
                     # Nothing else to do here, just give up
-                    end_state = self.planner.scenario.get_state()
+                    end_state = self.scenario.get_state()
                     trial_status = TrialStatus.NotProgressingNoRecovery
                     trial_msg = f"Trial {trial_idx} Ended: not progressing, no recovery. {time_since_start:.3f}s"
                     rospy.loginfo(Fore.BLUE + trial_msg + Fore.RESET)
                     trial_data_dict = {
                         'planning_queries': planning_queries,
-                        'total_time': time_since_start,
-                        'trial_status': trial_status,
-                        'trial_idx': trial_idx,
-                        'end_state': end_state,
-                        'goal': goal,
-                        'steps': steps_data,
+                        'total_time':       time_since_start,
+                        'trial_status':     trial_status,
+                        'trial_idx':        trial_idx,
+                        'end_state':        end_state,
+                        'goal':             goal,
+                        'steps':            steps_data,
                     }
                     self.on_trial_complete(trial_data_dict, trial_idx)
                     return
@@ -247,26 +260,26 @@ class PlanAndExecute:
                     execution_result = self.execute_recovery_action(recovery_action)
                     # Extract planner data now before it goes out of scope (in C++)
                     steps_data.append({
-                        'type': 'executed_recovery',
-                        'planning_query': planning_query,
-                        'planning_result': planning_result,
-                        'recovery_action': recovery_action,
+                        'type':             'executed_recovery',
+                        'planning_query':   planning_query,
+                        'planning_result':  planning_result,
+                        'recovery_action':  recovery_action,
                         'execution_result': execution_result,
                         'time_since_start': time_since_start,
                     })
             else:
                 execution_result = self.execute(planning_query, planning_result)
                 steps_data.append({
-                    'type': 'executed_plan',
-                    'planning_query': planning_query,
-                    'planning_result': planning_result,
+                    'type':             'executed_plan',
+                    'planning_query':   planning_query,
+                    'planning_result':  planning_result,
                     'execution_result': execution_result,
                     'time_since_start': time_since_start,
                 })
                 self.on_execution_complete(planning_query, planning_result, execution_result)
 
-            end_state = self.planner.scenario.get_state()
-            d = self.planner.scenario.distance_to_goal(end_state, planning_query.goal)
+            end_state = self.scenario.get_state()
+            d = self.scenario.distance_to_goal(end_state, planning_query.goal)
             rospy.loginfo(f"distance to goal after execution is {d:.3f}")
             reached_goal = (d <= self.planner_params['goal_threshold'] + 1e-6)
 
@@ -279,12 +292,12 @@ class PlanAndExecute:
                     rospy.loginfo(Fore.BLUE + f"Trial {trial_idx} Ended: Timeout {time_since_start:.3f}s" + Fore.RESET)
                 trial_data_dict = {
                     'planning_queries': planning_queries,
-                    'total_time': time_since_start,
-                    'trial_status': trial_status,
-                    'trial_idx': trial_idx,
-                    'goal': goal,
-                    'steps': steps_data,
-                    'end_state': end_state,
+                    'total_time':       time_since_start,
+                    'trial_status':     trial_status,
+                    'trial_idx':        trial_idx,
+                    'goal':             goal,
+                    'steps':            steps_data,
+                    'end_state':        end_state,
                 }
                 self.on_trial_complete(trial_data_dict, trial_idx)
                 return
@@ -293,19 +306,16 @@ class PlanAndExecute:
         pass
 
     def get_goal(self, environment: Dict):
-        goal = self.planner.scenario.sample_goal(environment=environment,
-                                                 rng=self.goal_rng,
-                                                 planner_params=self.planner_params)
-        return goal
+        return self.goal_generator(environment)
 
     def on_plan_complete(self,
-                         planning_query: Dict,
+                         planning_query: PlanningQuery,
                          planning_result: PlanningResult):
         # visualize the plan
         if self.verbose >= 1:
-            self.planner.scenario.animate_final_path(environment=planning_query.environment,
-                                                     planned_path=planning_result.path,
-                                                     actions=planning_result.actions)
+            self.scenario.animate_final_path(environment=planning_query.environment,
+                                             planned_path=planning_result.path,
+                                             actions=planning_result.actions)
 
     def on_before_execute(self):
         pass
@@ -314,13 +324,13 @@ class PlanAndExecute:
         pass
 
     def on_execution_complete(self,
-                              planning_query: Dict,
+                              planning_query: PlanningQuery,
                               planning_result: PlanningResult,
-                              execution_result: Dict):
+                              execution_result: ExecutionResult):
         pass
 
     def on_complete(self):
         pass
 
     def randomize_environment(self):
-        self.planner.scenario.randomize_environment(self.env_rng, self.planner_params, self.planner_params)
+        self.scenario.randomize_environment(self.env_rng, self.planner_params, self.planner_params)

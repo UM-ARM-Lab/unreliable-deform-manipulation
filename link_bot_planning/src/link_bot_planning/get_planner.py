@@ -1,48 +1,61 @@
 import pathlib
 from typing import Dict
 
-from link_bot_classifiers import classifier_utils
-from link_bot_planning.nearest_rrt import NearestRRT
+from link_bot_planning.rrt import RRT
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import paths_from_json
-from state_space_dynamics import model_utils
-from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from state_space_dynamics import model_utils, filter_utils
 
 
 def get_planner(planner_params: Dict, verbose: int):
-    fwd_model_dirs = paths_from_json(planner_params['fwd_model_dir'])
+    # TODO: remove when backwards compatibility no longer needed
+    if 'planner_type' not in planner_params:
+        planner_type = 'rrt'
+    else:
+        planner_type = planner_params['planner_type']
 
-    fwd_model, model_path_info = model_utils.load_generic_model(fwd_model_dirs)
     scenario = get_scenario(planner_params["scenario"])
 
-    classifier_model_dir = paths_from_json(planner_params['classifier_model_dir'])
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
+    if planner_type == 'rrt':
+        from link_bot_classifiers import classifier_utils
 
-    planner = NearestRRT(fwd_model=fwd_model,
-                         classifier_model=classifier_model,
-                         planner_params=planner_params,
-                         scenario=scenario,
-                         verbose=verbose)
-    return planner, model_path_info
+        fwd_model = load_fwd_model(planner_params)
+        filter_model = filter_utils.load_filter(paths_from_json(planner_params['filter_model_dir']))
 
+        classifier_model_dir = paths_from_json(planner_params['classifier_model_dir'])
+        classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)
 
-def get_planner_with_model(planner_class_str: str,
-                           fwd_model: BaseDynamicsFunction,
-                           classifier_model_dir: pathlib.Path,
-                           planner_params: Dict,
-                           verbose: int):
-    scenario = get_scenario(planner_params['scenario'])
-    classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario)
+        action_params_with_defaults = fwd_model.data_collection_params
+        action_params_with_defaults.update(planner_params['action_params'])
+        planner = RRT(fwd_model=fwd_model,
+                      filter_model=filter_model,
+                      classifier_model=classifier_model,
+                      planner_params=planner_params,
+                      action_params=action_params_with_defaults,
+                      scenario=scenario,
+                      verbose=verbose)
+    elif planner_type == 'shooting':
+        fwd_model = load_fwd_model(planner_params)
+        filter_model = filter_utils.load_filter(paths_from_json(planner_params['filter_model_dir']))
 
-    if planner_class_str == 'NearestRRT':
-        planner_class = NearestRRT
+        from link_bot_planning.shooting_method import ShootingMethod
+
+        action_params_with_defaults = fwd_model.data_collection_params
+        action_params_with_defaults.update(planner_params['action_params'])
+        planner = ShootingMethod(fwd_model=fwd_model,
+                                 classifier_model=None,
+                                 scenario=scenario,
+                                 params={
+                                     'n_samples': 1000
+                                 },
+                                 filter_model=filter_model,
+                                 action_params=action_params_with_defaults)
     else:
-        raise ValueError(planner_class_str)
-
-    planner = planner_class(fwd_model=fwd_model,
-                            classifier_model=classifier_model,
-                            planner_params=planner_params,
-                            scenario=scenario,
-                            verbose=verbose,
-                            )
+        raise NotImplementedError(f"planner type {planner_type} not implemented")
     return planner
+
+
+def load_fwd_model(planner_params):
+    fwd_model_dirs = paths_from_json(planner_params['fwd_model_dir'])
+    fwd_model, _ = model_utils.load_generic_model(fwd_model_dirs)
+    return fwd_model

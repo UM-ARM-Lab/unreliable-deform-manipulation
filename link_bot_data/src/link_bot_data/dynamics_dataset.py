@@ -18,8 +18,15 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
-        self.observation_feature_keys = list(self.hparams['observation_features_description'].keys())
-        self.observation_keys = list(self.hparams['observations_description'].keys())
+        if 'observation_features_description' in self.hparams:
+            self.observation_feature_keys = list(self.hparams['observation_features_description'].keys())
+        else:
+            self.observation_feature_keys = []
+
+        if 'observations_description' in self.hparams:
+            self.observation_keys = list(self.hparams['observations_description'].keys())
+        else:
+            self.observation_keys = []
 
         self.state_keys = list(self.hparams['states_description'].keys())
         self.state_keys.append('time_idx')

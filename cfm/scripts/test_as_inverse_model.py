@@ -8,6 +8,7 @@ import tensorflow as tf
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_planning.my_planner import PlanningQuery
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
 from link_bot_pycommon.ros_pycommon import publish_color_image
@@ -16,6 +17,7 @@ from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
 from state_space_dynamics import model_utils, filter_utils
+
 
 # limit_gpu_mem(10)
 
@@ -40,18 +42,6 @@ def main():
     test_dataset = DynamicsDataset(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
-    # ws = []
-    # for i in range(3):
-    #     filter_model = filter_utils.load_filter([args.checkpoint])
-    #     latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
-    #
-    #     w = test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset)
-    #     ws.append(w)
-    #
-    # print(is_close_tf(ws[0], ws[1]))
-    # print(is_close_tf(ws[1], ws[2]))
-    #
-
     filter_model = filter_utils.load_filter([args.checkpoint])
     latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
 
@@ -70,11 +60,11 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
                                   classifier_model=None,
                                   scenario=scenario,
                                   params={
-                                      "iters": 100,
-                                      "length_alpha": 0,
-                                      "goal_alpha": 1000,
-                                      "constraints_alpha": 0,
-                                      "action_alpha": 0,
+                                      "iters":                 100,
+                                      "length_alpha":          0,
+                                      "goal_alpha":            1000,
+                                      "constraints_alpha":     0,
+                                      "action_alpha":          0,
                                       "initial_learning_rate": 0.0001,
                                   })
 
@@ -82,7 +72,6 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
     s_next_color_viz_pub = rospy.Publisher("s_next_state_color_viz", Image, queue_size=10, latch=True)
     image_diff_viz_pub = rospy.Publisher("image_diff_viz", Image, queue_size=10, latch=True)
 
-    state = None
     action_horizon = 1
     initial_actions = []
     total_errors = []
@@ -92,29 +81,21 @@ def test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, tes
             print(example_idx)
             environment = {}
             current_observation = remove_batch(scenario.index_observation_time_batched(add_batch(example), t))
-            start_state, _ = filter_model.filter(environment, state, current_observation)
 
             for j in range(action_horizon):
                 left_gripper_position = [0, 0, 0]
                 right_gripper_position = [0, 0, 0]
                 initial_action = {
-                    'left_gripper_position': left_gripper_position,
+                    'left_gripper_position':  left_gripper_position,
                     'right_gripper_position': right_gripper_position,
                 }
                 initial_actions.append(initial_action)
             goal_observation = {k: example[k][1] for k in filter_model.obs_keys}
-            goal_state, _ = filter_model.filter(environment, None, goal_observation)
-            # actions should just be a single vector with key 'a'
-            # actions, planned_path = trajopt.optimize(environment=environment,
-            #                                          goal_state=goal_state,
-            #                                          initial_actions=initial_actions,
-            #                                          start_state=start_state)
+            planning_query = PlanningQuery(start=current_observation, goal=goal_observation, environment=environment, seed=1)
+            planning_result = shooting_method.plan(planning_query)
+            actions = planning_result.actions
+            planned_path = planning_result.latent_path
             true_action = numpify({k: example[k][0] for k in latent_dynamics_model.action_keys})
-            actions, planned_path = shooting_method.optimize(current_observation=current_observation,
-                                                             environment=environment,
-                                                             goal_state=goal_state,
-                                                             start_state=start_state,
-                                                             )
 
             for j in range(action_horizon):
                 optimized_action = actions[j]

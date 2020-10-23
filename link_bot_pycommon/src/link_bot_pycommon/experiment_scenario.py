@@ -32,16 +32,13 @@ class ExperimentScenario:
     def sample_action(self,
                       action_rng: np.random.RandomState,
                       environment: Dict,
-                      state: Dict,
-                      data_collection_params: Dict,
-                      action_params: Dict,
+                      state: Dict, action_params: Dict,
                       stateless: Optional[bool] = False):
         raise NotImplementedError()
 
     def sample_action_sequences(self,
                                 environment: Dict,
                                 state: Dict,
-                                data_collection_params: Dict,
                                 action_params: Dict,
                                 n_action_sequences: int,
                                 action_sequence_length: int,
@@ -51,7 +48,6 @@ class ExperimentScenario:
         for _ in range(n_action_sequences):
             action_sequence = self.sample_action_batch(environment=environment,
                                                        state=state,
-                                                       data_collection_params=data_collection_params,
                                                        action_params=action_params,
                                                        batch_size=action_sequence_length,
                                                        action_rng=action_rng)
@@ -61,7 +57,6 @@ class ExperimentScenario:
     def sample_action_batch(self,
                             environment: Dict,
                             state: Dict,
-                            data_collection_params: Dict,
                             action_params: Dict,
                             batch_size: int,
                             action_rng: np.random.RandomState):
@@ -70,7 +65,6 @@ class ExperimentScenario:
             action = self.sample_action(action_rng=action_rng,
                                         environment=environment,
                                         state=state,
-                                        data_collection_params=data_collection_params,
                                         action_params=action_params,
                                         stateless=True)
             action_sequence.append(action)

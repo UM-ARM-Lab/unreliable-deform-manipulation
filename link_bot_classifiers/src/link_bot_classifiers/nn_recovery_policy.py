@@ -287,11 +287,8 @@ class NNRecoveryPolicy(BaseRecoveryPolicy):
         # while not anim.done:
         for _ in range(self.n_action_samples):
             self.scenario.last_action = None
-            action = self.scenario.sample_action(environment=environment,
-                                                 state=state,
-                                                 data_collection_params=self.data_collection_params,
-                                                 action_params=self.data_collection_params,
-                                                 action_rng=self.action_rng)
+            action = self.scenario.sample_action(action_rng=self.action_rng, environment=environment, state=state,
+                                                 action_params=self.data_collection_params)
 
             # TODO: use the unconstrained dynamics to predict the state resulting from (e, s, a)
             # then add that to the recovery_model_input

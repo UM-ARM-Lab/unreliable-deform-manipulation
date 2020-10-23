@@ -28,10 +28,11 @@ def main():
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+renamed-grippers')
 
     def _process_example(dataset: DynamicsDataset, example: Dict):
-        # example['left_gripper'] = example.pop("gripper1")
-        # example['right_gripper'] = example.pop("gripper2")
-        # example['left_gripper_position'] = example.pop("gripper1_position")
-        # example['right_gripper_position'] = example.pop("gripper2_position")
+        example['left_gripper'] = example.pop("gripper1")
+        example['right_gripper'] = example.pop("gripper2")
+        example['left_gripper_position'] = example.pop("gripper1_position")
+        example['right_gripper_position'] = example.pop("gripper2_position")
+        example.pop("joint_names")
         example['rope'] = example.pop("link_bot")
         yield example
 

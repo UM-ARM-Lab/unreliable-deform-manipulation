@@ -22,7 +22,7 @@
     -0.6,
     0.6,
     0.6,
-    1.3
+    1.4
   ],
   "left_gripper_action_sample_extent": [
     0.45,
@@ -30,7 +30,7 @@
     -0.6,
     0.6,
     0.6,
-    1.3
+    1.4
   ],
   "right_gripper_action_sample_extent": [
     0.45,
@@ -38,15 +38,9 @@
     -0.6,
     0.6,
     0.6,
-    1.3
+    1.4
   ],
   "objects_extent": [
-    0.6,
-    1.0,
-    -0.4,
-    0.4,
-    0.625,
-    0.6251
   ],
   "objects": [
   ],
@@ -54,7 +48,7 @@
   "max_step_size": 0.001,
   "steps_per_traj": 10,
   "no_objects": false,
-  "randomize_n": 8,
+  "randomize_n": null,
   "repeat_delta_gripper_motion_probability": 0.8,
   "max_distance_gripper_can_move": 0.10,
   "max_distance_between_grippers": null

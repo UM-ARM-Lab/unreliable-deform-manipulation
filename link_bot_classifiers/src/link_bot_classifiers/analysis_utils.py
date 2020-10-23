@@ -190,10 +190,7 @@ def sample_actions(scenario: ExperimentScenario, environment: Dict, start_states
         for j in range(n_samples):
             action_sequence = []
             for t in range(horizon):
-                action = scenario.sample_action(environment=environment,
-                                                state=start_state,
-                                                params={},
-                                                action_rng=action_rng)
+                action = scenario.sample_action(action_rng=action_rng, environment=environment, state=start_state, action_params=)
                 action_sequence.append(action)
             action_sequences_for_start_state.append(action_sequence)
         action_sequences.append(action_sequences_for_start_state)

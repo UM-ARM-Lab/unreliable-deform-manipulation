@@ -1,10 +1,12 @@
+import warnings
 from typing import Dict, Optional
 
 import numpy as np
 import tensorflow as tf
 from matplotlib import colors
 
-import warnings
+from link_bot_pycommon.base_services import BaseServices
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=RuntimeWarning)
     import ompl.base as ob
@@ -18,7 +20,7 @@ from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import point_to_idx_3d_in_env
-from link_bot_pycommon.ros_pycommon import make_movable_object_services
+from link_bot_pycommon.ros_pycommon import make_movable_object_services, get_environment_for_extents_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \
     GetDualGripperPointsRequest, \
@@ -34,6 +36,7 @@ class RopeDraggingScenario(Base3DScenario):
 
     def __init__(self):
         super().__init__()
+        self.service_provider = BaseServices()
         self.move_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/move", Position3DAction)
         self.get_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/get", GetPosition3D)
         self.gripper_enable_srv = rospy.ServiceProxy(f"{self.robot_name()}/enable", Position3DEnable)
@@ -234,12 +237,7 @@ class RopeDraggingScenario(Base3DScenario):
         }
         return actions
 
-    def sample_action(self,
-                      action_rng: np.random.RandomState,
-                      environment: Dict,
-                      state,
-                      data_collection_params: Dict,
-                      action_params: Dict):
+    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict = False):
         action = None
         for _ in range(self.max_action_attempts):
             # sample the previous action with 80% probability, this improves exploration
@@ -750,6 +748,13 @@ class RopeDraggingScenario(Base3DScenario):
 
         goal_marker_msg.markers.append(tail_marker)
         self.state_viz_pub.publish(goal_marker_msg)
+
+    def get_environment(self, params: Dict, **kwargs):
+        res = params.get("res", 0.01)
+        return get_environment_for_extents_3d(extent=params['extent'],
+                                              res=res,
+                                              service_provider=self.service_provider,
+                                              excluded_models=self.get_excluded_models_for_env())
 
 
 class RopeDraggingControlSampler(oc.ControlSampler):

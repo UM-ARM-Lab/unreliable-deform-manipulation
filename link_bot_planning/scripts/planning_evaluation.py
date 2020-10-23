@@ -4,6 +4,7 @@ import json
 import pathlib
 
 import colorama
+import hjson
 
 import rospy
 from link_bot_planning.planning_evaluation import planning_evaluation
@@ -38,7 +39,8 @@ def main():
     planners_params = []
     for planner_params_filename in args.planners_params:
         with planner_params_filename.open('r') as planner_params_file:
-            planner_params = json.load(planner_params_file)
+            planner_params_str = planner_params_file.read()
+        planner_params = hjson.loads(planner_params_str)
         planners_params.append((planner_params_filename.stem, planner_params))
 
     return planning_evaluation(root=root,

@@ -4,7 +4,7 @@ from typing import List
 from link_bot_pycommon.get_scenario import get_scenario
 from my_cfm.cfm import CFMFilter
 from shape_completion_training.model.filepath_tools import load_trial
-from state_space_dynamics.base_filter_function import BaseFilterFunction
+from state_space_dynamics.base_filter_function import BaseFilterFunction, PassThroughFilter
 
 
 def load_filter(model_dirs: List[pathlib.Path]) -> BaseFilterFunction:
@@ -16,5 +16,7 @@ def load_filter(model_dirs: List[pathlib.Path]) -> BaseFilterFunction:
     if model_type == 'CFM':
         nn = CFMFilter(model_dirs, batch_size=1, scenario=scenario)
         return nn
+    elif model_type in ['none', 'pass-through']:
+        return PassThroughFilter()
     else:
         raise NotImplementedError("invalid model type {}".format(model_type))

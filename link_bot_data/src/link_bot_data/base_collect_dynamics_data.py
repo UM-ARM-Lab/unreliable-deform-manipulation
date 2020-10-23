@@ -77,11 +77,8 @@ class DataCollector:
             # get current state and sample action
             state = self.scenario.get_state()
             # TODO: sample the entire action sequence in advance?
-            action = self.scenario.sample_action(environment=environment,
-                                                 state=state,
-                                                 data_collection_params=self.params,
-                                                 action_params=self.params,
-                                                 action_rng=action_rng)
+            action = self.scenario.sample_action(action_rng=action_rng, environment=environment, state=state,
+                                                 action_params=self.params)
 
             # execute action
             self.scenario.execute_action(action)

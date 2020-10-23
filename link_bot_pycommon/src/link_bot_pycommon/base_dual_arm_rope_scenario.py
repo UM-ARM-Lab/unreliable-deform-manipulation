@@ -10,6 +10,7 @@ from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
 from link_bot_gazebo_python.gazebo_services import GazeboServices
+from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from peter_msgs.srv import SetDualGripperPoints, \
@@ -25,7 +26,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     def __init__(self, robot_namespace):
         super().__init__()
         self.robot_namespace = robot_namespace
-        self.service_provider = GazeboServices()  # FIXME: sketchy, because what about with the real robot?
+        self.service_provider = BaseServices()
         self.joint_state_viz_pub = rospy.Publisher(ns_join(self.robot_namespace, "joint_states_viz"), JointState, queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)

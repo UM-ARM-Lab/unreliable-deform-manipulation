@@ -1,5 +1,6 @@
 <launch>
     <arg name="gui" default="true"/>
+    <arg name="use_cdcpd" default="true"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
         <arg name="world" value="dual_floating_grippers.world"/>
@@ -16,9 +17,13 @@
         <param name="rope_ns" value="kinematic_rope"/>
     </node>
 
-    <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">
-    </include>
+    <node pkg="link_bot_gazebo_python" type="gazebo_link_states_to_tf.py" name="gazebo_link_states_to_tf"
+          args="--config-file $(find link_bot_gazebo_python)/config/exclude_victor.hjson"/>
 
-    <include file="$(find cdcpd_ros)/launch/gazebo_floating_tracking.launch">
-    </include>
+    <group if="$(arg use_cdcpd)">
+        <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">
+        </include>
+        <include file="$(find cdcpd_ros)/launch/rope_tracking.launch">
+        </include>
+    </group>
 </launch>

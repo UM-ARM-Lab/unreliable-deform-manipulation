@@ -31,7 +31,6 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                  verbose: int,
                  planner_params: Dict,
                  comparison_item_idx: int,
-                 goal,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
@@ -56,14 +55,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.root = self.outdir / self.subfolder
         self.root.mkdir(parents=True)
         rospy.loginfo(Fore.CYAN + f"Root Directory: {self.root.as_posix()}" + Fore.RESET)
-        self.goal = goal
 
         metadata = {
-            "trials": self.trials,
+            "trials":         self.trials,
             "planner_params": self.planner_params,
-            "scenario": self.planner.scenario.simple_name(),
-            "horizon": self.planner.classifier_model.horizon,
+            "scenario":       self.planner.scenario.simple_name(),
         }
+        metadata.update(self.planner.get_metadata())
         with (self.root / 'metadata.json').open("w") as metadata_file:
             my_dump(metadata, metadata_file, indent=2)
 
@@ -90,20 +88,12 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             self.bag.write('/both_arms_controller/follow_joint_trajectory/goal', goal_msg)
             self.bag.flush()
 
-    def get_goal(self, environment: Dict):
-        if self.goal is not None:
-            if self.verbose >= 1:
-                rospy.loginfo("Using Goal {}".format(self.goal))
-            return self.goal
-        else:
-            return super().get_goal(environment)
-
     def on_trial_complete(self, trial_data: Dict, trial_idx: int):
         extra_trial_data = {
             "planner_params": self.planner_params,
-            "scenario": self.planner.scenario.simple_name(),
-            'current_time': int(time()),
-            'uuid': uuid.uuid4(),
+            "scenario":       self.planner.scenario.simple_name(),
+            'current_time':   int(time()),
+            'uuid':           uuid.uuid4(),
         }
         trial_data.update(extra_trial_data)
         data_filename = self.root / f'{trial_idx}_metrics.json.gz'
@@ -146,8 +136,8 @@ def evaluate_planning_method(comparison_idx: int,
 
     # Start Services
     service_provider = gazebo_services.GazeboServices()
-    planner, _ = get_planner(planner_params=planner_params,
-                             verbose=verbose)
+    planner = get_planner(planner_params=planner_params,
+                          verbose=verbose)
 
     service_provider.setup_env(verbose=verbose,
                                real_time_rate=planner_params['real_time_rate'],
@@ -162,7 +152,6 @@ def evaluate_planning_method(comparison_idx: int,
         planner_params=planner_params,
         outdir=common_output_directory,
         comparison_item_idx=comparison_idx,
-        goal=planner_params['fixed_goal'],
         test_scenes_dir=test_scenes_dir,
         save_test_scenes_dir=save_test_scenes_dir,
         record=record,

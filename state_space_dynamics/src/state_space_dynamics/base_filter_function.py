@@ -1,6 +1,7 @@
 import pathlib
 from typing import Dict, List, Tuple, Optional
 
+import numpy as np
 import tensorflow as tf
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -10,6 +11,7 @@ from moonshine.moonshine_utils import add_batch, remove_batch, numpify, flatten_
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
+# TODO: this is a misleading interface, a filter function doesn't need to be an ensemble of neural networks
 class BaseFilterFunction(Ensemble):
 
     def __init__(self, model_dirs: List[pathlib.Path], batch_size: int, scenario: ExperimentScenario):
@@ -18,7 +20,7 @@ class BaseFilterFunction(Ensemble):
         self.obs_keys = self.nets[0].obs_keys
 
     def filter(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
-        mean_state, stdev_state = self.filter_differentiable(environment, state, observation)
+        mean_state, stdev_state = self.filter_differentiable(environment=environment, state=state, observation=observation)
         return numpify(mean_state), numpify(stdev_state)
 
     def filter_differentiable(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
@@ -57,3 +59,15 @@ class BaseFilterFunction(Ensemble):
 
     def make_net_and_checkpoint(self, batch_size, scenario) -> Tuple[MyKerasModel, tf.train.Checkpoint]:
         raise NotImplementedError()
+
+
+# TODO: fix interface definitions here
+class PassThroughFilter(BaseFilterFunction):
+
+    def __init__(self):
+        pass
+
+    def filter(self, environment: Dict, state: Optional[Dict], observation: Dict) -> Tuple[Dict, Dict]:
+        mean_state = observation
+        stdev_state = {k: np.zeros_like(v) for k, v in observation.items()}
+        return mean_state, stdev_state

@@ -1,56 +1,61 @@
+from time import perf_counter
 from typing import Optional, Dict
-import numpy as np
 
+import numpy as np
 import tensorflow as tf
 from matplotlib import cm
 
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
+from link_bot_planning.my_planner import MyPlannerStatus, PlanningResult, MyPlanner, PlanningQuery
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, numpify, sequence_of_dicts_to_dict_of_sequences, \
-    sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, numpify, sequence_of_dicts_to_dict_of_tensors
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+from state_space_dynamics.base_filter_function import BaseFilterFunction, PassThroughFilter
 
 
-class ShootingMethod:
+class ShootingMethod(MyPlanner):
 
     def __init__(self,
                  fwd_model: BaseDynamicsFunction,
                  classifier_model: Optional[BaseConstraintChecker],
                  scenario: ExperimentScenario,
                  params: Dict,
-                 verbose: Optional[int] = 0,
-                 ):
+                 action_params: Dict,
+                 filter_model: BaseFilterFunction = PassThroughFilter(),
+                 verbose: Optional[int] = 0):
+        super().__init__(scenario=scenario,
+                         fwd_model=fwd_model,
+                         filter_model=filter_model,
+                         decoder=None)
         self.fwd_model = fwd_model
         self.classifier_model = classifier_model
         self.verbose = verbose
         self.scenario = scenario
         self.n_samples = params["n_samples"]
-        self.action_rng = np.random.RandomState(0)
+        self.action_params = action_params
 
-    def optimize(self,
-                 current_observation: Dict,
-                 environment: Dict,
-                 goal_state: Dict,
-                 start_state: Dict,
-                 ):
-        random_actions = self.scenario.sample_action_sequences(action_rng=self.action_rng,
-                                                               action_sequence_length=1,
+    def plan_internal(self, planning_query: PlanningQuery) -> PlanningResult:
+        start_planning_time = perf_counter()
+
+        action_rng = np.random.RandomState(planning_query.seed)
+        random_actions = self.scenario.sample_action_sequences(environment=planning_query.environment,
+                                                               state=planning_query.start,
+                                                               action_params=self.action_params,
                                                                n_action_sequences=self.n_samples,
-                                                               environment=environment,
-                                                               state=start_state,
-                                                               data_collection_params=self.fwd_model.data_collection_params,
-                                                               action_params=self.fwd_model.data_collection_params)
+                                                               action_sequence_length=1,
+                                                               action_rng=action_rng)
         random_actions = [sequence_of_dicts_to_dict_of_tensors(a) for a in random_actions]
         random_actions = sequence_of_dicts_to_dict_of_tensors(random_actions)
 
-        environment_batched = {k: tf.stack([v] * self.n_samples, axis=0) for k, v in environment.items()}
-        start_state_batched = {k: tf.expand_dims(tf.stack([v] * self.n_samples, axis=0), axis=1) for k, v in start_state.items()}
+        environment_batched = {k: tf.stack([v] * self.n_samples, axis=0) for k, v in planning_query.environment.items()}
+        start_state_batched = {k: tf.expand_dims(tf.stack([v] * self.n_samples, axis=0), axis=1) for k, v in
+                               planning_query.start.items()}
         mean_predictions, _ = self.fwd_model.propagate_differentiable_batched(environment=environment_batched,
                                                                               state=start_state_batched,
                                                                               actions=random_actions)
 
         final_states = {k: v[:, -1] for k, v in mean_predictions.items()}
-        goal_state_batched = {k: tf.stack([v] * self.n_samples, axis=0) for k, v in goal_state.items()}
+        goal_state_batched = {k: tf.stack([v] * self.n_samples, axis=0) for k, v in planning_query.goal.items()}
         costs = self.scenario.trajopt_distance_to_goal_differentiable(final_states, goal_state_batched)
         costs = tf.squeeze(costs)
         min_idx = tf.math.argmin(costs, axis=0)
@@ -73,4 +78,12 @@ class ShootingMethod:
 
         best_actions = numpify(dict_of_sequences_to_sequence_of_dicts(best_actions))
         best_predictions = numpify(dict_of_sequences_to_sequence_of_dicts(best_prediction))
-        return best_actions, best_predictions
+
+        planning_time = perf_counter() - start_planning_time
+        planner_status = MyPlannerStatus.Solved
+        return PlanningResult(status=planner_status, path=best_predictions, actions=best_actions, time=planning_time, tree={})
+
+    def get_metadata(self):
+        return {
+            "n_samples": self.n_samples
+        }

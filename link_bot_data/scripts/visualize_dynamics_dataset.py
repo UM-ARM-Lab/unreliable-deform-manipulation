@@ -32,17 +32,20 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
 
         while not anim.done:
             t = anim.t()
-            example_t = remove_batch(dataset.index_time(add_batch(example), t))
-            scenario.plot_state_rviz(example_t, label='')
-            scenario.plot_action_rviz_internal(example_t, label='')
+            for i in range(3):
+                example_t = remove_batch(dataset.index_time(add_batch(example), t))
+                scenario.plot_state_rviz(example_t, label='')
+                scenario.plot_action_rviz_internal(example_t, label='')
 
-            if t < dataset.steps_per_traj - 1:
-                s = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t)))
-                s_next = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t + 1)))
-                diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
-                publish_color_image(image_diff_viz_pub, diff)
+                if t < dataset.steps_per_traj - 1:
+                    s = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t)))
+                    s_next = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t + 1)))
+                    # diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
+                    # publish_color_image(image_diff_viz_pub, diff)
 
-            # this will return when either the animation is "playing" or because the user stepped forward
+                # this will return when either the animation is "playing" or because the user stepped forward
+                rospy.sleep(0.1)
+
             anim.step()
 
 
