@@ -37,11 +37,11 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   left_gripper_ = GetLink(PLUGIN_NAME, model_, "left_gripper");
   right_gripper_ = GetLink(PLUGIN_NAME, model_, "right_gripper");
 
-  // setup ROS stuff
   if (!ros::isInitialized())
   {
-    int argc = 0;
-    ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+    ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+                         << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+    return;
   }
 
   auto enable_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res)

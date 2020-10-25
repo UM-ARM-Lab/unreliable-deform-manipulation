@@ -49,9 +49,9 @@ public:
 
     if (!ros::isInitialized())
     {
-      auto argc = 0;
-      char **argv = nullptr;
-      ros::init(argc, argv, "my_camera", ros::init_options::NoSigintHandler);
+      ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+                           << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+      return;
     }
 
     ros_node_ = std::make_unique<ros::NodeHandle>("gazebo_arm_video_recorder");

@@ -35,11 +35,11 @@ private:
 public:
   void Load(physics::WorldPtr parent, sdf::ElementPtr /*_sdf*/) override
   {
-    // set up ros topic
     if (!ros::isInitialized())
     {
-      auto argc = 0;
-      ros::init(argc, nullptr, "stepping_plugin", ros::init_options::NoSigintHandler);
+      ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+        << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+      return;
     }
 
     seconds_per_step_ = parent->Physics()->GetMaxStepSize();

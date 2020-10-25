@@ -23,11 +23,11 @@ void Position3dPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr sdf)
 {
   model_ = parent;
 
-  // setup ROS stuff
   if (!ros::isInitialized())
   {
-    int argc = 0;
-    ros::init(argc, nullptr, model_->GetScopedName(), ros::init_options::NoSigintHandler);
+    ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+                         << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+    return;
   }
 
   // Get sdf parameters

@@ -13,11 +13,11 @@ namespace gazebo
   public:
     void Load(physics::WorldPtr /*world*/, sdf::ElementPtr sdf) override
     {
-      // setup ROS stuff
       if (!ros::isInitialized())
       {
-        int argc = 0;
-        ros::init(argc, nullptr, "rosparam_plugin", ros::init_options::NoSigintHandler);
+        ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+          << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+        return;
       }
 
       if (!sdf->HasElement("yaml_file"))

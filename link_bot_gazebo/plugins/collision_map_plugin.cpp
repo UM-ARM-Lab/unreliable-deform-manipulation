@@ -36,9 +36,9 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 
   if (!ros::isInitialized())
   {
-    auto argc = 0;
-    char **argv = nullptr;
-    ros::init(argc, argv, "collision_map_plugin", ros::init_options::NoSigintHandler);
+    ROS_FATAL_STREAM("A ROS node for Gazebo has not been initialized, unable to load plugin. "
+                         << "Load the Gazebo system plugin 'libgazebo_ros_api_plugin.so' in the gazebo_ros package)");
+    return;
   }
 
   auto get_occupancy = [&](peter_msgs::ComputeOccupancyRequest &req, peter_msgs::ComputeOccupancyResponse &res)
