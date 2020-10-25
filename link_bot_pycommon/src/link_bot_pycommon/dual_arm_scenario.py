@@ -59,11 +59,8 @@ class DualArmScenario(FloatingRopeScenario):
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]
         tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
-        grippers = [left_gripper_points, right_gripper_points]
-        self.robot.follow_jacobian_to_position(group_name="both_arms",
-                                               tool_names=tool_names,
-                                               preferred_tool_orientations=None,
-                                               points=grippers)
+        grippers_points = [left_gripper_points, right_gripper_points]
+        self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers_points)
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         # TODO: de-duplicate

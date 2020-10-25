@@ -28,7 +28,8 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         super().__init__()
         self.robot_namespace = robot_namespace
         self.service_provider = BaseServices()
-        self.joint_state_viz_pub = rospy.Publisher(ns_join(self.robot_namespace, "joint_states_viz"), JointState, queue_size=10)
+        self.joint_state_viz_pub = rospy.Publisher(ns_join(self.robot_namespace, "joint_states_viz"), JointState,
+                                                   queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_dual_gripper_points"),
@@ -76,7 +77,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         # Set the preferred tool orientations
         down = quaternion_from_euler(np.pi, 0, 0)
         self.robot.store_tool_orientations({
-            'left_tool_placeholder':  down,
+            'left_tool_placeholder': down,
             'right_tool_placeholder': down,
         })
 

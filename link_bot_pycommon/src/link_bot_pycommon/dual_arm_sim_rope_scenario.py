@@ -47,9 +47,10 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
             def _rev_stop_condition(feedback):
                 return not self.overstretching_stop_condition(feedback)
 
-            rev_grippers = [[ros_numpy.numpify(start_left_gripper_position)], [ros_numpy.numpify(start_right_gripper_position)]]
-            self.robot.follow_jacobian_to_position(group_name="both_arms",
-                                                   tool_names=tool_names,
+            rev_grippers = [[ros_numpy.numpify(start_left_gripper_position)],
+                            [ros_numpy.numpify(start_right_gripper_position)]]
+            self.robot.follow_jacobian_to_position("both_arms",
+                                                   tool_names,
                                                    preferred_tool_orientations=None,
                                                    points=rev_grippers,
                                                    stop_condition=_rev_stop_condition)
