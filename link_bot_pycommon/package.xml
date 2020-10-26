@@ -15,11 +15,13 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rospy</build_depend>
   <build_export_depend>rospy</build_export_depend>
-  <exec_depend>rospy</exec_depend>
 
   <depend>pybind11_catkin</depend>
   <depend>std_msgs</depend>
   <depend>tf2-sensors-msgs</depend>
   <depend>roscpp</depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>gazebo_ros_link_attacher</exec_depend>
 
 </package>
