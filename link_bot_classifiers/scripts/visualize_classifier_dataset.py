@@ -119,6 +119,7 @@ def visualize_dataset(args, classifier_dataset):
         if args.display_type == 'just_count':
             continue
         elif args.display_type == '3d':
+            print(example['is_close'])
             time_steps = np.arange(classifier_dataset.horizon)
             anim = RvizAnimationController(time_steps)
             while not anim.done:

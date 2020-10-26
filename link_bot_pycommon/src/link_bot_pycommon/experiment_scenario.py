@@ -262,7 +262,7 @@ class ExperimentScenario:
         action_t = {}
         for feature_name in self.actions_description().keys():
             if feature_name in action:
-                if t < action[feature_name].shape[0]:
+                if t < action[feature_name].shape[1]:
                     action_t[feature_name] = action[feature_name][:, t]
                 else:
                     action_t[feature_name] = action[feature_name][:, t - 1]
@@ -273,12 +273,12 @@ class ExperimentScenario:
         all_keys = self.all_description_keys()
         for feature_name in all_keys:
             if add_predicted(feature_name) in e:
-                if t < e[feature_name].shape[0]:
+                if t < e[feature_name].shape[1]:
                     e_t[feature_name] = e[add_predicted(feature_name)][:, t]
                 else:
                     e_t[feature_name] = e[add_predicted(feature_name)][:, t - 1]
             elif feature_name in e:
-                if t < e[feature_name].shape[0]:
+                if t < e[feature_name].shape[1]:
                     e_t[feature_name] = e[feature_name][:, t]
                 else:
                     e_t[feature_name] = e[feature_name][:, t - 1]
@@ -289,7 +289,7 @@ class ExperimentScenario:
         all_keys = self.all_description_keys()
         for feature_name in all_keys:
             if feature_name in e:
-                if t < e[feature_name].shape[0]:
+                if t < e[feature_name].shape[1]:
                     e_t[feature_name] = e[feature_name][:, t]
                 else:
                     e_t[feature_name] = e[feature_name][:, t - 1]
