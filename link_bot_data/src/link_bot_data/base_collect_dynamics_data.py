@@ -71,9 +71,19 @@ class DataCollector:
                 rospy.logerr(f"Duplicate key {k} is both a state and an action")
 
         time_indices = []
+        last_state = self.scenario.get_state()
         for time_idx in range(self.params['steps_per_traj']):
             # get current state and sample action
             state = self.scenario.get_state()
+
+            # DEBUG
+            grippers_unchanged = np.allclose(state['left_gripper'], last_state['left_gripper'])
+            image_unchanged = np.allclose(state['rgbd'][:, :, :3], last_state['rgbd'][:, :, :3])
+            if image_unchanged and not grippers_unchanged:
+                rospy.logerr("previous RGB is the same!!!!")
+            last_state = state
+            # END DEBUG
+
             # TODO: sample the entire action sequence in advance?
             action = self.scenario.sample_action(action_rng=action_rng,
                                                  environment=environment,
@@ -123,17 +133,17 @@ class DataCollector:
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         dataset_hparams = {
-            'nickname':                         nickname,
-            'robot_namespace':                  robot_namespace,
-            'seed':                             self.seed,
-            'n_trajs':                          n_trajs,
-            'data_collection_params':           self.params,
-            'states_description':               self.scenario.states_description(),
-            'action_description':               self.scenario.actions_description(),
-            'observations_description':         self.scenario.observations_description(),
+            'nickname': nickname,
+            'robot_namespace': robot_namespace,
+            'seed': self.seed,
+            'n_trajs': n_trajs,
+            'data_collection_params': self.params,
+            'states_description': self.scenario.states_description(),
+            'action_description': self.scenario.actions_description(),
+            'observations_description': self.scenario.observations_description(),
             'observation_features_description': self.scenario.observation_features_description(),
-            'scenario':                         self.scenario_name,
-            'scenario_metadata':                self.scenario.dynamics_dataset_metadata(),
+            'scenario': self.scenario_name,
+            'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
         }
         with (full_output_directory / 'hparams.json').open('w') as dataset_hparams_file:
             json.dump(dataset_hparams, dataset_hparams_file, indent=2)

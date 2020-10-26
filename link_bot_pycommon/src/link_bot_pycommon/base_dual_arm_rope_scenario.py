@@ -45,9 +45,9 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     def add_boxes_around_tools(self):
         # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles
         self.moveit_scene = moveit_commander.PlanningSceneInterface(ns=self.robot_namespace)
-        self.robust_add_to_scene('left_tool_placeholder', 'left_tool_box',
+        self.robust_add_to_scene(self.robot.left_tool_name, 'left_tool_box',
                                  self.robot.get_left_gripper_links())
-        self.robust_add_to_scene('right_tool_placeholder', 'right_tool_box',
+        self.robust_add_to_scene(self.robot.right_tool_name, 'right_tool_box',
                                  self.robot.get_right_gripper_links())
 
     def robust_add_to_scene(self, link: str, new_object_name: str, touch_links: List[str]):
@@ -77,8 +77,8 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         # Set the preferred tool orientations
         down = quaternion_from_euler(np.pi, 0, 0)
         self.robot.store_tool_orientations({
-            'left_tool_placeholder': down,
-            'right_tool_placeholder': down,
+            self.robot.left_tool_name: down,
+            self.robot.right_tool_name: down,
         })
 
     def get_state(self):
@@ -165,7 +165,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     def execute_action(self, action: Dict):
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]
-        tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
+        tool_names = [self.robot.left_tool_name, self.robot.right_tool_name]
         grippers = [left_gripper_points, right_gripper_points]
         traj, result = self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
         return traj, result

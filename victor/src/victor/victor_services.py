@@ -31,13 +31,11 @@ class VictorServices(BaseServices):
     def get_dual_gripper_points_cb(self, req: GetDualGripperPointsRequest):
         del req  # unused
         res = GetDualGripperPointsResponse()
-        left_tool_transform = self.tf_wrapper.get_transform(parent="victor_root",
-                                                            child="left_tool_placeholder")
+        left_tool_transform = self.tf_wrapper.get_transform(parent="victor_root", child=self.victor.left_tool_name)
         res.left_gripper.x = left_tool_transform[0, 3]
         res.left_gripper.y = left_tool_transform[1, 3]
         res.left_gripper.z = left_tool_transform[2, 3]
-        right_tool_transform = self.tf_wrapper.get_transform(parent="victor_root",
-                                                             child="right_tool_placeholder")
+        right_tool_transform = self.tf_wrapper.get_transform(parent="victor_root", child=self.victor.right_tool_name)
         res.right_gripper.x = right_tool_transform[0, 3]
         res.right_gripper.y = right_tool_transform[1, 3]
         res.right_gripper.z = right_tool_transform[2, 3]

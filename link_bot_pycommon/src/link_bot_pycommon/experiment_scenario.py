@@ -340,15 +340,17 @@ class ExperimentScenario:
         self.plot_environment_rviz(example)
         example_b = add_batch(example)
         debugging_pred_t = numpify(remove_batch(self.index_predicted_time_batched(example_b, t)))
-        self.plot_state_rviz(debugging_pred_t, label='predicted', color='b')
+        debugging_pred_t_next = numpify(remove_batch(self.index_predicted_time_batched(example_b, t + 1)))
+        self.plot_state_rviz(debugging_pred_t, label='predicted', color='#0000ffff', idx=0)
         self.plot_action_rviz(debugging_pred_t, debugging_pred_t)
+        self.plot_state_rviz(debugging_pred_t_next, label='predicted', color='#3300aaff', idx=1)
 
-        label_t = self.index_label_time_batched(example_b, t)
+        label_t = self.index_label_time_batched(example_b, t + 1)
         self.plot_is_close(label_t)
 
         # true state(not known to classifier!)
         debugging_true_t = numpify(remove_batch(self.index_time_batched(example_b, t)))
-        self.plot_state_rviz(debugging_true_t, label='actual')
+        self.plot_state_rviz(debugging_true_t, label='actual', scale=1.1)
 
     def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()

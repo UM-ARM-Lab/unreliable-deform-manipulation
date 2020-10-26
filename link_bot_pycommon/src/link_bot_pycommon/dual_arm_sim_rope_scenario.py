@@ -31,7 +31,7 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         start_left_gripper_position, start_right_gripper_position = self.robot.get_gripper_positions()
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]
-        tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
+        tool_names = [self.robot.left_tool_name, self.robot.right_tool_name]
         grippers = [left_gripper_points, right_gripper_points]
 
         def _stop_condition(feedback):
@@ -76,8 +76,8 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         #  see the real_victor scenario on_before_data_collection
 
         # else don't bother
-        # self.robot.open_left_gripper()
-        # self.robot.open_right_gripper()
+        self.robot.open_left_gripper()
+        self.robot.open_right_gripper()
         self.detach_rope_to_grippers()
 
         # move to init positions
@@ -89,30 +89,24 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.attach_rope_to_grippers()
         self.service_provider.play()
 
-        # self.robot.close_left_gripper()
-        # self.robot.close_right_gripper()
+        rospy.sleep(2)
+
+        self.robot.close_left_gripper()
+        self.robot.close_right_gripper()
 
     def attach_or_detach_requests(self):
         left_req = AttachRequest()
         # Note: gazebo model name could potentially be different from robot namespace, so this could be wrong...
         left_req.model_name_1 = self.robot_namespace
-        left_req.link_name_1 = "left_tool_placeholder"
+        left_req.link_name_1 = self.robot.left_tool_name
         left_req.model_name_2 = "rope_3d"
         left_req.link_name_2 = "left_gripper"
-        left_req.anchor_position.x = 0
-        left_req.anchor_position.y = 0
-        left_req.anchor_position.z = 0
-        left_req.has_anchor_position = True
 
         right_req = AttachRequest()
         right_req.model_name_1 = self.robot_namespace
-        right_req.link_name_1 = "right_tool_placeholder"
+        right_req.link_name_1 = self.robot.right_tool_name
         right_req.model_name_2 = "rope_3d"
         right_req.link_name_2 = "right_gripper"
-        right_req.anchor_position.x = 0
-        right_req.anchor_position.y = 0
-        right_req.anchor_position.z = 0
-        right_req.has_anchor_position = True
 
         return left_req, right_req
 
@@ -128,8 +122,8 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.detach_srv(right_req)
 
     def move_rope_to_match_grippers(self):
-        left_transform = self.tf.get_transform("robot_root", "left_tool_placeholder")
-        right_transform = self.tf.get_transform("robot_root", "right_tool_placeholder")
+        left_transform = self.tf.get_transform("robot_root", self.robot.left_tool_name)
+        right_transform = self.tf.get_transform("robot_root", self.robot.right_tool_name)
         desired_rope_point_positions = np.stack([left_transform[0:3, 3], right_transform[0:3, 3]], axis=0)
         move = SetDualGripperPointsRequest()
         move.left_gripper.x = desired_rope_point_positions[0, 0]

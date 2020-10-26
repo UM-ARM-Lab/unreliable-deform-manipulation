@@ -30,8 +30,8 @@ class DualArmScenario(FloatingRopeScenario):
         # Set the preferred tool orientations
         down = quaternion_from_euler(np.pi, 0, 0)
         self.robot.store_tool_orientations({
-            'left_tool_placeholder':  down,
-            'right_tool_placeholder': down,
+            self.robot.left_tool_name:  down,
+            self.robot.right_tool_name: down,
         })
 
     def reset_robot(self, data_collection_params: Dict):
@@ -58,7 +58,7 @@ class DualArmScenario(FloatingRopeScenario):
     def execute_action(self, action: Dict):
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]
-        tool_names = ["left_tool_placeholder", "right_tool_placeholder"]
+        tool_names = [self.robot.left_tool_name, self.robot.right_tool_name]
         grippers_points = [left_gripper_points, right_gripper_points]
         self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers_points)
 

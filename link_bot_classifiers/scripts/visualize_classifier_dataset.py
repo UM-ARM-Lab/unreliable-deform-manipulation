@@ -12,7 +12,7 @@ import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch, add_batch
 from std_msgs.msg import Float32
@@ -76,6 +76,7 @@ def visualize_dataset(args, classifier_dataset):
     stdevs_for_positive = []
 
     done = False
+    stepper = RvizSimpleStepper()
     while not done:
         iter_t0 = perf_counter()
         try:
@@ -119,21 +120,16 @@ def visualize_dataset(args, classifier_dataset):
         if args.display_type == 'just_count':
             continue
         elif args.display_type == '3d':
-            print(example['is_close'])
-            time_steps = np.arange(classifier_dataset.horizon)
-            anim = RvizAnimationController(time_steps)
-            while not anim.done:
-                t = anim.t()
-                scenario.plot_transition_rviz(example, t)
+            # print(example['is_close'])
+            if example['is_close'][0] == 0:
+                continue
+            scenario.plot_transition_rviz(example, 0)
+            stdev_t = example[add_predicted('stdev')][0, 0].numpy()
+            stdev_msg = Float32()
+            stdev_msg.data = stdev_t
+            stdev_pub_.publish(stdev_msg)
 
-                # TODO: reconsider where this goes
-                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
-                stdev_msg = Float32()
-                stdev_msg.data = stdev_t
-                stdev_pub_.publish(stdev_msg)
-
-                # this will return when either the animation is "playing" or because the user stepped forward
-                anim.step()
+            stepper.step()
 
         elif args.display_type == 'stdev':
             for t in range(1, classifier_dataset.horizon):
