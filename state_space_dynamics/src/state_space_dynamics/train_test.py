@@ -13,9 +13,10 @@ from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
 from link_bot_pycommon.pycommon import paths_to_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import remove_batch
+from moonshine.moonshine_utils import remove_batch, numpify
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
+from state_space_dynamics import model_utils
 
 
 def train_main(dataset_dirs: List[pathlib.Path],
@@ -72,10 +73,10 @@ def setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
 
 def setup_hparams(batch_size, dataset_dirs, seed, train_dataset):
     return {
-        'batch_size': batch_size,
-        'seed': seed,
-        'datasets': paths_to_json(dataset_dirs),
-        'latest_training_time': int(time.time()),
+        'batch_size':               batch_size,
+        'seed':                     seed,
+        'datasets':                 paths_to_json(dataset_dirs),
+        'latest_training_time':     int(time.time()),
         'dynamics_dataset_hparams': train_dataset.hparams,
     }
 
@@ -196,18 +197,14 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
                 ):
     test_dataset = DynamicsDataset(dataset_dirs)
 
-    trials_directory = pathlib.Path('trials').absolute()
-    trial_path = checkpoint.parent.absolute()
-    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
-    model_class_name = state_space_dynamics.get_model(params['model_class'])
-    model = model_class_name(hparams=params, batch_size=1, scenario=test_dataset.scenario)
-
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, 1, drop_remainder=True)
 
+    model, _ = model_utils.load_generic_model([checkpoint])
+
     for i, batch in enumerate(test_tf_dataset):
         batch.update(test_dataset.batch_metadata)
-        outputs = model(model.preprocess_no_gradient(batch, training=False), training=False)
+        outputs, _ = model.from_example(batch, training=False)
 
         viz_func(batch, outputs, test_dataset)
 
@@ -217,11 +214,10 @@ def viz_example(batch, outputs, test_dataset):
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
-        actual_t = remove_batch(test_dataset.scenario.index_state_time(batch, t))
-        action_t = remove_batch(test_dataset.scenario.index_action_time(batch, t))
+        actual_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
-        test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-        prediction_t = remove_batch(test_dataset.scenario.index_state_time(outputs, t))
+        test_dataset.scenario.plot_action_rviz(actual_t, actual_t, color='gray')
+        prediction_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(outputs, t)))
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()

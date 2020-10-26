@@ -950,6 +950,12 @@ class FloatingRopeScenario(Base3DScenario):
 
         msg = MarkerArray()
 
+        if 'gt_rope' in state:
+            rope_points = np.reshape(state['gt_rope'], [-1, 3])
+
+            markers = make_rope_marker(rope_points, 'world', label, idx, r, g, b, a)
+            msg.markers.extend(markers)
+
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
 

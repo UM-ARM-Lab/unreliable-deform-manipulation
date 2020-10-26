@@ -3,6 +3,7 @@ import pathlib
 from time import perf_counter
 from typing import Dict, List, Optional
 
+import hjson
 import numpy as np
 import tensorflow as tf
 
@@ -56,7 +57,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
         fwd_model_dir = [fwd_model_dir]
     fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
 
-    dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
+    dynamics_hparams = hjson.load((dataset_dir / 'hparams.json').open('r'))
     fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
 
     dataset = DynamicsDataset([dataset_dir])
@@ -166,11 +167,6 @@ def generate_classifier_examples_from_batch(prediction_actual: PredictionActualE
     for classifier_start_t in range(0, prediction_horizon - classifier_horizon + 1):
         classifier_end_t = classifier_start_t + classifier_horizon
 
-        full_env = prediction_actual.dataset_element['env']
-        full_env_origin = prediction_actual.dataset_element['origin']
-        full_env_extent = prediction_actual.dataset_element['extent']
-        full_env_res = prediction_actual.dataset_element['res']
-        traj_idx = prediction_actual.dataset_element['traj_idx']
         prediction_start_t = prediction_actual.prediction_start_t
         prediction_start_t_batched = tf.cast(
             tf.stack([prediction_start_t] * prediction_actual.batch_size, axis=0), tf.float32)
@@ -179,14 +175,14 @@ def generate_classifier_examples_from_batch(prediction_actual: PredictionActualE
         classifier_end_t_batched = tf.cast(
             tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
-            'env': full_env,
-            'origin': full_env_origin,
-            'extent': full_env_extent,
-            'res': full_env_res,
-            'traj_idx': traj_idx,
+            'env':                prediction_actual.dataset_element['env'],
+            'origin':             prediction_actual.dataset_element['origin'],
+            'extent':             prediction_actual.dataset_element['extent'],
+            'res':                prediction_actual.dataset_element['res'],
+            'traj_idx':           prediction_actual.dataset_element['traj_idx'],
             'prediction_start_t': prediction_start_t_batched,
             'classifier_start_t': classifier_start_t_batched,
-            'classifier_end_t': classifier_end_t_batched,
+            'classifier_end_t':   classifier_end_t_batched,
         }
 
         # this slice gives arrays of fixed length (ex, 5) which must be null padded from out_example_end_idx onwards

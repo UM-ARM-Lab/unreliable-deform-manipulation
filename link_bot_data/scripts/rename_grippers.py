@@ -4,7 +4,6 @@ import pathlib
 from typing import Dict
 
 import colorama
-import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
@@ -15,7 +14,6 @@ from link_bot_pycommon.args import my_formatter
 
 def main():
     colorama.init(autoreset=True)
-    plt.style.use("slides")
     np.set_printoptions(suppress=True, linewidth=250, precision=5)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
@@ -25,18 +23,26 @@ def main():
 
     rospy.init_node("rename_grippers")
 
-    outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+renamed-grippers')
+    outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+renamed')
 
     def _process_example(dataset: DynamicsDataset, example: Dict):
+        # new_rope = example.pop("cdcpd")
+        # gt_rope = example.pop("rope")
+        # example['rope'] = new_rope
+        # example['gt_rope'] = gt_rope
         example['left_gripper'] = example.pop("gripper1")
         example['right_gripper'] = example.pop("gripper2")
         example['left_gripper_position'] = example.pop("gripper1_position")
         example['right_gripper_position'] = example.pop("gripper2_position")
-        example.pop("joint_names")
         example['rope'] = example.pop("link_bot")
+        # example.pop("joint_names")
         yield example
 
-    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example)
+    hparams_update = {
+        'states_description':               {'gt_rope': 75, },
+        'observation_features_description': {'gt_rope': 75, },
+    }
+    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example, hparams_update=hparams_update)
 
 
 if __name__ == '__main__':

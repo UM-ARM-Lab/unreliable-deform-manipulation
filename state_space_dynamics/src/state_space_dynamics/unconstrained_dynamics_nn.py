@@ -25,11 +25,11 @@ class UnconstrainedDynamicsNN(MyKerasModel):
         self.action_keys: List = self.hparams['action_keys']
         self.dataset_states_description: Dict = self.hparams['dynamics_dataset_hparams']['states_description']
         self.dataset_actions_description: Dict = self.hparams['dynamics_dataset_hparams']['action_description']
-        self.total_state_dimensions = sum(self.dataset_states_description.values())
+        self.total_state_dimensions = sum([self.dataset_states_description[k] for k in self.state_keys])
 
         self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
 
-    @tf.function
+    # @tf.function
     def call(self, example, training, mask=None):
         actions = {k: example[k] for k in self.action_keys}
         input_sequence_length = actions[self.action_keys[0]].shape[1]

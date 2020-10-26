@@ -1,14 +1,15 @@
 {
   "model_class": "SimpleNN",
   "sequence_length": 10,
+  "shuffle_buffer_size": 64,
   "state_keys": [
-    "link_bot",
-    "gripper1",
-    "gripper2"
+    "rope",
+    "left_gripper",
+    "right_gripper"
   ],
   "action_keys": [
-    "gripper1_position",
-    "gripper2_position"
+    "left_gripper_position",
+    "right_gripper_position"
   ],
   "fc_layer_sizes": [
     1024,

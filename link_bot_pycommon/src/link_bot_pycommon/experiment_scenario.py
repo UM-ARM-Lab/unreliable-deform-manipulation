@@ -6,7 +6,7 @@ import rospy
 from arc_utilities.ros_helpers import TF2Wrapper
 from geometry_msgs.msg import Vector3
 from link_bot_data.link_bot_dataset_utils import add_predicted
-from moonshine.moonshine_utils import numpify
+from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -268,6 +268,22 @@ class ExperimentScenario:
                     action_t[feature_name] = action[feature_name][:, t - 1]
         return action_t
 
+    def index_predicted_time_batched(self, e, t):
+        e_t = {}
+        all_keys = self.all_description_keys()
+        for feature_name in all_keys:
+            if add_predicted(feature_name) in e:
+                if t < e[feature_name].shape[0]:
+                    e_t[feature_name] = e[add_predicted(feature_name)][:, t]
+                else:
+                    e_t[feature_name] = e[add_predicted(feature_name)][:, t - 1]
+            elif feature_name in e:
+                if t < e[feature_name].shape[0]:
+                    e_t[feature_name] = e[feature_name][:, t]
+                else:
+                    e_t[feature_name] = e[feature_name][:, t - 1]
+        return e_t
+
     def index_time_batched(self, e, t):
         e_t = {}
         all_keys = self.all_description_keys()
@@ -322,15 +338,17 @@ class ExperimentScenario:
 
     def plot_transition_rviz(self, example: Dict, t):
         self.plot_environment_rviz(example)
-        debugging_pred_state_t = numpify(self.index_predicted_state_time(example, t))
-        self.plot_state_rviz(debugging_pred_state_t, label='predicted', color='b')
-        # true state(not known to classifier!)
-        debugging_true_state_t = numpify(self.index_state_time(example, t))
-        self.plot_state_rviz(debugging_true_state_t, label='actual')
-        debugging_action_t = numpify(self.index_action_time(example, t))
-        self.plot_action_rviz(debugging_pred_state_t, debugging_action_t)
-        label_t = self.index_label_time(example, t)
+        example_b = add_batch(example)
+        debugging_pred_t = numpify(remove_batch(self.index_predicted_time_batched(example_b, t)))
+        self.plot_state_rviz(debugging_pred_t, label='predicted', color='b')
+        self.plot_action_rviz(debugging_pred_t, debugging_pred_t)
+
+        label_t = self.index_label_time_batched(example_b, t)
         self.plot_is_close(label_t)
+
+        # true state(not known to classifier!)
+        debugging_true_t = numpify(remove_batch(self.index_time_batched(example_b, t)))
+        self.plot_state_rviz(debugging_true_t, label='actual')
 
     def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()
