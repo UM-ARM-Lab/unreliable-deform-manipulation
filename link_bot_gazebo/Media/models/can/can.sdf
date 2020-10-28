@@ -2,8 +2,16 @@
     <model name="can">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link">
-            <kinematic>true</kinematic>
             <pose>0 0 0.07 0 0 0 0</pose>
+            <inertial>
+                <pose>0 0 -0.02 0 0 0 0</pose>
+                <mass>2</mass>
+                <inertia>
+                    <ixx>0.00169375</ixx>
+                    <iyy>0.00169375</iyy>
+                    <izz>0.00093750</izz>
+                </inertia>
+            </inertial>
             <visual name="visual">
                 <geometry>
                     <cylinder>
@@ -12,8 +20,8 @@
                     </cylinder>
                 </geometry>
                 <material>
-                <ambient>0.2 0.2 0.6 1.0</ambient>
-                <diffuse>0.2 0.2 0.6 1.0</diffuse>
+                    <ambient>0.2 0.2 0.6 1.0</ambient>
+                    <diffuse>0.2 0.2 0.6 1.0</diffuse>
                 </material>
             </visual>
             <collision name="collision">

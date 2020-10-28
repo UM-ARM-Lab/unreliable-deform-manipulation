@@ -25,23 +25,25 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+renamed')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
-        # new_rope = example.pop("cdcpd")
-        # gt_rope = example.pop("rope")
-        # example['rope'] = new_rope
-        # example['gt_rope'] = gt_rope
-        example['left_gripper'] = example.pop("gripper1")
-        example['right_gripper'] = example.pop("gripper2")
-        example['left_gripper_position'] = example.pop("gripper1_position")
-        example['right_gripper_position'] = example.pop("gripper2_position")
-        example['rope'] = example.pop("link_bot")
-        # example.pop("joint_names")
-        yield example
-
+    # UPDATE THIS TOO!
     hparams_update = {
         'states_description':               {'gt_rope': 75, },
         'observation_features_description': {'gt_rope': 75, },
     }
+
+    def _process_example(dataset: DynamicsDataset, example: Dict):
+        new_rope = example.pop("cdcpd")
+        gt_rope = example.pop("rope")
+        example['rope'] = new_rope
+        example['gt_rope'] = gt_rope
+        # example['left_gripper'] = example.pop("gripper1")
+        # example['right_gripper'] = example.pop("gripper2")
+        # example['left_gripper_position'] = example.pop("gripper1_position")
+        # example['right_gripper_position'] = example.pop("gripper2_position")
+        # example['rope'] = example.pop("link_bot")
+        example.pop("joint_names")
+        yield example
+
     modify_dynamics_dataset(args.dataset_dir, outdir, _process_example, hparams_update=hparams_update)
 
 

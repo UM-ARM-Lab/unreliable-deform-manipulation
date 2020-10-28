@@ -1,5 +1,6 @@
 #include "collision_map_plugin.h"
 
+#include <algorithm>
 #include <std_msgs/ColorRGBA.h>
 #include <std_msgs/MultiArrayDimension.h>
 #include <visualization_msgs/Marker.h>
@@ -17,12 +18,19 @@ const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{-10000};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{1};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
+constexpr auto const PLUGIN_NAME = "collision_map_plugin";
+
 /**
  * This plugin moves a sphere along a grid in the world and checks for collision using raw ODE functions
  * TODOS:
  *  1. set the sphere radius to match resolution
  *  1. make it faster
  */
+
+bool matches(std::string s1, std::string s2)
+{
+  return s1.find(s2) != std::string::npos;
+}
 
 void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
 {
@@ -79,14 +87,13 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
     get_occupancy_service_ = ros_node_->advertiseService(so);
   }
 
-  ros_queue_thread_ = std::thread([this]
-                                  { QueueThread(); });
+  ros_queue_thread_ = std::thread([this] { QueueThread(); });
 
   move_sphere_thread_ = std::thread(
       [this]()
       {
         // wait for the model to exist
-        ROS_INFO("waiting for collision_sphere to appear...");
+        ROS_INFO_NAMED(PLUGIN_NAME, "waiting for collision_sphere to appear...");
         while (true)
         {
           physics::ModelPtr m = world_->ModelByName("collision_sphere");
@@ -98,13 +105,13 @@ void CollisionMapPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
             break;
           }
         }
-        ROS_INFO("done waiting for collision_sphere");
+        ROS_INFO_NAMED(PLUGIN_NAME, "done waiting for collision_sphere");
       });
 }
 
 void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, int64_t c_channels,
                                                 geometry_msgs::Point center, float resolution,
-                                                std::vector<std::string> const& excluded_models)
+                                                std::vector<std::string> const &excluded_models)
 {
   auto const x_width = resolution * w_cols;
   auto const y_height = resolution * h_rows;
@@ -120,7 +127,7 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
   m_ = world_->ModelByName("collision_sphere");
   if (!m_)
   {
-    ROS_WARN_STREAM("Collision sphere is not in the world (yet)");
+    ROS_WARN_STREAM_NAMED(PLUGIN_NAME, "Collision sphere is not in the world (yet)");
     return;
   }
 
@@ -143,13 +150,21 @@ void CollisionMapPlugin::compute_occupancy_grid(int64_t h_rows, int64_t w_cols, 
           MyIntersection intersection;
           auto const collision_space = (dGeomID) (ode_->GetSpaceId());
           dSpaceCollide2(sphere_collision_geom_id, collision_space, &intersection, &nearCallback);
-          for (auto const &excluded_model : excluded_models)
+          if (intersection.in_collision)
           {
-            if (intersection.in_collision and (intersection.name.find(excluded_model) == std::string::npos))
+            bool exclude = std::any_of(excluded_models.cbegin(), excluded_models.cend(),
+                                       [intersection](auto const &excluded_model)
+                                       {
+                                         return matches(intersection.name, excluded_model);
+                                       });
+
+            if (not exclude)
             {
+              ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME, "collision with " << intersection.name);
               grid_.SetValue(x_idx, y_idx, z_idx, occupied_value);
             } else
             {
+              ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME, "excluding collision with " << intersection.name);
               grid_.SetValue(x_idx, y_idx, z_idx, unoccupied_value);
             }
           }
@@ -196,8 +211,9 @@ void nearCallback(void *_data, dGeomID _o1, dGeomID _o2)
       auto const *position = dGeomGetPosition(_o2);
       if (dGeomGetClass(_o2) == dTriMeshClass)
       {
-        ROS_DEBUG_STREAM("Skipping collision with " << ode_collision->GetScopedName().c_str() << " at " << position[0]
-                                                    << "," << position[1] << "," << position[2]);
+        ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME,
+                               "Skipping unimplemented collision with mesh "
+                                   << ode_collision->GetScopedName().c_str());
       } else
       {
         int n = dCollide(_o1, _o2, 1, &contact, sizeof(contact));

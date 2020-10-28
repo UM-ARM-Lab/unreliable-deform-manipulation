@@ -97,7 +97,7 @@ def get_occupancy_data(env_h_m: float,
                                    center_x=0,
                                    center_y=0,
                                    center_z=res,  # we want to do a little off the ground because grid cells are centered
-                                   robot_name=robot_name)
+                                   excluded_models=[robot_name])
     origin = np.array(response.origin)
     full_env_data = grid_utils.OccupancyData(data=grid, resolution=res, origin=origin)
     return full_env_data

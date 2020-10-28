@@ -74,7 +74,7 @@ public:
   std::string robot_namespace_;
   std::unordered_map<std::string, moveit_msgs::CollisionObject> collision_object_map_;
 
-  std::vector<std::string> excluded_model_names;
+  std::vector<std::string> excluded_model_names_;
 
   // We need a separate queue and thread so we can handle messages and services when gazebo is paused
   ros::CallbackQueue queue_;

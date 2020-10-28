@@ -38,6 +38,7 @@ def main():
         print(Fore.RED + "Aborting" + Fore.RESET)
         return
 
+    rospy.loginfo(Fore.GREEN + f"Writing classifier dataset to {args.out_dir}")
     make_classifier_dataset(dataset_dir=args.dataset_dir,
                             fwd_model_dir=args.fwd_model_dir,
                             labeling_params=args.labeling_params,

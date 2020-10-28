@@ -286,6 +286,8 @@ class ExperimentScenario:
 
     def index_time_batched(self, e, t):
         e_t = {}
+        if 'joint_names' in e:
+            e_t['joint_names'] = e['joint_names']
         all_keys = self.all_description_keys()
         for feature_name in all_keys:
             if feature_name in e:
@@ -310,6 +312,10 @@ class ExperimentScenario:
         # make sure there are no duplicates
         all_keys = list(set(all_keys))
         return all_keys
+
+    def action_like_keys(self):
+        action_keys = list(self.actions_description().keys())
+        return action_keys
 
     def all_description_keys(self):
         all_keys = list(self.actions_description().keys()) + list(self.state_like_keys())

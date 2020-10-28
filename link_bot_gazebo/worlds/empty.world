@@ -1,6 +1,20 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
     <world name="default">
+        <physics name="ode" type="ode">
+            <ode>
+                <constraints>
+                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
+                </constraints>
+                <solver>
+                    <type>quick</type>
+                    <iters>100</iters>
+                </solver>
+            </ode>
+            <max_step_size>0.005</max_step_size>
+            <real_time_update_rate>200</real_time_update_rate>
+        </physics>
+
         <include>
             <uri>model://my_ground_plane</uri>
         </include>

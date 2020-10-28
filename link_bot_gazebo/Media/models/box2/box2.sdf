@@ -2,10 +2,9 @@
     <model name="box2">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
-            <kinematic>true</kinematic>
             <pose>0 0 0.105 0 0 0 0</pose>
             <inertial>
-                <pose>0 0 -0.08 0 0 0 0</pose>
+                <pose>0 0 -0.04 0 0 0 0</pose>
                 <inertia>
                     <ixx>0.03974999999999999</ixx>
                     <ixy>0</ixy>

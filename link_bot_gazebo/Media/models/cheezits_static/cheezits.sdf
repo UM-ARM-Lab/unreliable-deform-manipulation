@@ -2,9 +2,10 @@
     <model name="cheezits">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link">
+            <kinematic>true</kinematic>
             <pose>0 0 0.1075 0 0 0 0</pose>
             <inertial>
-                <pose>0 0 -0.04 0 0 0 0</pose>
+                <pose>0 0 -0.08 0 0 0 0</pose>
                 <inertia>
                     <ixx>0.03541666666666667</ixx>
                     <ixy>0</ixy>
@@ -22,8 +23,8 @@
                     </box>
                 </geometry>
                 <material>
-                <ambient>0.9 0.2 0.9 1.0</ambient>
-                <diffuse>0.9 0.2 0.9 1.0</diffuse>
+                <ambient>0.9 0.2 0.2 1.0</ambient>
+                <diffuse>0.9 0.2 0.2 1.0</diffuse>
                 </material>
             </visual>
             <collision name="collision">

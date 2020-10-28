@@ -19,7 +19,8 @@ class ClassifierDataset(BaseDataset):
         self.horizon = self.hparams['labeling_params']['classifier_horizon']
         self.scenario = get_scenario(self.hparams['scenario'])
 
-        self.state_keys = self.hparams['state_keys']
+        self.true_state_keys = self.hparams['true_state_keys']
+        self.predicted_state_keys = self.hparams['predicted_state_keys']
         self.action_keys = self.hparams['action_keys']
 
         self.feature_names = [
@@ -34,15 +35,17 @@ class ClassifierDataset(BaseDataset):
             'is_close',
         ]
 
+        scenario_metadata = self.hparams['scenario_metadata']
+
         self.batch_metadata = {
             'time': self.horizon
         }
 
         if self.load_true_states:
-            for k in self.state_keys:
+            for k in self.true_state_keys:
                 self.feature_names.append(k)
 
-        for k in self.state_keys:
+        for k in self.predicted_state_keys:
             self.feature_names.append(add_predicted(k))
 
         for k in self.action_keys:
@@ -62,10 +65,22 @@ class ClassifierDataset(BaseDataset):
             # this function is called before batching occurs, so the first dimension should be time
             example['time'] = tf.cast(self.horizon, tf.int64)
             return example
+
         # dataset = dataset.map(_add_time)
 
         def _add_rope_noise(example):
             example[add_predicted('link_bot')] = example[add_predicted('link_bot')] + tf.random.normal([75], 0, 0.01)
             return example
+
         # dataset = dataset.map(_add_rope_noise)
+
+        # this is used for adding joint_names
+        scenario_metadata = self.hparams['scenario_metadata']
+
+        def _add_scenario_metadata(example: Dict):
+            example.update(scenario_metadata)
+            return example
+
+        dataset = dataset.map(_add_scenario_metadata)
+
         return dataset

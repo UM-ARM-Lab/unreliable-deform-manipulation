@@ -8,7 +8,10 @@ def sphere(args):
     ]
 
 
-def cylinder(mass, radius, length):
+def cylinder(args):
+    mass = args.mass
+    radius = args.radius
+    length = args.length
     return [
         1.0 / 12 * mass * (3 * radius ** 2 + length ** 2),
         1.0 / 12 * mass * (3 * radius ** 2 + length ** 2),

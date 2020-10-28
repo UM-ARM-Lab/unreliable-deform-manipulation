@@ -108,10 +108,11 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
       this->scale_primitives_factor_ = _sdf->GetElement("scalePrimitivesFactor")->Get<double>();
     }
 
+    excluded_model_names_.emplace_back(model_name_);
     if (_sdf->HasElement("excludeModels"))
     {
       auto const excluded_models_str = _sdf->GetElement("excludeModels")->Get<std::string>();
-      boost::split(excluded_model_names, excluded_models_str, boost::is_any_of(" ,\n"));
+      boost::split(excluded_model_names_, excluded_models_str, boost::is_any_of(" ,\n"));
     }
   }
 
@@ -134,11 +135,11 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     {
       if (not name.empty())
       {
-        excluded_model_names.push_back(name);
+        excluded_model_names_.push_back(name);
       }
     }
     // copies into the response
-    res.all_model_names = excluded_model_names;
+    res.all_model_names = excluded_model_names_;
     return true;
   };
   auto exclude_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExcludeModels>("exclude_models_from_planning_scene", exclude_bind,
@@ -209,8 +210,8 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
     }
 
     // Skip some models
-    if (std::find(excluded_model_names.cbegin(), excluded_model_names.cend(), model_name) !=
-        excluded_model_names.cend())
+    if (std::find(excluded_model_names_.cbegin(), excluded_model_names_.cend(), model_name) !=
+        excluded_model_names_.cend())
     {
       ROS_DEBUG_STREAM_NAMED(NAME, "Skipping model " << model_name);
       continue;
