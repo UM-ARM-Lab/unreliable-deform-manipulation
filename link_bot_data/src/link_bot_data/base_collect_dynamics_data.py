@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import json
 import pathlib
 from time import perf_counter
 from typing import Dict, Optional
 
+import hjson
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
@@ -37,7 +37,7 @@ class DataCollector:
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
 
         service_provider.setup_env(verbose=self.verbose,
-                                   real_time_rate=1.0,
+                                   real_time_rate=0.0,
                                    max_step_size=self.params['max_step_size'])
 
     def collect_trajectory(self,
@@ -62,13 +62,8 @@ class DataCollector:
         self.scenario.plot_environment_rviz(environment)
         self.scenario.plot_traj_idx_rviz(traj_idx)
 
-        actions = {k: [] for k in self.scenario.actions_description().keys()}
-        states = {k: [] for k in self.scenario.state_like_keys()}
-
-        # sanity check!
-        for k in self.scenario.actions_description().keys():
-            if k in self.scenario.states_description().keys():
-                rospy.logerr(f"Duplicate key {k} is both a state and an action")
+        actions = {k: [] for k in self.params['action_keys']}
+        states = {k: [] for k in self.params['state_keys']}
 
         time_indices = []
         last_state = self.scenario.get_state()
@@ -95,11 +90,10 @@ class DataCollector:
 
             # add to the dataset
             if time_idx < self.params['steps_per_traj'] - 1:  # skip the last action
-                for action_name in self.scenario.actions_description().keys():
+                for action_name in self.params['action_keys']:
                     action_component = action[action_name]
                     actions[action_name].append(action_component)
-            state_like_keys = self.scenario.state_like_keys()
-            for state_component_name in state_like_keys:
+            for state_component_name in self.params['state_keys']:
                 state_component = state[state_component_name]
                 states[state_component_name].append(state_component)
             time_indices.append(time_idx)
@@ -132,21 +126,27 @@ class DataCollector:
         full_output_directory.mkdir(exist_ok=True)
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
+        s_for_size = self.scenario.get_state()
+        a_for_size = self.scenario.sample_action(action_rng=np.random.RandomState(0),
+                                                 environment={},
+                                                 state=s_for_size,
+                                                 action_params=self.params)
+        state_description = {k: v.shape[0] for k, v in s_for_size.items()}
+        action_description = {k: v.shape[0] for k, v in a_for_size.items()}
+
         dataset_hparams = {
             'nickname': nickname,
             'robot_namespace': robot_namespace,
             'seed': self.seed,
             'n_trajs': n_trajs,
             'data_collection_params': self.params,
-            'states_description': self.scenario.states_description(),
-            'action_description': self.scenario.actions_description(),
-            'observations_description': self.scenario.observations_description(),
-            'observation_features_description': self.scenario.observation_features_description(),
             'scenario': self.scenario_name,
             'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
+            'state_description': state_description,
+            'action_description': action_description,
         }
-        with (full_output_directory / 'hparams.json').open('w') as dataset_hparams_file:
-            json.dump(dataset_hparams, dataset_hparams_file, indent=2)
+        with (full_output_directory / 'hparams.hjson').open('w') as dataset_hparams_file:
+            hjson.dump(dataset_hparams, dataset_hparams_file, indent=2)
         record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
         self.scenario.randomization_initialization()

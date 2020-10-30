@@ -49,7 +49,7 @@ class FullStackRunner:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
         if self.launch:
-            self.service_provider.launch(collect_dynamics_1, gui=self.gui)
+            self.service_provider.launch(collect_dynamics_1, gui=self.gui, world=collect_dynamics_1['world'])
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -58,7 +58,8 @@ class FullStackRunner:
                                        verbose=0)
         dynamics_data_1_nickname = self.nickname + '_phase1'
         # this function will add a time stamp/git hash to the nickname
-        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_1['n_trajs'],
+        files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_1['robot_namespace'],
+                                                    n_trajs=collect_dynamics_1['n_trajs'],
                                                     nickname=dynamics_data_1_nickname)
 
         if self.launch:
@@ -80,7 +81,7 @@ class FullStackRunner:
             collect_dynamics_data_params = hjson.load(collect_dynamics_data_params_file)
 
         if self.launch:
-            self.service_provider.launch(collect_dynamics_2, gui=self.gui)
+            self.service_provider.launch(collect_dynamics_2, gui=self.gui, world=collect_dynamics_2['world'])
 
         data_collector = DataCollector(scenario_name=scenario,
                                        service_provider=self.service_provider,
@@ -88,7 +89,8 @@ class FullStackRunner:
                                        seed=seed,
                                        verbose=0)
         dynamics_data_2_nickname = self.nickname + '_phase2'
-        files_dataset = data_collector.collect_data(n_trajs=collect_dynamics_2['n_trajs'],
+        files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_2['robot_namespace'],
+                                                    n_trajs=collect_dynamics_2['n_trajs'],
                                                     nickname=dynamics_data_2_nickname)
 
         if self.launch:
@@ -263,7 +265,9 @@ class FullStackRunner:
                                                     recovery_model_dir)
 
         if self.launch:
-            self.service_provider.launch(planning_evaluation_params, gui=self.gui)
+            self.service_provider.launch(planning_evaluation_params,
+                                         gui=self.gui,
+                                         world=planning_evaluation_params['world'])
 
         root = planning_module_path / 'results' / self.nickname
         outdir = planning_evaluation(root=root,
@@ -372,14 +376,16 @@ def main():
         runlog = {}
 
     seed = full_stack_params['seed']
-    if 'collect_dynamics_data_1' not in runlog and (included_steps is None or 'collect_dynamics_data_1' in included_steps):
+    if 'collect_dynamics_data_1' not in runlog and (
+            included_steps is None or 'collect_dynamics_data_1' in included_steps):
         collect_dynamics_data_1_out = fsr.collect_dynamics_data_1(runlog, seed)
         runlog['collect_dynamics_data_1'] = collect_dynamics_data_1_out
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'collect_dynamics_data_2' not in runlog and (included_steps is None or 'collect_dynamics_data_2' in included_steps):
+    if 'collect_dynamics_data_2' not in runlog and (
+            included_steps is None or 'collect_dynamics_data_2' in included_steps):
         collect_dynamics_data_2_out = fsr.collect_dynamics_data_2(runlog, seed)
         runlog['collect_dynamics_data_2'] = collect_dynamics_data_2_out
         with logfile_name.open("w") as logfile:
@@ -400,7 +406,8 @@ def main():
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
-    if 'make_classifier_dataset' not in runlog and (included_steps is None or 'make_classifier_dataset' in included_steps):
+    if 'make_classifier_dataset' not in runlog and (
+            included_steps is None or 'make_classifier_dataset' in included_steps):
         make_classifier_dataset_out = fsr.make_classifier_dataset(runlog, seed)
         runlog['make_classifier_dataset'] = make_classifier_dataset_out
         with logfile_name.open("w") as logfile:

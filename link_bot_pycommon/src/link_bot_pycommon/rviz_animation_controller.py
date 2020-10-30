@@ -117,12 +117,19 @@ class RvizSimpleStepper:
     def __init__(self):
         self.command_sub = rospy.Subscriber("/rviz_anim/control", AnimationControl, self.on_control)
         self.should_step = False
+        self.play = False
 
     def on_control(self, msg: AnimationControl):
         if msg.command == AnimationControl.STEP_FORWARD:
             self.should_step = True
+        elif msg.command == AnimationControl.PLAY_FORWARD:
+            self.should_step = True
+            self.play = True
+        elif msg.command == AnimationControl.PAUSE:
+            self.play = False
 
     def step(self):
         while not self.should_step:
             sleep(0.05)
-        self.should_step = False
+        if not self.play:
+            self.should_step = False

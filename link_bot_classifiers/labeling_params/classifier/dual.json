@@ -1,5 +1,5 @@
 {
-  "threshold": 0.0453338947147131,
+  "threshold": 0.2,
   "state_key": "rope",
   "classifier_horizon": 2,
   "start_step": 4

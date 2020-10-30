@@ -50,4 +50,16 @@
   repeat_delta_gripper_motion_probability: 0.8,
   max_distance_gripper_can_move: 0.10,
   max_distance_between_grippers: 0.55
+  state_keys: [
+    rgbd
+    gt_rope
+    left_gripper
+    right_gripper
+    joint_positions
+    rope
+  ]
+  action_keys: [
+      left_gripper_position
+      right_gripper_position
+  ]
 }

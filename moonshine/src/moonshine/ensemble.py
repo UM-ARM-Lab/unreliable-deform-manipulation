@@ -19,7 +19,7 @@ class Ensemble:
         self.scenario = scenario
         self.batch_size = batch_size
         self.data_collection_params = self.hparams['dynamics_dataset_hparams']['data_collection_params']
-        self.states_description = self.hparams['dynamics_dataset_hparams']['states_description']
+        self.state_description = self.hparams['dynamics_dataset_hparams']['state_description']
         self.action_description = self.hparams['dynamics_dataset_hparams']['action_description']
 
         self.nets: List[MyKerasModel] = []

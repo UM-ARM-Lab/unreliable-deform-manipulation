@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -77,13 +77,14 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
 
     t0 = perf_counter()
     total_example_idx = 0
+    stepper = RvizSimpleStepper()
     for mode in ['train', 'val', 'test']:
         tf_dataset = dataset.get_datasets(mode=mode)
 
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        batch_size = 8
+        batch_size = 32
         out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
         for out_example in out_examples:
             actual_batch_size = out_example[0]['is_close'].shape[0]
@@ -91,15 +92,11 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                 for out_example_for_start_t in out_example:
                     out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
 
-                    DEBUG = False
+                    DEBUG = True
                     if DEBUG:
-                        classifier_horizon = labeling_params['classifier_horizon']
-                        time_steps = np.arange(classifier_horizon)
-                        anim = RvizAnimationController(time_steps)
-                        while not anim.done:
-                            t = anim.t()
-                            fwd_models.scenario.plot_transition_rviz(out_example_b, t)
-                            anim.step()
+                        if out_example_b['is_close'][0]:
+                            fwd_models.scenario.plot_transition_rviz(classifier_dataset_hparams, out_example_b, 0)
+                            stepper.step()
 
                     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
 

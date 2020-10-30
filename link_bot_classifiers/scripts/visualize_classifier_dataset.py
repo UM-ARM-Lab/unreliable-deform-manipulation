@@ -1,22 +1,22 @@
 #!/usr/bin/env python
-import colorama
 import argparse
 import pathlib
 from time import perf_counter
 
+import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from scipy import stats
 
 import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
+from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
-from moonshine.moonshine_utils import remove_batch, add_batch
+from moonshine.moonshine_utils import remove_batch
 from std_msgs.msg import Float32
-from scipy import stats
 
 limit_gpu_mem(1)
 
@@ -123,7 +123,7 @@ def visualize_dataset(args, classifier_dataset):
             # print(example['is_close'])
             if example['is_close'][0] == 0:
                 continue
-            scenario.plot_transition_rviz(example, 0)
+            scenario.plot_transition_rviz(classifier_dataset.hparams, example, 0)
             stdev_t = example[add_predicted('stdev')][0, 0].numpy()
             stdev_msg = Float32()
             stdev_msg.data = stdev_t

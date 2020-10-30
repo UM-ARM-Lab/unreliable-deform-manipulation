@@ -44,7 +44,7 @@
         </include>
 
         <include>
-            <pose>0.64 -0.38 0.62 0 0 0</pose>
+            <pose>0.64 -0.2 0.62 0 0 0</pose>
             <uri>model://can</uri>
         </include>
 

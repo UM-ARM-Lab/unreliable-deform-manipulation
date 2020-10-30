@@ -1,5 +1,5 @@
 import rospy
-from arc_utilities.ros_helpers import TF2Wrapper
+from arc_utilities.tf2wrapper import TF2Wrapper
 from arm_robots.victor import Victor
 from link_bot_pycommon.base_services import BaseServices
 from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse

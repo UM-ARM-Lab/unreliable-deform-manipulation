@@ -8,11 +8,10 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDataset, index_time_np
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.ros_pycommon import publish_color_image
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import numpify, add_batch, remove_batch
+from moonshine.moonshine_utils import numpify
 from sensor_msgs.msg import Image
 
 
@@ -32,13 +31,12 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
 
         while not anim.done:
             t = anim.t()
-            example_t = remove_batch(dataset.index_time(add_batch(example), t))
+            example_t = index_time_np(dataset.time_indexed_keys, example, t)
             scenario.plot_state_rviz(example_t, label='')
             scenario.plot_action_rviz_internal(example_t, label='')
 
             if t < dataset.steps_per_traj - 1:
-                s = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t)))
-                s_next = numpify(remove_batch(scenario.index_time_batched(add_batch(example), t + 1)))
+                s_next = index_time_np(dataset.time_indexed_keys, example, t + 1)
                 # diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
                 # publish_color_image(image_diff_viz_pub, diff)
 

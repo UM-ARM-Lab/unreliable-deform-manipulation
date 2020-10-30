@@ -3,8 +3,9 @@ from typing import Dict, Optional
 import numpy as np
 
 import rospy
-from arc_utilities.ros_helpers import TF2Wrapper
+from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
+from link_bot_data.dynamics_dataset import index_time_batched, index_time_batched_mapped, index_label_time_batched
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
@@ -205,123 +206,12 @@ class ExperimentScenario:
         move_action_req.timeout = timeout
         movable_object_services['move'](move_action_req)
 
-    # TODO: the _keys_ for these "descriptions" should come from the data collection params file
-    def states_description(self) -> Dict:
-        raise NotImplementedError()
-
-    @staticmethod
-    def observations_description() -> Dict:
-        raise NotImplementedError()
-
-    @staticmethod
-    def observation_features_description() -> Dict:
-        raise NotImplementedError()
-
-    @staticmethod
-    def actions_description() -> Dict:
-        raise NotImplementedError()
-
     @staticmethod
     def put_action_local_frame(state: Dict, action: Dict):
         raise NotImplementedError()
 
     def get_state(self):
         raise NotImplementedError()
-
-    # unfortunately all these versions of these functions are slightly different
-    # and trying to write it generically would be hard to do correctly and the result would be unreadable
-    def index_predicted_state_time_batched(self, state, t):
-        state_t = {}
-        for feature_name in self.states_description().keys():
-            if add_predicted(feature_name) in state:
-                state_t[feature_name] = state[add_predicted(feature_name)][:, t]
-        return state_t
-
-    def index_observation_features_time_batched(self, observation_features, t):
-        observation_features_t = {}
-        for feature_name in self.observation_features_description().keys():
-            if feature_name in observation_features:
-                observation_features_t[feature_name] = observation_features[feature_name][:, t]
-        return observation_features_t
-
-    def index_observation_time_batched(self, observation, t):
-        observation_t = {}
-        for feature_name in self.observations_description().keys():
-            if feature_name in observation:
-                observation_t[feature_name] = observation[feature_name][:, t]
-        return observation_t
-
-    def index_state_time_batched(self, state, t):
-        state_t = {}
-        for feature_name in self.states_description().keys():
-            if feature_name in state:
-                state_t[feature_name] = state[feature_name][:, t]
-        return state_t
-
-    def index_action_time_batched(self, action, t):
-        action_t = {}
-        for feature_name in self.actions_description().keys():
-            if feature_name in action:
-                if t < action[feature_name].shape[1]:
-                    action_t[feature_name] = action[feature_name][:, t]
-                else:
-                    action_t[feature_name] = action[feature_name][:, t - 1]
-        return action_t
-
-    def index_predicted_time_batched(self, e, t):
-        e_t = {}
-        all_keys = self.all_description_keys()
-        for feature_name in all_keys:
-            if add_predicted(feature_name) in e:
-                if t < e[feature_name].shape[1]:
-                    e_t[feature_name] = e[add_predicted(feature_name)][:, t]
-                else:
-                    e_t[feature_name] = e[add_predicted(feature_name)][:, t - 1]
-            elif feature_name in e:
-                if t < e[feature_name].shape[1]:
-                    e_t[feature_name] = e[feature_name][:, t]
-                else:
-                    e_t[feature_name] = e[feature_name][:, t - 1]
-        return e_t
-
-    def index_time_batched(self, e, t):
-        e_t = {}
-        if 'joint_names' in e:
-            e_t['joint_names'] = e['joint_names']
-        all_keys = self.all_description_keys()
-        for feature_name in all_keys:
-            if feature_name in e:
-                if t < e[feature_name].shape[1]:
-                    e_t[feature_name] = e[feature_name][:, t]
-                else:
-                    e_t[feature_name] = e[feature_name][:, t - 1]
-        return e_t
-
-    @staticmethod
-    def index_label_time_batched(example: Dict, t: int):
-        if t == 0:
-            # it makes no sense to have a label at t=0, labels are for transitions/sequences
-            # the plotting function that consumes this should use None correctly
-            return None
-        return example['is_close'][:, t]
-
-    def state_like_keys(self):
-        all_keys = list(self.states_description().keys()) \
-                   + list(self.observation_features_description().keys()) \
-                   + list(self.observations_description().keys())
-        # make sure there are no duplicates
-        all_keys = list(set(all_keys))
-        return all_keys
-
-    def action_like_keys(self):
-        action_keys = list(self.actions_description().keys())
-        return action_keys
-
-    def all_description_keys(self):
-        all_keys = list(self.actions_description().keys()) + list(self.state_like_keys())
-        # make sure there are no duplicates
-        all_keys = list(set(all_keys))
-        return all_keys
 
     def randomization_initialization(self):
         raise NotImplementedError()
@@ -341,22 +231,6 @@ class ExperimentScenario:
 
     def dynamics_dataset_metadata(self):
         return {}
-
-    def plot_transition_rviz(self, example: Dict, t):
-        self.plot_environment_rviz(example)
-        example_b = add_batch(example)
-        debugging_pred_t = numpify(remove_batch(self.index_predicted_time_batched(example_b, t)))
-        debugging_pred_t_next = numpify(remove_batch(self.index_predicted_time_batched(example_b, t + 1)))
-        self.plot_state_rviz(debugging_pred_t, label='predicted', color='#0000ffff', idx=0)
-        self.plot_action_rviz(debugging_pred_t, debugging_pred_t)
-        self.plot_state_rviz(debugging_pred_t_next, label='predicted', color='#3300aaff', idx=1)
-
-        label_t = self.index_label_time_batched(example_b, t + 1)
-        self.plot_is_close(label_t)
-
-        # true state(not known to classifier!)
-        debugging_true_t = numpify(remove_batch(self.index_time_batched(example_b, t)))
-        self.plot_state_rviz(debugging_true_t, label='actual', scale=1.1)
 
     def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()

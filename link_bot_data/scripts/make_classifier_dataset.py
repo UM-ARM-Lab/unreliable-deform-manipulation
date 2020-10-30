@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+from time import time
 import pathlib
 
 import colorama
@@ -33,7 +34,8 @@ def main():
 
     args = parser.parse_args()
 
-    success = mkdir_and_ask(args.out_dir, parents=True, yes=args.yes)
+    outdir = args.out_dir
+    success = mkdir_and_ask(outdir, parents=True, yes=args.yes)
     if not success:
         print(Fore.RED + "Aborting" + Fore.RESET)
         return
@@ -42,7 +44,7 @@ def main():
     make_classifier_dataset(dataset_dir=args.dataset_dir,
                             fwd_model_dir=args.fwd_model_dir,
                             labeling_params=args.labeling_params,
-                            outdir=args.out_dir,
+                            outdir=outdir,
                             start_at=args.start_at,
                             stop_at=args.stop_at)
 

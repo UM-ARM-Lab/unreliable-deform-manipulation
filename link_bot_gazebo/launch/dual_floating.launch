@@ -20,10 +20,21 @@
     <node pkg="link_bot_gazebo_python" type="gazebo_link_states_to_tf.py" name="gazebo_link_states_to_tf"
           args="--config-file $(find link_bot_gazebo_python)/config/exclude_victor.hjson"/>
 
+
+    <group ns="static_transform_publishers">
+        <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool"
+              args="0 0 0 0 0 0 kinematic_rope/left_gripper left_tool">
+        </node>
+        <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool"
+              args="0 0 0 0 0 0 kinematic_rope/right_gripper right_tool">
+        </node>
+    </group>
+
     <group if="$(arg use_cdcpd)">
         <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">
         </include>
         <include file="$(find cdcpd_ros)/launch/rope_tracking.launch">
         </include>
+
     </group>
 </launch>

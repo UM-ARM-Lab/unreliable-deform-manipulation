@@ -27,8 +27,8 @@ def main():
 
     # UPDATE THIS TOO!
     hparams_update = {
-        'states_description':               {'gt_rope': 75, },
-        'observation_features_description': {'gt_rope': 75, },
+        # 'states_description':               {'gt_rope': 75, },
+        # 'observation_features_description': {'gt_rope': 75, },
     }
 
     def _process_example(dataset: DynamicsDataset, example: Dict):

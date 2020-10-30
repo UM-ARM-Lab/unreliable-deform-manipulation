@@ -9,8 +9,8 @@ import tensorflow as tf
 
 import rospy
 import state_space_dynamics
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_data.dynamics_dataset import DynamicsDataset, index_time_batched, index_time_batched_mapped
+from link_bot_data.link_bot_dataset_utils import batch_tf_dataset, add_predicted
 from link_bot_pycommon.pycommon import paths_to_json
 from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch, numpify
@@ -73,10 +73,10 @@ def setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
 
 def setup_hparams(batch_size, dataset_dirs, seed, train_dataset):
     return {
-        'batch_size':               batch_size,
-        'seed':                     seed,
-        'datasets':                 paths_to_json(dataset_dirs),
-        'latest_training_time':     int(time.time()),
+        'batch_size': batch_size,
+        'seed': seed,
+        'datasets': paths_to_json(dataset_dirs),
+        'latest_training_time': int(time.time()),
         'dynamics_dataset_hparams': train_dataset.hparams,
     }
 
@@ -206,18 +206,22 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
         batch.update(test_dataset.batch_metadata)
         outputs, _ = model.from_example(batch, training=False)
 
-        viz_func(batch, outputs, test_dataset)
+        viz_func(batch, outputs, test_dataset, model)
 
 
-def viz_example(batch, outputs, test_dataset):
+def viz_example(batch, outputs, test_dataset: DynamicsDataset, model):
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
-        actual_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
+        actual_t = numpify(remove_batch(index_time_batched(test_dataset.time_indexed_keys, batch, t)))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
         test_dataset.scenario.plot_action_rviz(actual_t, actual_t, color='gray')
-        prediction_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(outputs, t)))
+        prediction_t = numpify(remove_batch(index_time_batched_mapped(test_dataset.time_indexed_keys, outputs, t)))
+
+        action_keys = test_dataset.action_keys
+        predicted_state_keys = [add_predicted(k) for k in model.state_keys]
+        debugging_pred_t = test_dataset.scenario.index_time_batched_predicted(action_keys, batch, predicted_state_keys, t)
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()

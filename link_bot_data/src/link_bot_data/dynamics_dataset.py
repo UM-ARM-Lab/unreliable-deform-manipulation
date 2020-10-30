@@ -4,7 +4,10 @@ from typing import List, Dict
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
+from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
+from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 
 class DynamicsDataset(BaseDataset):
@@ -18,20 +21,11 @@ class DynamicsDataset(BaseDataset):
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
-        if 'observation_features_description' in self.hparams:
-            self.observation_feature_keys = list(self.hparams['observation_features_description'].keys())
-        else:
-            self.observation_feature_keys = []
-
-        if 'observations_description' in self.hparams:
-            self.observation_keys = list(self.hparams['observations_description'].keys())
-        else:
-            self.observation_keys = []
-
-        self.state_keys = list(self.hparams['states_description'].keys())
+        self.data_collection_params = self.hparams['data_collection_params']
+        self.state_keys = self.data_collection_params['state_keys']
         self.state_keys.append('time_idx')
 
-        self.action_keys = list(self.hparams['action_description'].keys())
+        self.action_keys = self.data_collection_params['action_keys']
 
         self.constant_feature_names = [
             'env',
@@ -41,13 +35,17 @@ class DynamicsDataset(BaseDataset):
             'traj_idx',
         ]
 
+        # this is used for adding joint_names
+        self.scenario_metadata = self.hparams['scenario_metadata']
+
+        self.time_indexed_keys = self.state_keys + self.action_keys
+
         self.int64_keys = ['time_idx']
 
-        self.data_collection_params = self.hparams['data_collection_params']
         if 'new_sequence_length' in self.hparams:
             self.steps_per_traj = self.hparams['new_sequence_length']
         else:
-            self.steps_per_traj = self.hparams['data_collection_params']['steps_per_traj']
+            self.steps_per_traj = self.data_collection_params['steps_per_traj']
         self.batch_metadata = {
             'sequence_length': self.steps_per_traj
         }
@@ -59,35 +57,10 @@ class DynamicsDataset(BaseDataset):
 
         for feature_name in self.state_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
-        for feature_name in self.observation_keys:
-            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
-        for feature_name in self.observation_feature_keys:
-            features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
         for feature_name in self.action_keys:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 
         return features_description
-
-    def index_time(self, example, t):
-        """ index the time-based features. assumes batch """
-        example_t = {}
-        for feature_name in self.constant_feature_names:
-            example_t[feature_name] = example[feature_name]
-
-        for feature_name in self.state_keys + self.observation_keys + self.observation_feature_keys:
-            example_t[feature_name] = example[feature_name][:, t]
-
-        for feature_name in self.action_keys:
-            if t < example[feature_name].shape[1]:
-                example_t[feature_name] = example[feature_name][:, t]
-            else:
-                example_t[feature_name] = example[feature_name][:, t - 1]
-
-        scenario_metadata = self.hparams['scenario_metadata']
-        for k in scenario_metadata.keys():
-            example_t[k] = example[k]
-
-        return example_t
 
     def split_into_sequences(self, example, desired_sequence_length):
         # return a dict where every element has different sequences split across the 0th dimension
@@ -96,7 +69,7 @@ class DynamicsDataset(BaseDataset):
             for k in self.constant_feature_names:
                 out_example[k] = example[k]
 
-            for k in self.state_keys + self.observation_feature_keys + self.observation_keys:
+            for k in self.state_keys:
                 v = example[k][start_t:start_t + desired_sequence_length]
                 assert v.shape[0] == desired_sequence_length
                 out_example[k] = v
@@ -109,8 +82,7 @@ class DynamicsDataset(BaseDataset):
             yield out_example
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int, **kwargs):
-        # this is used for adding joint_names
-        scenario_metadata = self.hparams['scenario_metadata']
+        scenario_metadata = self.scenario_metadata
 
         def _add_scenario_metadata(example: Dict):
             example.update(scenario_metadata)
@@ -118,5 +90,89 @@ class DynamicsDataset(BaseDataset):
 
         dataset = dataset.map(_add_scenario_metadata)
 
-
         return dataset
+
+    def index_time_batched_predicted(self, example_batched, predicted_state_keys: List[str], t: int):
+        predicted_keys_map = {k: k for k in self.action_keys}
+        predicted_keys_map.update({add_predicted(k): k for k in predicted_state_keys})
+        debugging_pred_t = numpify(remove_batch(index_time_batched_mapped(self.time_indexed_keys,
+                                                                          predicted_keys_map,
+                                                                          example_batched,
+                                                                          t)))
+        return debugging_pred_t
+
+    def plot_transition_rviz(self, scenario: ExperimentScenario, example: Dict, t):
+        true_state_keys = params['true_state_keys']
+        predicted_state_keys = params['predicted_state_keys']
+
+        self.plot_environment_rviz(example)
+        example_b = add_batch(example)
+        debugging_pred_t = self.index_time_batched_predicted(action_keys, example_b, predicted_state_keys, t)
+        debugging_pred_t_next = self.index_time_batched_predicted(action_keys, example_b, predicted_state_keys, t + 1)
+        self.plot_state_rviz(debugging_pred_t, label='predicted', color='#0000ffff', idx=0)
+        self.plot_action_rviz(debugging_pred_t, debugging_pred_t)
+        self.plot_state_rviz(debugging_pred_t_next, label='predicted', color='#3300aaff', idx=1)
+
+        label_t = index_label_time_batched(example_b, t + 1)
+        self.plot_is_close(label_t)
+
+        # true state(not known to classifier!)
+        true_keys = action_keys + true_state_keys
+        debugging_true_t = numpify(remove_batch(index_time_batched(true_keys, example_b, t)))
+        debugging_true_t_next = numpify(remove_batch(index_time_batched(true_keys, example_b, t + 1)))
+        self.plot_state_rviz(debugging_true_t, label='actual', scale=1.1, idx=0)
+        self.plot_state_rviz(debugging_true_t_next, label='actual', scale=1.1, idx=1)
+
+
+def index_time_np(time_indexed_keys: List[str], e: Dict, t: int):
+    return numpify(index_time(time_indexed_keys, e, t))
+
+
+def index_time(time_indexed_keys: List[str], e: Dict, t: int):
+    return remove_batch(index_time_batched(time_indexed_keys, add_batch(e), t))
+
+
+def index_time_batched(time_indexed_keys: List[str], e: Dict, t: int):
+    e_t = {}
+    for k, v in e.items():
+        e_t[k] = index_time_batched_kv(e, k, t, time_indexed_keys, v)
+    return e_t
+
+
+def index_time_batched_mapped(time_indexed_keys: List[str], keys_map: Dict[str, str], e: Dict, t: int):
+    e_t = {}
+    for k, v in e.items():
+        out_k = keys_map.get(k, k)
+        e_t[out_k] = index_time_batched_kv(e, k, t, time_indexed_keys, v)
+
+    return e_t
+
+
+def index_time_batched_kv(e, k, t, time_indexed_keys, v):
+    if k in time_indexed_keys:
+        if v.ndim == 1:
+            return v
+        elif t < v.shape[1]:
+            return v[:, t]
+        elif t == e[k].shape[1]:
+            return v[:, t - 1]
+        else:
+            err_msg = f"time index {t} out of bounds for {k} which has shape {v.shape}"
+            raise IndexError(err_msg)
+    else:
+        return v
+
+
+def index_label_time_batched(example: Dict, t: int):
+    if t == 0:
+        # it makes no sense to have a label at t=0, labels are for transitions/sequences
+        # the plotting function that consumes this should use None correctly
+        return None
+    return example['is_close'][:, t]
+
+
+def get_state_like_keys(params: Dict):
+    all_keys = params['state_keys'] + params['observation_keys'] + params['observation_feature_keys']
+    # make sure there are no duplicates
+    all_keys = list(set(all_keys))
+    return all_keys

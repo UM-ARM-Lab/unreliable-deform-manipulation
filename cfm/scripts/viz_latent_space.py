@@ -51,7 +51,7 @@ class VizLatentSpace:
             m.pose.orientation.w = 1
             self.latent_state_pub.publish(m)
 
-            e_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
+            e_t = numpify(remove_batch(test_dataset.scenario.index_time_batched_predicted(batch, t)))
             test_dataset.scenario.plot_state_rviz(e_t, label='actual', color='red')
             test_dataset.scenario.plot_action_rviz(e_t, e_t, color='gray')
 

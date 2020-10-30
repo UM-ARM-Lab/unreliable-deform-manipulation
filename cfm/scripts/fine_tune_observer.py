@@ -94,11 +94,11 @@ def viz_main(args):
         for t in range(dataset.steps_per_traj):
             output = model(model.preprocess_no_gradient(example, training=False))
 
-            actual_t = numpify(remove_batch(scenario.index_time_batched(example, t)))
-            action_t = numpify(remove_batch(scenario.index_time_batched(example, t)))
+            actual_t = numpify(remove_batch(scenario.index_time_batched_predicted(example, t)))
+            action_t = numpify(remove_batch(scenario.index_time_batched_predicted(example, t)))
             scenario.plot_state_rviz(actual_t, label='actual', color='red')
             scenario.plot_action_rviz(actual_t, action_t, color='gray')
-            prediction_t = remove_batch(scenario.index_time_batched(output, t))
+            prediction_t = remove_batch(scenario.index_time_batched_predicted(output, t))
             scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
             stepper.step()

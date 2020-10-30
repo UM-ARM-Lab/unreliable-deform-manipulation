@@ -5,11 +5,10 @@ import numpy as np
 import moveit_commander
 import ros_numpy
 import rospy
-from arc_utilities.ros_helpers import Listener
+from arc_utilities.listener import Listener
 from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
-from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
@@ -94,13 +93,13 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         cdcpd_vector = self.get_cdcpd_state()
 
         return {
-            'joint_positions': joint_state.position,
-            'joint_names': joint_state.name,
+            'joint_positions': np.array(joint_state.position),
+            'joint_names': np.array(joint_state.name),
             'left_gripper': ros_numpy.numpify(left_gripper_position),
             'right_gripper': ros_numpy.numpify(right_gripper_position),
-            'cdcpd': np.array(cdcpd_vector, np.float32),
+            'rope': np.array(cdcpd_vector, np.float32),
             'rgbd': color_depth_cropped,
-            'rope': np.array(rope_state_vector, np.float32),
+            'gt_rope': np.array(rope_state_vector, np.float32),
         }
 
     def states_description(self) -> Dict:

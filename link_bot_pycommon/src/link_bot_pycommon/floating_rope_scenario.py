@@ -18,7 +18,7 @@ with warnings.catch_warnings():
 
 import rospy
 import tf2_sensor_msgs
-from arc_utilities.ros_helpers import Listener
+from arc_utilities.listener import Listener
 from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
@@ -298,7 +298,11 @@ class FloatingRopeScenario(Base3DScenario):
 
         self.set_rope_state_srv(reset)
 
-    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict,
+    def sample_action(self,
+                      action_rng: np.random.RandomState,
+                      environment: Dict,
+                      state: Dict,
+                      action_params: Dict,
                       stateless: Optional[bool] = False):
         action = None
         for _ in range(self.max_action_attempts):
@@ -553,8 +557,8 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper': left_rope_point_position,
             'right_gripper': right_rope_point_position,
-            'rope': np.array(rope_state_vector, np.float32),
-            'cdcpd': np.array(cdcpd_vector, np.float32),
+            'gt_rope': np.array(rope_state_vector, np.float32),
+            'rope': np.array(cdcpd_vector, np.float32),
             'rgbd': color_depth_cropped,
         }
 
@@ -955,19 +959,19 @@ class FloatingRopeScenario(Base3DScenario):
         if 'gt_rope' in state:
             rope_points = np.reshape(state['gt_rope'], [-1, 3])
 
-            markers = make_rope_marker(rope_points, 'world', label, idx, r, g, b, a)
+            markers = make_rope_marker(rope_points, 'world', label + "_gt_rope", idx, 1.5 * r, 1.5 * g, 1.5 * b, a)
             msg.markers.extend(markers)
 
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
 
-            markers = make_rope_marker(rope_points, 'world', label, idx, r, g, b, a)
+            markers = make_rope_marker(rope_points, 'world', label + "_rope", 1000 + idx, r, g, b, a)
             msg.markers.extend(markers)
 
         if 'cdcpd' in state:
             rope_points = np.reshape(state['cdcpd'], [-1, 3])
 
-            markers = make_rope_marker(rope_points, 'world', label, 1000 + idx, r * 1.5, g * 1.5, b * 1.5, a)
+            markers = make_rope_marker(rope_points, 'world', label, 2000 + idx, r * 1.5, g * 1.5, b * 1.5, a)
             msg.markers.extend(markers)
 
         if 'left_gripper' in state:

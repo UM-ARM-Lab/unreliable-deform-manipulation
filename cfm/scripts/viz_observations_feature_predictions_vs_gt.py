@@ -19,11 +19,11 @@ def viz_func(batch, predictions, test_dataset: DynamicsDataset):
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:
         t = anim.t()
-        actual_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
-        action_t = numpify(remove_batch(test_dataset.scenario.index_time_batched(batch, t)))
+        actual_t = numpify(remove_batch(test_dataset.scenario.index_time_batched_predicted(batch, t)))
+        action_t = numpify(remove_batch(test_dataset.scenario.index_time_batched_predicted(batch, t)))
         test_dataset.scenario.plot_state_rviz(actual_t, label='actual', color='red')
         test_dataset.scenario.plot_action_rviz(actual_t, action_t, color='gray')
-        prediction_t = remove_batch(test_dataset.scenario.index_time_batched(predictions, t))
+        prediction_t = remove_batch(test_dataset.scenario.index_time_batched_predicted(predictions, t))
         test_dataset.scenario.plot_state_rviz(prediction_t, label='predicted', color='blue')
 
         anim.step()

@@ -41,13 +41,17 @@ class GazeboServices(BaseServices):
 
             self.step()
 
-    def launch(self, params, gui: bool = False):
+    def launch(self, params, **kwargs):
+        gui = kwargs.get("gui", True)
+        world = kwargs.get("world", None)
         launch_file_name = params['launch']
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
         roslaunch_args = ['link_bot_gazebo', launch_file_name, f"gui:={str(gui).lower()}"]
+        if world:
+            roslaunch_args.append(f"world:={world}")
 
-        roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
+            roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
         roslaunch_args = roslaunch_args[2:]
 
         launch_info = [(roslaunch_file, roslaunch_args)]
@@ -57,6 +61,8 @@ class GazeboServices(BaseServices):
 
         # wait until services are available before returning
         self.wait_for_services()
+
+        self.play()
 
     def kill(self):
         self.gazebo_process.shutdown()

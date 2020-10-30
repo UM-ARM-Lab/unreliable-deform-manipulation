@@ -31,3 +31,7 @@ def get_all_subfolders(args):
 
 def directory_size(dir: pathlib.Path):
     return sum(f.stat().st_size for f in dir.glob('**/*') if f.is_file())
+
+
+def append_str_to_path(p: pathlib.Path, s: str):
+    return p.parent / (p.name + s)

@@ -24,9 +24,9 @@ class BaseServices:
     def wait_for_services(self):
         for service_name in self.service_names:
             rospy.wait_for_service(service_name, timeout=60)
-        sleep(25)
+        sleep(10)
 
-    def launch(self, params):
+    def launch(self, params, **kwargs):
         pass
 
     def kill(self):

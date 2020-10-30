@@ -1,16 +1,17 @@
 #! /usr/bin/env python
 
-import numpy as np
-
 import argparse
-from ros_numpy import numpify
-import tf2_ros
-import tf2_geometry_msgs
-from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
-from geometry_msgs.msg import Point, PoseStamped, PointStamped
-from sensor_msgs.msg import PointCloud2
-from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetRopeState, GetRopeStateResponse, GetRopeStateRequest
+
+from peter_msgs.srv import GetDualGripperPoints, GetDualGripperPointsRequest, GetDualGripperPointsResponse, \
+    GetRopeState, GetRopeStateResponse, GetRopeStateRequest
+
 import rospy
+import tf2_geometry_msgs
+import tf2_ros
+from geometry_msgs.msg import Point, PointStamped
+from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
+from ros_numpy import numpify
+from sensor_msgs.msg import PointCloud2
 
 
 class CDCPDGetStateNode:
@@ -46,7 +47,8 @@ class CDCPDGetStateNode:
             point_stamped = PointStamped()
             point_stamped.header.frame_id = self.latest_cdcpd_output.header.frame_id
             point_stamped.point = point
-            cdcpd_to_world = self.buffer.lookup_transform("world", self.latest_cdcpd_output.header.frame_id, rospy.Time(0), rospy.Duration(1.0))
+            cdcpd_to_world = self.buffer.lookup_transform("world", self.latest_cdcpd_output.header.frame_id,
+                                                          rospy.Time(0), rospy.Duration(1.0))
             point_transformed = tf2_geometry_msgs.do_transform_point(point_stamped, cdcpd_to_world)
 
             res.positions.append(point_transformed.point)
@@ -86,4 +88,3 @@ if __name__ == "__main__":
             rospy.sleep(1.0)
     else:
         rospy.spin()
-
