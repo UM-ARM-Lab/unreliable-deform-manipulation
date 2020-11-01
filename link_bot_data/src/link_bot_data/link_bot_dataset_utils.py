@@ -198,8 +198,14 @@ def add_next(feature_name):
     return NEXT_PREFIX + feature_name
 
 
-def add_predicted(feature_name):
+def add_predicted(feature_name: str):
     return PREDICTED_PREFIX + feature_name
+
+
+def strip_predicted(feature_name: str):
+    if feature_name.startswith(PREDICTED_PREFIX):
+        return feature_name.lstrip(PREDICTED_PREFIX)
+    return feature_name
 
 
 def null_pad(sequence, start=None, end=None):
@@ -287,3 +293,24 @@ def balance(dataset):
     balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
 
     return balanced_dataset
+
+
+def get_maybe_predicted(e: Dict, k: str):
+    if k in e and add_predicted(k) in e:
+        raise ValueError(f"ambiguous, dict has both {k} and {add_predicted(k)}")
+    elif not (k in e or add_predicted(k) in e):
+        raise ValueError(f"dict lacks both {k} and {add_predicted(k)}")
+    elif k in e:
+        return e[k]
+    elif add_predicted(k) in e:
+        return e[add_predicted(k)]
+    else:
+        raise RuntimeError()
+
+
+def in_maybe_predicted(k: str, e: Dict):
+    if k in e and add_predicted(k) in e:
+        raise ValueError(f"ambiguous, dict has both {k} and {add_predicted(k)}")
+    elif not (k in e or add_predicted(k) in e):
+        return False
+    return True

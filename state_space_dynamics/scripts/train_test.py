@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-import colorama
 import argparse
 import pathlib
 
+import colorama
 import numpy as np
-import rospy
 import tensorflow as tf
 
-from moonshine.gpu_config import limit_gpu_mem
+import rospy
 from state_space_dynamics import train_test
+
 
 # limit_gpu_mem(10)
 
@@ -22,15 +22,17 @@ def train_main(args, seed: int):
                           epochs=args.epochs,
                           seed=seed,
                           ensemble_idx=args.ensemble_idx,
-                          trials_directory=pathlib.Path('trials'))
+                          trials_directory=pathlib.Path('trials'),
+                          use_gt_rope=args.use_gt_rope,
+                          )
 
 
 def eval_main(args, seed: int):
-    train_test.eval_main(args.dataset_dirs, args.checkpoint, args.mode, args.batch_size)
+    train_test.eval_main(args.dataset_dirs, args.checkpoint, args.mode, args.batch_size, args.use_gt_rope)
 
 
 def viz_main(args, seed: int):
-    train_test.viz_main(args.dataset_dirs, args.checkpoint, args.mode)
+    train_test.viz_main(args.dataset_dirs, args.checkpoint, args.mode, args.use_gt_rope)
 
 
 def main():
@@ -51,9 +53,12 @@ def main():
     train_parser.add_argument('--ensemble-idx', type=int)
     train_parser.add_argument('--log', '-l')
     train_parser.add_argument('--verbose', '-v', action='count', default=0)
-    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches', default=100)
-    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs', default=1)
+    train_parser.add_argument('--log-scalars-every', type=int, help='loss/accuracy every this many steps/batches',
+                              default=100)
+    train_parser.add_argument('--validation-every', type=int, help='report validation every this many epochs',
+                              default=1)
     train_parser.add_argument('--seed', type=int, default=None)
+    train_parser.add_argument('--use-gt-rope', action='store_true')
     train_parser.set_defaults(func=train_main)
 
     eval_parser = subparsers.add_parser('eval')
@@ -63,6 +68,7 @@ def main():
     eval_parser.add_argument('--batch-size', type=int, default=16)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
+    eval_parser.add_argument('--use-gt-rope', action='store_true')
     eval_parser.set_defaults(func=eval_main)
 
     viz_parser = subparsers.add_parser('viz')
@@ -71,6 +77,7 @@ def main():
     viz_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
     viz_parser.add_argument('--verbose', '-v', action='count', default=0)
     viz_parser.add_argument('--seed', type=int, default=None)
+    viz_parser.add_argument('--use-gt-rope', action='store_true')
     viz_parser.set_defaults(func=viz_main)
 
     args = parser.parse_args()

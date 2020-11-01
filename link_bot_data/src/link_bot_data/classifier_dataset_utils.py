@@ -4,12 +4,12 @@ from time import perf_counter
 from typing import Dict, List, Optional
 
 import hjson
-import numpy as np
 import tensorflow as tf
+from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
 
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController, RvizSimpleStepper
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -39,16 +39,18 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             fwd_model_dir: List[pathlib.Path],
                             labeling_params: pathlib.Path,
                             outdir: pathlib.Path,
+                            use_gt_rope: bool,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None):
     labeling_params = json.load(labeling_params.open("r"))
-    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, start_at, stop_at)
+    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, use_gt_rope, start_at, stop_at)
 
 
 def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                                              fwd_model_dir: List[pathlib.Path],
                                              labeling_params: Dict,
                                              outdir: pathlib.Path,
+                                             use_gt_rope: bool,
                                              start_at: Optional[int] = None,
                                              stop_at: Optional[int] = None):
     # append "best_checkpoint" before loading
@@ -56,10 +58,10 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
         fwd_model_dir = [fwd_model_dir]
     fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
 
-    dynamics_hparams = hjson.load((dataset_dir / 'hparams.json').open('r'))
+    dynamics_hparams = hjson.load((dataset_dir / 'hparams.hjson').open('r'))
     fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
 
-    dataset = DynamicsDataset([dataset_dir])
+    dataset = DynamicsDataset([dataset_dir], use_gt_rope=use_gt_rope)
 
     new_hparams_filename = outdir / 'hparams.hjson'
     classifier_dataset_hparams = dynamics_hparams
@@ -84,7 +86,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        batch_size = 32
+        batch_size = 8
         out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
         for out_example in out_examples:
             actual_batch_size = out_example[0]['is_close'].shape[0]
@@ -92,10 +94,10 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                 for out_example_for_start_t in out_example:
                     out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
 
-                    DEBUG = True
+                    DEBUG = False
                     if DEBUG:
                         if out_example_b['is_close'][0]:
-                            fwd_models.scenario.plot_transition_rviz(classifier_dataset_hparams, out_example_b, 0)
+                            # ClassifierDataset.plot_transition_rviz(out_example_b)
                             stepper.step()
 
                     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
@@ -151,13 +153,13 @@ def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
                                                         labeling_params=labeling_params,
                                                         actual_prediction_horizon=actual_prediction_horizon,
                                                         batch_size=actual_batch_size)
-            valid_out_examples_for_start_t = generate_classifier_examples_from_batch(prediction_actual)
+            valid_out_examples_for_start_t = generate_classifier_examples_from_batch(sc, prediction_actual)
             valid_out_examples.extend(valid_out_examples_for_start_t)
 
         yield valid_out_examples
 
 
-def generate_classifier_examples_from_batch(prediction_actual: PredictionActualExample):
+def generate_classifier_examples_from_batch(scenario: ExperimentScenario, prediction_actual: PredictionActualExample):
     labeling_params = prediction_actual.labeling_params
     prediction_horizon = prediction_actual.actual_prediction_horizon
     classifier_horizon = labeling_params['classifier_horizon']
@@ -207,9 +209,9 @@ def generate_classifier_examples_from_batch(prediction_actual: PredictionActualE
             sliced_actions[key] = action_component_sliced
 
         # compute label
-        is_close = compute_is_close_tf(actual_states_dict=sliced_actual, predicted_states_dict=sliced_predictions,
-                                       labeling_params=labeling_params)
-        out_example['is_close'] = tf.cast(is_close, dtype=tf.float32)
+        threshold = labeling_params['threshold']
+        error = scenario.classifier_distance(sliced_actual, sliced_predictions)
+        out_example['error'] = tf.cast(error, dtype=tf.float32)
 
         # is_first_predicted_state_close = is_close[:, 0]
         # valid_indices = tf.where(is_first_predicted_state_close)
@@ -220,17 +222,6 @@ def generate_classifier_examples_from_batch(prediction_actual: PredictionActualE
 
         valid_out_examples.append(out_example)
     return valid_out_examples
-
-
-def compute_is_close_tf(actual_states_dict: Dict, predicted_states_dict: Dict, labeling_params: Dict):
-    state_key = labeling_params['state_key']
-    labeling_states = tf.convert_to_tensor(actual_states_dict[state_key])
-    labeling_predicted_states = tf.convert_to_tensor(predicted_states_dict[state_key])
-    model_error = tf.linalg.norm(labeling_states - labeling_predicted_states, axis=-1)
-    threshold = labeling_params['threshold']
-    is_close = model_error < threshold
-
-    return is_close
 
 
 def batch_of_many_of_actions_sequences_to_dict(actions, n_actions_sampled, n_start_states, n_actions):

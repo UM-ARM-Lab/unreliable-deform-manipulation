@@ -13,7 +13,7 @@ from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify
 from state_space_dynamics import model_utils

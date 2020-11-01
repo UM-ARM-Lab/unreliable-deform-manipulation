@@ -381,7 +381,7 @@ class RopeDraggingScenario(Base3DScenario):
         distance = tf.linalg.norm(tail_point - goal)
         return distance
 
-    def batch_full_distance(self, s1: Dict, s2: Dict):
+    def classifier_distance(self, s1: Dict, s2: Dict):
         return np.linalg.norm(s1['rope'] - s2['rope'], axis=1)
 
     @staticmethod

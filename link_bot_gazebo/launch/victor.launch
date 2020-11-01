@@ -3,6 +3,7 @@
     <arg name="verbose" default="true"/>
     <arg name="world" default="empty.world"/>
     <arg name="use_cdcpd" default="true"/>
+    <arg name="grippers" default="robotiq"/>
 
     <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
         <arg name="world" value="$(arg world)"/>
@@ -18,6 +19,10 @@
 
     <node pkg="link_bot_gazebo_python" type="gazebo_link_states_to_tf.py" name="gazebo_link_states_to_tf"
           args="--config-file $(find link_bot_gazebo_python)/config/exclude_victor.hjson"/>
+
+    <group if="$(eval grippers == 'fake_robotiq')">
+        <node ns="victor" pkg="victor_fake_hardware_interface" type="fake_grippers_node.py" name="fake_grippers"/>
+    </group>
 
     <group if="$(arg use_cdcpd)">
         <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">

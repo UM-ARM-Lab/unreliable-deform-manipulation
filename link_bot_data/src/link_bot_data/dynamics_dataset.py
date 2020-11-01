@@ -1,23 +1,22 @@
 import pathlib
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 
 class DynamicsDataset(BaseDataset):
-    def __init__(self, dataset_dirs: List[pathlib.Path], step_size: int = 1):
+    def __init__(self, dataset_dirs: List[pathlib.Path], step_size: int = 1, use_gt_rope: Optional[bool] = False):
         """
         :param dataset_dirs: dataset directories
-        :param step_size: the number of time steps to skip when slicing the full trajectories into trajectories for training
+        :param step_size: the number of time steps to skip when slicing the full trajectories for training
         """
         super(DynamicsDataset, self).__init__(dataset_dirs)
 
+        self.use_gt_rope = use_gt_rope
         self.step_size = step_size
         self.scenario = get_scenario(self.hparams['scenario'])
 
@@ -90,38 +89,18 @@ class DynamicsDataset(BaseDataset):
 
         dataset = dataset.map(_add_scenario_metadata)
 
+        def _use_gt_rope(example: Dict):
+            example['rope'] = example['gt_rope']
+            return example
+
+        if self.use_gt_rope:
+            dataset = dataset.map(_use_gt_rope)
+
         return dataset
 
-    def index_time_batched_predicted(self, example_batched, predicted_state_keys: List[str], t: int):
-        predicted_keys_map = {k: k for k in self.action_keys}
-        predicted_keys_map.update({add_predicted(k): k for k in predicted_state_keys})
-        debugging_pred_t = numpify(remove_batch(index_time_batched_mapped(self.time_indexed_keys,
-                                                                          predicted_keys_map,
-                                                                          example_batched,
-                                                                          t)))
-        return debugging_pred_t
-
-    def plot_transition_rviz(self, scenario: ExperimentScenario, example: Dict, t):
-        true_state_keys = params['true_state_keys']
-        predicted_state_keys = params['predicted_state_keys']
-
-        self.plot_environment_rviz(example)
-        example_b = add_batch(example)
-        debugging_pred_t = self.index_time_batched_predicted(action_keys, example_b, predicted_state_keys, t)
-        debugging_pred_t_next = self.index_time_batched_predicted(action_keys, example_b, predicted_state_keys, t + 1)
-        self.plot_state_rviz(debugging_pred_t, label='predicted', color='#0000ffff', idx=0)
-        self.plot_action_rviz(debugging_pred_t, debugging_pred_t)
-        self.plot_state_rviz(debugging_pred_t_next, label='predicted', color='#3300aaff', idx=1)
-
-        label_t = index_label_time_batched(example_b, t + 1)
-        self.plot_is_close(label_t)
-
-        # true state(not known to classifier!)
-        true_keys = action_keys + true_state_keys
-        debugging_true_t = numpify(remove_batch(index_time_batched(true_keys, example_b, t)))
-        debugging_true_t_next = numpify(remove_batch(index_time_batched(true_keys, example_b, t + 1)))
-        self.plot_state_rviz(debugging_true_t, label='actual', scale=1.1, idx=0)
-        self.plot_state_rviz(debugging_true_t_next, label='actual', scale=1.1, idx=1)
+    def index_time_batched(self, example_batched, t: int):
+        e_t = numpify(remove_batch(index_time_batched(self.time_indexed_keys, example_batched, t)))
+        return e_t
 
 
 def index_time_np(time_indexed_keys: List[str], e: Dict, t: int):
@@ -136,15 +115,6 @@ def index_time_batched(time_indexed_keys: List[str], e: Dict, t: int):
     e_t = {}
     for k, v in e.items():
         e_t[k] = index_time_batched_kv(e, k, t, time_indexed_keys, v)
-    return e_t
-
-
-def index_time_batched_mapped(time_indexed_keys: List[str], keys_map: Dict[str, str], e: Dict, t: int):
-    e_t = {}
-    for k, v in e.items():
-        out_k = keys_map.get(k, k)
-        e_t[out_k] = index_time_batched_kv(e, k, t, time_indexed_keys, v)
-
     return e_t
 
 

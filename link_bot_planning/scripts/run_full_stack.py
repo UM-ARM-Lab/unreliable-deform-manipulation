@@ -33,6 +33,7 @@ class FullStackRunner:
         self.launch = launch
         self.gui = True
         self.full_stack_params = full_stack_params
+        self.use_gt_rope = self.full_stack_params['use_gt_rope']
         self.nickname = full_stack_params['nickname']
         self.unique_nickname = f"{self.nickname}_{int(time.time())}"
         service_provider_name = full_stack_params['service_provider']
@@ -120,7 +121,9 @@ class FullStackRunner:
                                                batch_size=batch_size,
                                                epochs=epochs,
                                                seed=seed,
-                                               ensemble_idx=ensemble_idx)
+                                               ensemble_idx=ensemble_idx,
+                                               use_gt_rope=self.use_gt_rope,
+                                               )
             trial_paths.append(trial_path)
 
         # Use one of the models we trained to compute the 90th percentile on the validation set
@@ -142,6 +145,8 @@ class FullStackRunner:
         state_space_dynamics_path = pathlib.Path(r.get_path('state_space_dynamics'))
         forward_model_hparams = state_space_dynamics_path / learn_dynamics_params['forward_model_hparams']
 
+        # TODO: make use of use_gt_rope param
+
         trial_paths = []
         for ensemble_idx in range(n_ensemble):
             trial_path = train_test.train_main(dataset_dirs=[dynamics_dataset_2],
@@ -152,7 +157,9 @@ class FullStackRunner:
                                                batch_size=batch_size,
                                                epochs=epochs,
                                                seed=seed,
-                                               ensemble_idx=ensemble_idx)
+                                               ensemble_idx=ensemble_idx,
+                                               use_gt_rope=self.use_gt_rope,
+                                               )
             trial_paths.append(trial_path)
 
         return {
@@ -176,7 +183,8 @@ class FullStackRunner:
         classifier_dataset_dir = make_classifier_dataset_from_params_dict(dataset_dir=dynamics_dataset_2,
                                                                           fwd_model_dir=udnn_model_dirs,
                                                                           labeling_params=labeling_params,
-                                                                          outdir=outdir)
+                                                                          outdir=outdir,
+                                                                          use_gt_rope=self.use_gt_rope)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return {
             'classifier_dataset_dir': classifier_dataset_dir,

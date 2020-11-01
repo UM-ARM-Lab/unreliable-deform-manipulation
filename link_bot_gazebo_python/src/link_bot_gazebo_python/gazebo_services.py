@@ -51,7 +51,7 @@ class GazeboServices(BaseServices):
         if world:
             roslaunch_args.append(f"world:={world}")
 
-            roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
+        roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(roslaunch_args)[0]
         roslaunch_args = roslaunch_args[2:]
 
         launch_info = [(roslaunch_file, roslaunch_args)]

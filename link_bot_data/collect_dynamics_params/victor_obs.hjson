@@ -45,7 +45,7 @@
   objects: [
   ]
   res: 0.02
-  max_step_size: 0.001
+  max_step_size: 0.005
   steps_per_traj: 10
   no_objects: false
   randomize_n: null

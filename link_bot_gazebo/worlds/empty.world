@@ -1,18 +1,29 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
     <world name="default">
+        <scene>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+            <sky>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
+
         <physics name="ode" type="ode">
+            <max_step_size>0.01</max_step_size>
+            <real_time_factor>1</real_time_factor>
+            <real_time_update_rate>100</real_time_update_rate>
             <ode>
-                <constraints>
-                    <contact_max_correcting_vel>0</contact_max_correcting_vel>
-                </constraints>
                 <solver>
+                    <island_threads>2</island_threads>
                     <type>quick</type>
                     <iters>100</iters>
+                    <sor>1.0</sor> <!-- Important, see issue #2209 -->
+                    <use_dynamic_moi_rescaling>false</use_dynamic_moi_rescaling>
                 </solver>
             </ode>
-            <max_step_size>0.005</max_step_size>
-            <real_time_update_rate>200</real_time_update_rate>
         </physics>
 
         <include>

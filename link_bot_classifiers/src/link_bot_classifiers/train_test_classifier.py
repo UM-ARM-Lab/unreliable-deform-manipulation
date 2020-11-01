@@ -14,7 +14,7 @@ from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.pycommon import paths_to_json
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf,
                                        sequence_of_dicts_to_dict_of_sequences)
 from shape_completion_training.metric import AccuracyMetric
@@ -84,9 +84,9 @@ def train_main(dataset_dirs: List[pathlib.Path],
 
     train_tf_dataset = train_tf_dataset.shuffle(model_hparams['shuffle_buffer_size'], reshuffle_each_iteration=True)
 
-    rospy.logerr_once("NOT BALANCING!")
-    # train_tf_dataset = balance(train_tf_dataset)
-    # val_tf_dataset = balance(val_tf_dataset)
+    # rospy.logerr_once("NOT BALANCING!")
+    train_tf_dataset = balance(train_tf_dataset)
+    val_tf_dataset = balance(val_tf_dataset)
 
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)

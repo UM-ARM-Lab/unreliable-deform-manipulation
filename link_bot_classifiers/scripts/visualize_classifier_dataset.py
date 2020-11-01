@@ -13,10 +13,8 @@ import rospy
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
-from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch
-from std_msgs.msg import Float32
 
 limit_gpu_mem(1)
 
@@ -32,6 +30,7 @@ def main():
     parser.add_argument('--mode', choices=['train', 'val', 'test', 'all'], default='train')
     parser.add_argument('--shuffle', action='store_true')
     parser.add_argument('--save', action='store_true')
+    parser.add_argument('--threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--take', type=int)
     parser.add_argument('--only-negative', action='store_true')
@@ -49,7 +48,7 @@ def main():
 
     rospy.init_node("visualize_classifier_data")
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True)
+    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True, threshold=args.threshold)
 
     visualize_dataset(args, classifier_dataset)
 
@@ -63,8 +62,6 @@ def visualize_dataset(args, classifier_dataset):
     iterator = iter(tf_dataset)
     t0 = perf_counter()
 
-    stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
-
     reconverging_count = 0
     positive_count = 0
     negative_count = 0
@@ -76,7 +73,6 @@ def visualize_dataset(args, classifier_dataset):
     stdevs_for_positive = []
 
     done = False
-    stepper = RvizSimpleStepper()
     while not done:
         iter_t0 = perf_counter()
         try:
@@ -104,6 +100,9 @@ def visualize_dataset(args, classifier_dataset):
         if args.only_negative and np.any(is_close[1:]):
             continue
 
+        if args.only_positive and not np.any(is_close[1:]):
+            continue
+
         if count == 0:
             print_dict(example)
 
@@ -123,13 +122,7 @@ def visualize_dataset(args, classifier_dataset):
             # print(example['is_close'])
             if example['is_close'][0] == 0:
                 continue
-            scenario.plot_transition_rviz(classifier_dataset.hparams, example, 0)
-            stdev_t = example[add_predicted('stdev')][0, 0].numpy()
-            stdev_msg = Float32()
-            stdev_msg.data = stdev_t
-            stdev_pub_.publish(stdev_msg)
-
-            stepper.step()
+            classifier_dataset.plot_transition_rviz(example)
 
         elif args.display_type == 'stdev':
             for t in range(1, classifier_dataset.horizon):

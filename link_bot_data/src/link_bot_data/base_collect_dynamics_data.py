@@ -37,7 +37,7 @@ class DataCollector:
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
 
         service_provider.setup_env(verbose=self.verbose,
-                                   real_time_rate=0.0,
+                                   real_time_rate=2.0,
                                    max_step_size=self.params['max_step_size'])
 
     def collect_trajectory(self,

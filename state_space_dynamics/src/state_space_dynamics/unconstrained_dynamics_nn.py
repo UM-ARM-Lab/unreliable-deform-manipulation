@@ -23,9 +23,10 @@ class UnconstrainedDynamicsNN(MyKerasModel):
 
         self.state_keys: List = self.hparams['state_keys']
         self.action_keys: List = self.hparams['action_keys']
-        self.dataset_state_description: Dict = self.hparams['dynamics_dataset_hparams']['state_description']
+        dataset_state_description: Dict = self.hparams['dynamics_dataset_hparams']['state_description']
         self.dataset_action_description: Dict = self.hparams['dynamics_dataset_hparams']['action_description']
-        self.total_state_dimensions = sum([self.dataset_state_description[k] for k in self.state_keys])
+        self.state_description = {k: dataset_state_description[k] for k in self.state_keys}
+        self.total_state_dimensions = sum([dataset_state_description[k] for k in self.state_keys])
 
         self.dense_layers.append(layers.Dense(self.total_state_dimensions, activation=None))
 
@@ -49,7 +50,7 @@ class UnconstrainedDynamicsNN(MyKerasModel):
             for dense_layer in self.dense_layers:
                 z_t = dense_layer(z_t)
 
-            delta_s_t = vector_to_dict(self.dataset_state_description, z_t)
+            delta_s_t = vector_to_dict(self.state_description, z_t)
             s_t_plus_1 = self.scenario.integrate_dynamics(s_t, delta_s_t)
 
             pred_states.append(s_t_plus_1)

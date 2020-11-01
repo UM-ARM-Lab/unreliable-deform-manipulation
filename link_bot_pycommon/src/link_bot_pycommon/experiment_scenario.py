@@ -5,9 +5,6 @@ import numpy as np
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
-from link_bot_data.dynamics_dataset import index_time_batched, index_time_batched_mapped, index_label_time_batched
-from link_bot_data.link_bot_dataset_utils import add_predicted
-from moonshine.moonshine_utils import numpify, add_batch, remove_batch
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -104,7 +101,7 @@ class ExperimentScenario:
     def distance_to_goal(state, goal):
         raise NotImplementedError()
 
-    def batch_full_distance(self, s1: Dict, s2: Dict):
+    def classifier_distance(self, s1: Dict, s2: Dict):
         """ this is not the distance metric used in planning """
         raise NotImplementedError()
 

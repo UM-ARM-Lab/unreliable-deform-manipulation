@@ -8,8 +8,10 @@ from matplotlib import colors
 import ros_numpy
 from arc_utilities.marker_utils import scale_marker_array
 from arm_robots_msgs.msg import Points
+from link_bot_data.link_bot_dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
 from rosgraph.names import ns_join
+from std_msgs.msg import Float32
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -38,7 +40,29 @@ from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
 
-def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a):
+def make_gripper_marker(position, id, r, g, b, a, label, type):
+    gripper_marker = Marker()
+    gripper_marker.action = Marker.ADD  # create or modify
+    gripper_marker.type = type
+    gripper_marker.header.frame_id = "world"
+    gripper_marker.header.stamp = rospy.Time.now()
+    gripper_marker.ns = label
+    gripper_marker.id = id
+    gripper_marker.scale.x = 0.02
+    gripper_marker.scale.y = 0.02
+    gripper_marker.scale.z = 0.02
+    gripper_marker.pose.position.x = position[0]
+    gripper_marker.pose.position.y = position[1]
+    gripper_marker.pose.position.z = position[2]
+    gripper_marker.pose.orientation.w = 1
+    gripper_marker.color.r = r
+    gripper_marker.color.g = g
+    gripper_marker.color.b = b
+    gripper_marker.color.a = a
+    return gripper_marker
+
+
+def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marker_type=Marker.SPHERE_LIST):
     lines = Marker()
     lines.action = Marker.ADD  # create or modify
     lines.type = Marker.LINE_STRIP
@@ -53,39 +77,41 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a):
     lines.pose.orientation.y = 0
     lines.pose.orientation.z = 0
     lines.pose.orientation.w = 1
-    lines.scale.x = 0.01
+    lines.scale.x = 0.005
+    lines.scale.y = 0.005
+    lines.scale.z = 0.005
     lines.color.r = r
     lines.color.g = g
     lines.color.b = b
     lines.color.a = a
-    spheres = Marker()
-    spheres.action = Marker.ADD  # create or modify
-    spheres.type = Marker.SPHERE_LIST
-    spheres.header.frame_id = frame_id
-    spheres.header.stamp = rospy.Time.now()
-    spheres.ns = label
-    spheres.id = 6 * idx + 1
-    spheres.scale.x = 0.02
-    spheres.scale.y = 0.02
-    spheres.scale.z = 0.02
-    spheres.pose.position.x = 0
-    spheres.pose.position.y = 0
-    spheres.pose.position.z = 0
-    spheres.pose.orientation.x = 0
-    spheres.pose.orientation.y = 0
-    spheres.pose.orientation.z = 0
-    spheres.pose.orientation.w = 1
-    spheres.color.r = r
-    spheres.color.g = g
-    spheres.color.b = b
-    spheres.color.a = a
+    points_marker = Marker()
+    points_marker.action = Marker.ADD  # create or modify
+    points_marker.type = points_marker_type
+    points_marker.header.frame_id = frame_id
+    points_marker.header.stamp = rospy.Time.now()
+    points_marker.ns = label
+    points_marker.id = 6 * idx + 1
+    points_marker.scale.x = 0.01
+    points_marker.scale.y = 0.01
+    points_marker.scale.z = 0.01
+    points_marker.pose.position.x = 0
+    points_marker.pose.position.y = 0
+    points_marker.pose.position.z = 0
+    points_marker.pose.orientation.x = 0
+    points_marker.pose.orientation.y = 0
+    points_marker.pose.orientation.z = 0
+    points_marker.pose.orientation.w = 1
+    points_marker.color.r = r
+    points_marker.color.g = g
+    points_marker.color.b = b
+    points_marker.color.a = a
     for i, (x, y, z) in enumerate(rope_points):
         point = Point()
         point.x = x
         point.y = y
         point.z = z
 
-        spheres.points.append(point)
+        points_marker.points.append(point)
         lines.points.append(point)
     midpoint_sphere = Marker()
     midpoint_sphere.action = Marker.ADD  # create or modify
@@ -94,9 +120,9 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a):
     midpoint_sphere.header.stamp = rospy.Time.now()
     midpoint_sphere.ns = label
     midpoint_sphere.id = 6 * idx + 5
-    midpoint_sphere.scale.x = 0.03
-    midpoint_sphere.scale.y = 0.03
-    midpoint_sphere.scale.z = 0.03
+    midpoint_sphere.scale.x = 0.012
+    midpoint_sphere.scale.y = 0.012
+    midpoint_sphere.scale.z = 0.012
     rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
     midpoint_sphere.pose.position.x = rope_midpoint[0]
     midpoint_sphere.pose.position.y = rope_midpoint[1]
@@ -129,7 +155,7 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a):
     first_point_text.color.g = 1.0
     first_point_text.color.b = 1.0
     first_point_text.color.a = 1.0
-    return [spheres, lines, midpoint_sphere, first_point_text]
+    return [points_marker, lines, midpoint_sphere, first_point_text]
 
 
 def make_box_marker_from_extents(extent):
@@ -240,6 +266,8 @@ class FloatingRopeScenario(Base3DScenario):
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.stdev_pub = rospy.Publisher("stdev", Float32, queue_size=10)
+        self.error_pub = rospy.Publisher("error", Float32, queue_size=10)
 
         self.max_action_attempts = 500
 
@@ -752,8 +780,14 @@ class FloatingRopeScenario(Base3DScenario):
         distance = tf.linalg.norm(s1['rope'] - s2['rope'], axis=-1)
         return distance
 
-    def batch_full_distance(self, s1: Dict, s2: Dict):
-        return np.linalg.norm(s1['rope'] - s2['rope'], axis=1)
+    def classifier_distance(self, s1: Dict, s2: Dict):
+        labeling_states = s1['rope']
+        labeling_predicted_states = s2['rope']
+        points_shape = labeling_states.shape.as_list()[:2] + [-1, 3]
+        labeling_points = tf.reshape(labeling_states, points_shape)
+        labeling_predicted_points = tf.reshape(labeling_predicted_states, points_shape)
+        model_error = tf.reduce_mean(tf.linalg.norm(labeling_points - labeling_predicted_points, axis=-1), axis=-1)
+        return model_error
 
     def compute_label(self, actual: Dict, predicted: Dict, labeling_params: Dict):
         # NOTE: this should be using the same distance metric as the planning, which should also be the same as the labeling
@@ -958,76 +992,51 @@ class FloatingRopeScenario(Base3DScenario):
 
         if 'gt_rope' in state:
             rope_points = np.reshape(state['gt_rope'], [-1, 3])
-
-            markers = make_rope_marker(rope_points, 'world', label + "_gt_rope", idx, 1.5 * r, 1.5 * g, 1.5 * b, a)
+            markers = make_rope_marker(rope_points, 'world', label + "_gt_rope", idx, r, g, b, a)
             msg.markers.extend(markers)
 
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
-
             markers = make_rope_marker(rope_points, 'world', label + "_rope", 1000 + idx, r, g, b, a)
             msg.markers.extend(markers)
 
-        if 'cdcpd' in state:
-            rope_points = np.reshape(state['cdcpd'], [-1, 3])
-
-            markers = make_rope_marker(rope_points, 'world', label, 2000 + idx, r * 1.5, g * 1.5, b * 1.5, a)
+        if add_predicted('rope') in state:
+            rope_points = np.reshape(state[add_predicted('rope')], [-1, 3])
+            markers = make_rope_marker(rope_points, 'world', label + "_pred_rope", 1000 + idx, r, g, b, a,
+                                       Marker.CUBE_LIST)
             msg.markers.extend(markers)
 
         if 'left_gripper' in state:
-            left_gripper_sphere = Marker()
-            left_gripper_sphere.action = Marker.ADD  # create or modify
-            left_gripper_sphere.type = Marker.SPHERE
-            left_gripper_sphere.header.frame_id = "world"
-            left_gripper_sphere.header.stamp = rospy.Time.now()
-            left_gripper_sphere.ns = label
-            left_gripper_sphere.id = 6 * idx + 2
-
-            left_gripper_sphere.scale.x = 0.04
-            left_gripper_sphere.scale.y = 0.04
-            left_gripper_sphere.scale.z = 0.04
-
-            left_gripper_sphere.pose.position.x = state['left_gripper'][0]
-            left_gripper_sphere.pose.position.y = state['left_gripper'][1]
-            left_gripper_sphere.pose.position.z = state['left_gripper'][2]
-            left_gripper_sphere.pose.orientation.x = 0
-            left_gripper_sphere.pose.orientation.y = 0
-            left_gripper_sphere.pose.orientation.z = 0
-            left_gripper_sphere.pose.orientation.w = 1
-
-            left_gripper_sphere.color.r = 0.2
-            left_gripper_sphere.color.g = 0.2
-            left_gripper_sphere.color.b = 0.8
-            left_gripper_sphere.color.a = a * 0.6
-
+            r = 0.2
+            g = 0.2
+            b = 0.8
+            left_gripper_sphere = make_gripper_marker(state['left_gripper'], 6 * idx + 2, r, g, b, a, label + '_l',
+                                                      Marker.SPHERE)
             msg.markers.append(left_gripper_sphere)
 
         if 'right_gripper' in state:
-            right_gripper_sphere = Marker()
-            right_gripper_sphere.action = Marker.ADD  # create or modify
-            right_gripper_sphere.type = Marker.SPHERE
-            right_gripper_sphere.header.frame_id = "world"
-            right_gripper_sphere.header.stamp = rospy.Time.now()
-            right_gripper_sphere.ns = label
-            right_gripper_sphere.id = 6 * idx + 3
+            r = 0.8
+            g = 0.8
+            b = 0.2
+            right_gripper_sphere = make_gripper_marker(state['right_gripper'], 6 * idx + 3, r, g, b, a, label + "_r",
+                                                       Marker.SPHERE)
+            msg.markers.append(right_gripper_sphere)
 
-            right_gripper_sphere.scale.x = 0.04
-            right_gripper_sphere.scale.y = 0.04
-            right_gripper_sphere.scale.z = 0.04
+        if add_predicted('left_gripper') in state:
+            r = 0.2
+            g = 0.2
+            b = 0.8
+            lgpp = state[add_predicted('left_gripper')]
+            left_gripper_sphere = make_gripper_marker(lgpp, 6 * idx + 2, r, g, b, a, label + "_lp", Marker.CUBE)
+            msg.markers.append(left_gripper_sphere)
 
-            right_gripper_sphere.pose.position.x = state['right_gripper'][0]
-            right_gripper_sphere.pose.position.y = state['right_gripper'][1]
-            right_gripper_sphere.pose.position.z = state['right_gripper'][2]
-            right_gripper_sphere.pose.orientation.x = 0
-            right_gripper_sphere.pose.orientation.y = 0
-            right_gripper_sphere.pose.orientation.z = 0
-            right_gripper_sphere.pose.orientation.w = 1
-
-            right_gripper_sphere.color.r = 0.8
-            right_gripper_sphere.color.g = 0.8
-            right_gripper_sphere.color.b = 0.2
-            right_gripper_sphere.color.a = a * 0.6
-
+        if add_predicted('right_gripper') in state:
+            r = 0.8
+            g = 0.8
+            b = 0.2
+            rgpp = state[add_predicted('right_gripper')]
+            right_gripper_sphere = make_gripper_marker(rgpp, 6 * idx + 3, r, g, b, a, label + "_rp",
+                                                       Marker.CUBE)
             msg.markers.append(right_gripper_sphere)
 
         s = kwargs.get("scale", 1.0)
@@ -1035,9 +1044,21 @@ class FloatingRopeScenario(Base3DScenario):
 
         self.state_viz_pub.publish(msg)
 
-        if 'rgbd' in state:
+        if in_maybe_predicted('rgbd', state):
             publish_color_image(self.state_color_viz_pub, state['rgbd'][:, :, :3])
             publish_depth_image(self.state_depth_viz_pub, state['rgbd'][:, :, 3])
+
+        if add_predicted('stdev') in state:
+            stdev_t = state[add_predicted('stdev')][0]
+            stdev_msg = Float32()
+            stdev_msg.data = stdev_t
+            self.stdev_pub.publish(stdev_msg)
+
+        if 'error' in state:
+            error_msg = Float32()
+            error_t = state['error']
+            error_msg.data = error_t
+            self.error_pub.publish(error_msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
         state_action = {}
@@ -1047,10 +1068,10 @@ class FloatingRopeScenario(Base3DScenario):
 
     def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        s1 = np.reshape(data['left_gripper'], [3])
-        s2 = np.reshape(data['right_gripper'], [3])
-        a1 = np.reshape(data['left_gripper_position'], [3])
-        a2 = np.reshape(data['right_gripper_position'], [3])
+        s1 = np.reshape(get_maybe_predicted(data, 'left_gripper'), [3])
+        s2 = np.reshape(get_maybe_predicted(data, 'right_gripper'), [3])
+        a1 = np.reshape(get_maybe_predicted(data, 'left_gripper_position'), [3])
+        a2 = np.reshape(get_maybe_predicted(data, 'right_gripper_position'), [3])
 
         idx = kwargs.pop("idx", None)
         if idx is not None:
