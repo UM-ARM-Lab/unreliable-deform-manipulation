@@ -1,5 +1,5 @@
 #include <merrrt_visualization/rviz_animation_controller.h>
-#include <peter_msgs/GetBool.h>
+#include <peter_msgs/GetAnimControllerState.h>
 #include <peter_msgs/GetFloat32.h>
 #include <peter_msgs/AnimationControl.h>
 #include <std_msgs/Empty.h>
@@ -25,37 +25,36 @@ RVizAnimationController::RVizAnimationController(QWidget *parent) : rviz::Panel(
   connect(ui.play_backward_button, &QPushButton::clicked, this, &RVizAnimationController::PlayBackwardClicked);
   connect(ui.pause_button, &QPushButton::clicked, this, &RVizAnimationController::PauseClicked);
   connect(ui.done_button, &QPushButton::clicked, this, &RVizAnimationController::DoneClicked);
-
-  // highlight_animation_ = new QPropertyAnimation(ui, "background-color");
-  // highlight_animation_->setDuration(1000);
-  // highlight_animation_->setStartValue("#ffff00");
-  // highlight_animation_->setEndValue("#ffffff");
+  connect(ui.loop_checkbox, &QCheckBox::toggled, this, &RVizAnimationController::LoopToggled);
+  connect(ui.auto_play_checkbox, &QCheckBox::toggled, this, &RVizAnimationController::AutoPlayToggled);
+  connect(ui.period_spinbox, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &RVizAnimationController::PeriodChanged);
 
   command_pub_ = ros_node_.advertise<peter_msgs::AnimationControl>("rviz_anim/control", 10);
 
-  auto period_bind = [this](peter_msgs::GetFloat32Request &req, peter_msgs::GetFloat32Response &res) {
-    res.data = static_cast<float>(ui.period_spinbox->value());
-    return true;
-  };
-  auto period_so = create_service_options(peter_msgs::GetFloat32, "rviz_anim/period", period_bind);
-  period_srv_ = ros_node_.advertiseService(period_so);
 
-  auto auto_play_bind = [this](peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res) {
-    res.data = ui.auto_play_checkbox->isChecked();
+  auto get_state_bind = [this](peter_msgs::GetAnimControllerStateRequest &req,
+                               peter_msgs::GetAnimControllerStateResponse &res)
+  {
+    (void) req; // unused
+    res.state.auto_play = ui.auto_play_checkbox->isChecked();
+    res.state.loop = ui.loop_checkbox->isChecked();
+    res.state.period = static_cast<float>(ui.period_spinbox->value());
     return true;
   };
-  auto auto_play_so = create_service_options(peter_msgs::GetBool, "rviz_anim/auto_play", auto_play_bind);
-  auto_play_srv_ = ros_node_.advertiseService(auto_play_so);
+  auto get_state_so = create_service_options(peter_msgs::GetAnimControllerState, "rviz_anim/get_state", get_state_bind);
+  get_state_srv_ = ros_node_.advertiseService(get_state_so);
 
   // this is stupid why must I list this type here but not when I do this for services!?
-  boost::function<void(const std_msgs::Int64::ConstPtr &)> time_cb = [this](const std_msgs::Int64::ConstPtr &msg) {
+  boost::function<void(const std_msgs::Int64::ConstPtr &)> time_cb = [this](const std_msgs::Int64::ConstPtr &msg)
+  {
     TimeCallback(msg);
   };
   auto time_sub_so = ros::SubscribeOptions::create("rviz_anim/time", 10, time_cb, ros::VoidPtr(), &queue_);
   time_sub_ = ros_node_.subscribe(time_sub_so);
 
   // this is stupid why must I list this type here but not when I do this for services!?
-  boost::function<void(const std_msgs::Int64::ConstPtr &)> max_time_cb = [this](const std_msgs::Int64::ConstPtr &msg) {
+  boost::function<void(const std_msgs::Int64::ConstPtr &)> max_time_cb = [this](const std_msgs::Int64::ConstPtr &msg)
+  {
     MaxTimeCallback(msg);
   };
   auto max_time_sub_so = ros::SubscribeOptions::create("rviz_anim/max_time", 10, max_time_cb, ros::VoidPtr(), &queue_);
@@ -129,6 +128,41 @@ void RVizAnimationController::PlayBackwardClicked()
   command_pub_.publish(cmd);
 }
 
+void RVizAnimationController::LoopToggled()
+{
+  peter_msgs::AnimationControl cmd;
+  cmd.state.loop = ui.loop_checkbox->isChecked();
+  cmd.command = peter_msgs::AnimationControl::SET_LOOP;
+  command_pub_.publish(cmd);
+
+  if (ui.auto_play_checkbox->isChecked()) {
+    ROS_WARN_STREAM("Looping takes precedence over auto-play");
+    // show a warning here
+  }
+}
+
+void RVizAnimationController::AutoPlayToggled()
+{
+  peter_msgs::AnimationControl cmd;
+  cmd.state.auto_play = ui.auto_play_checkbox->isChecked();
+  cmd.command = peter_msgs::AnimationControl::SET_AUTO_PLAY;
+  command_pub_.publish(cmd);
+
+  if (ui.loop_checkbox->isChecked()) {
+    ROS_WARN_STREAM("Looping takes precedence over auto-play");
+    // show a warning here
+  }
+}
+
+
+void RVizAnimationController::PeriodChanged(double period)
+{
+  peter_msgs::AnimationControl cmd;
+  cmd.state.period = period;
+  cmd.command = peter_msgs::AnimationControl::SET_PERIOD;
+  command_pub_.publish(cmd);
+}
+
 void RVizAnimationController::QueueThread()
 {
   double constexpr timeout = 0.01;
@@ -141,4 +175,5 @@ void RVizAnimationController::QueueThread()
 }  // namespace merrrt_visualization
 
 #include <pluginlib/class_list_macros.h>
+
 PLUGINLIB_EXPORT_CLASS(merrrt_visualization::RVizAnimationController, rviz::Panel)

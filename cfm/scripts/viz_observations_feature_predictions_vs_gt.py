@@ -8,7 +8,7 @@ import colorama
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch, numpify
 from state_space_dynamics.train_test import viz_dataset
 

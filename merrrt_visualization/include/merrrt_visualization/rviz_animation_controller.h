@@ -42,14 +42,19 @@ class RVizAnimationController : public rviz::Panel
 
   void DoneClicked();
 
+  void LoopToggled();
+
+  void AutoPlayToggled();
+
+  void PeriodChanged(double period);
+
  private:
   void QueueThread();
 
   Ui_MainWidget ui;
   ros::NodeHandle ros_node_;
   ros::Publisher command_pub_;
-  ros::ServiceServer period_srv_;
-  ros::ServiceServer auto_play_srv_;
+  ros::ServiceServer get_state_srv_;
   ros::Subscriber time_sub_;
   ros::Subscriber max_time_sub_;
 

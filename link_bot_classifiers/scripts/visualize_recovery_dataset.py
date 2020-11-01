@@ -14,7 +14,7 @@ import rospy
 from link_bot_data.recovery_dataset import RecoveryDataset
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import log_scale_0_to_1
-from link_bot_pycommon.rviz_animation_controller import RvizSimpleStepper
+from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)

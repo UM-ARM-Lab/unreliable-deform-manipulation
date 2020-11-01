@@ -10,7 +10,7 @@ import tensorflow as tf
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDataset, index_time_np
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify
 from sensor_msgs.msg import Image
 

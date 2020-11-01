@@ -4,8 +4,8 @@ import numpy as np
 
 import rospy
 from peter_msgs.msg import AnimationControl
-from peter_msgs.srv import GetFloat32, GetFloat32Request, GetBool, GetBoolRequest
-from std_msgs.msg import Empty as EmptyMsg
+from peter_msgs.srv import GetFloat32, GetFloat32Request, GetAnimControllerStateRequest, \
+    GetAnimControllerState
 from std_msgs.msg import Int64
 
 
@@ -19,19 +19,18 @@ class RvizAnimationController:
         if n_time_steps is not None:
             self.time_steps = np.arange(n_time_steps, dtype=np.int64)
         self.command_sub = rospy.Subscriber("/rviz_anim/control", AnimationControl, self.on_control)
-        self.period_srv = rospy.ServiceProxy("/rviz_anim/period", GetFloat32)
         self.time_pub = rospy.Publisher("/rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("/rviz_anim/max_time", Int64, queue_size=10)
-        self.auto_play_srv = rospy.ServiceProxy("/rviz_anim/auto_play", GetBool)
-
-        rospy.wait_for_service("/rviz_anim/period")
+        self.get_state_srv = rospy.ServiceProxy("/rviz_anim/get_state", GetAnimControllerState)
 
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
         self.max_t = self.time_steps[-1]
-        self.period = self.period_srv(GetFloat32Request()).data
-        self.auto_play = self.auto_play_srv(GetBoolRequest()).data
-        self.playing = self.auto_play
+        state_res = self.get_state_srv(GetAnimControllerStateRequest())
+        self.auto_play = state_res.state.auto_play
+        self.loop = state_res.state.loop
+        self.period = state_res.state.period
+        self.playing = self.auto_play or self.loop
         self.should_step = False
         self.fwd = True
         self.done = False
@@ -49,6 +48,12 @@ class RvizAnimationController:
             self.on_pause()
         elif msg.command == AnimationControl.DONE:
             self.on_done()
+        elif msg.command == AnimationControl.SET_LOOP:
+            self.loop = msg.state.loop
+        elif msg.command == AnimationControl.SET_AUTO_PLAY:
+            self.loop = msg.state.loop
+        elif msg.command == AnimationControl.SET_PERIOD:
+            self.period = msg.state.period
         else:
             raise NotImplementedError(f"Unsupported animation control {msg.command}")
 
@@ -90,6 +95,8 @@ class RvizAnimationController:
             else:
                 if self.auto_play:
                     self.done = True
+                elif self.loop:
+                    self.idx = 0
                 else:
                     self.playing = False
         else:

@@ -12,8 +12,7 @@ from link_bot_planning.my_planner import PlanningQuery
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
 from link_bot_pycommon.ros_pycommon import publish_color_image
-from link_bot_pycommon.rviz_animation_controller import RvizAnimationController
-from moonshine.gpu_config import limit_gpu_mem
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
 from state_space_dynamics import model_utils, filter_utils

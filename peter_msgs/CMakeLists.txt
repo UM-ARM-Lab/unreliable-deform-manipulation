@@ -8,6 +8,7 @@ catkin_python_setup()
 add_message_files(
         FILES
         Action.msg
+        AnimControllerState.msg
         AnimationControl.msg
         IntPoint2D.msg
         LabelStatus.msg
@@ -23,6 +24,7 @@ add_service_files(
         ComputeOccupancy.srv
         DualGripperTrajectory.srv
         ExcludeModels.srv
+        GetAnimControllerState.srv
         GetBool.srv
         GetDualGripperPoints.srv
         GetFloat32.srv
