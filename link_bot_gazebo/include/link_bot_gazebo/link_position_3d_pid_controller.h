@@ -35,8 +35,6 @@ class LinkPosition3dPIDController : public BaseLinkPositionController
 
   void Set(geometry_msgs::Point position) override;
 
-  [[nodiscard]] geometry_msgs::Point Get() const override;
-
   physics::WorldPtr world_;
   physics::ModelPtr model_;
   char const *plugin_name_;

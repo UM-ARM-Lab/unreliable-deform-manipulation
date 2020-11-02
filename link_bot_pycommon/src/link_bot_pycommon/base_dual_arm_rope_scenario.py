@@ -31,8 +31,6 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
                                                    queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
-        self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_dual_gripper_points"),
-                                                          SetDualGripperPoints)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
 

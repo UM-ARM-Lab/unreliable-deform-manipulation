@@ -1,9 +1,9 @@
-#ifndef GAZEBO_ROS_TF_PLUGIN_H
-#define GAZEBO_ROS_TF_PLUGIN_H
+#pragma once
 
 #include <thread>
 
 #include <ros/callback_queue.h>
+#include <tf/transform_listener.h>
 #include <ros/ros.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -16,12 +16,12 @@ namespace gazebo
 {
 class GazeboRosTfPlugin : public WorldPlugin
 {
-public:
+ public:
   ~GazeboRosTfPlugin() override;
 
   void Load(physics::WorldPtr world, sdf::ElementPtr sdf) override;
 
-private:
+ private:
   std::unique_ptr<ros::NodeHandle> ph_;
   ros::CallbackQueue queue_;
   std::thread callback_queue_thread_;
@@ -29,6 +29,7 @@ private:
 
   tf2_ros::TransformBroadcaster tb_;
   tf2_ros::StaticTransformBroadcaster stb_;
+  tf::TransformListener tf_listener_;
 
   event::ConnectionPtr update_connection_;
   physics::WorldPtr world_;
@@ -38,7 +39,7 @@ private:
   void PrivateQueueThread();
 
   void PeriodicUpdate();
+
+  std::string get_frame_id(const std::string &model_name, const std::string &link_name) const;
 };
 }  // namespace gazebo
-
-#endif

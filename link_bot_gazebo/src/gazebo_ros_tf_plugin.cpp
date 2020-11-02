@@ -1,5 +1,3 @@
-#include <boost/algorithm/string.hpp>
-
 #include "gazebo_ros_tf_plugin.h"
 
 #define create_service_options(type, name, bind)                                                                       \
@@ -65,7 +63,7 @@ void GazeboRosTfPlugin::PeriodicUpdate()
     {
       auto const model_name = model->GetName();
       auto const link_name = link->GetName();
-      auto const frame_id = model_name + "/" + link_name;
+      auto const frame_id = get_frame_id(model_name, link_name);
 
       auto const pose = link->WorldPose();
       geometry_msgs::TransformStamped transform_msg;
@@ -81,7 +79,16 @@ void GazeboRosTfPlugin::PeriodicUpdate()
       transform_msg.transform.rotation.z = pose.Rot().Z();
       tb_.sendTransform(transform_msg);
     }
+
+    ros::Rate(50).sleep();
   }
+}
+
+std::string GazeboRosTfPlugin::get_frame_id(const std::string &model_name, const std::string &link_name) const
+{
+  auto frame_id = ros::names::append(model_name, link_name);
+  frame_id = ros::names::append("gazebo", frame_id);
+  return frame_id;
 }
 
 void GazeboRosTfPlugin::PrivateQueueThread()

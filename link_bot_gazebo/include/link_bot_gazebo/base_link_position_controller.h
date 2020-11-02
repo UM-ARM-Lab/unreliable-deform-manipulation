@@ -23,7 +23,7 @@ class BaseLinkPositionController
 
   virtual void Set(geometry_msgs::Point position) = 0;
 
-  [[nodiscard]] virtual geometry_msgs::Point Get() const = 0;
+  [[nodiscard]] virtual geometry_msgs::Point Get() const;
 
   physics::WorldPtr world_;
   char const *plugin_name_;

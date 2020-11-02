@@ -17,9 +17,6 @@
         <arg name="debug_moveit" value="false"/>
     </include>
 
-    <node pkg="link_bot_gazebo_python" type="gazebo_link_states_to_tf.py" name="gazebo_link_states_to_tf"
-          args="--config-file $(find link_bot_gazebo_python)/config/exclude_victor.hjson"/>
-
     <group if="$(eval grippers == 'fake_robotiq')">
         <node ns="victor" pkg="victor_fake_hardware_interface" type="fake_grippers_node.py" name="fake_grippers"/>
     </group>

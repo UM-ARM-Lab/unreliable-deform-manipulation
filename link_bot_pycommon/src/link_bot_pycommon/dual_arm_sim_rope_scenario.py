@@ -9,7 +9,8 @@ from control_msgs.msg import FollowJointTrajectoryFeedback, FollowJointTrajector
 from gazebo_ros_link_attacher.srv import AttachRequest
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
-from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse
+from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse, \
+    Position3DActionRequest, Position3DAction
 from rosgraph.names import ns_join
 
 
@@ -22,6 +23,7 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
         # register a new callback to stop when the rope is overstretched
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
+        self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set"), Position3DAction)
 
     def overstretching_stop_condition(self, feedback: FollowJointTrajectoryFeedback):
         res: GetBoolResponse = self.overstretching_srv(GetBoolRequest())
@@ -111,12 +113,8 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         return left_req, right_req
 
     def attach_rope_to_grippers(self):
-        seq_req = SetDualGripperPointsRequest()
+        set_req = Position3DActionRequest()
         self.set_rope_end_points_srv(set_req)
-        # # FIXME: the robot's name in gazebo may NOT be synonymous with the robot namespace
-        # left_req, right_req = self.attach_or_detach_requests()
-        # self.attach_srv(left_req)
-        # self.attach_srv(right_req)
 
     def detach_rope_to_grippers(self):
         left_req, right_req = self.attach_or_detach_requests()

@@ -50,8 +50,11 @@ class Position3dPlugin : public WorldPlugin
 
   void PrivateQueueThread();
 
+  void OnUpdate();
+
   // unique_ptr because base class is abstract
   std::unordered_map<std::string, std::unique_ptr<BaseLinkPositionController>> controllers_map_;
+
 
   physics::WorldPtr world_;
   event::ConnectionPtr update_connection_;

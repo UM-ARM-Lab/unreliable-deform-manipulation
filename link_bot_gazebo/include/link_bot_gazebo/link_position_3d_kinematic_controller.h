@@ -18,14 +18,14 @@ class LinkPosition3dKinematicController : public BaseLinkPositionController
 
   void Enable(bool enable) override;
 
+  void Update() override;
+
   void Set(geometry_msgs::Point position) override;
-
-  [[nodiscard]] geometry_msgs::Point Get() const override;
-
 
   physics::WorldPtr world_;
   physics::ModelPtr model_;
   char const *plugin_name_;
+  geometry_msgs::Point setpoint_;
 };
 
 }  // namespace gazebo

@@ -30,6 +30,7 @@
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so"/>
         <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>
+        <plugin name="position_3d_plugin" filename="libposition_3d_plugin.so"/>
         <plugin name="collision_map_plugin" filename="libcollision_map_plugin.so"/>
 
         <include>
@@ -53,7 +54,7 @@
 
         <include>
             <pose>0.8 -0.4 0.62 0 0 0</pose>
-            <uri>model://box2_static</uri>
+            <uri>model://box2_kinematic</uri>
         </include>
 
         <include>

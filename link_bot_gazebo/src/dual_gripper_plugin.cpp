@@ -45,12 +45,13 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   }
 
   auto enable_bind = [this](std_srvs::SetBoolRequest &req, std_srvs::SetBoolResponse &res)
-  { return OnEnable(req, res); };
+  {
+    return OnEnable(req, res);
+  };
   auto enable_so = create_service_options_private(std_srvs::SetBool, "enable", enable_bind);
 
   auto pos_action_bind = [this](peter_msgs::DualGripperTrajectoryRequest &req,
-                                peter_msgs::DualGripperTrajectoryResponse &res)
-  { return OnAction(req, res); };
+                                peter_msgs::DualGripperTrajectoryResponse &res) { return OnAction(req, res); };
   auto action_so = create_service_options_private(peter_msgs::DualGripperTrajectory, "execute_dual_gripper_trajectory",
                                                   pos_action_bind);
 
@@ -74,13 +75,10 @@ void DualGripperPlugin::Load(physics::ModelPtr parent, sdf::ElementPtr /*sdf*/)
   get_service_ = private_ros_node_->advertiseService(get_so);
   set_service_ = private_ros_node_->advertiseService(set_so);
 
-  ros_queue_thread_ = std::thread([this]
-                                  { QueueThread(); });
-  private_ros_queue_thread_ = std::thread([this]
-                                          { PrivateQueueThread(); });
+  ros_queue_thread_ = std::thread([this] { QueueThread(); });
+  private_ros_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
-  auto update = [this](common::UpdateInfo const & /*info*/)
-  { OnUpdate(); };
+  auto update = [this](common::UpdateInfo const & /*info*/) { OnUpdate(); };
   this->update_connection_ = event::Events::ConnectWorldUpdateBegin(update);
   ROS_INFO("Dual gripper plugin finished initializing!");
 }
@@ -187,8 +185,7 @@ bool DualGripperPlugin::OnEnable(std_srvs::SetBoolRequest &req, std_srvs::SetBoo
     right_gripper_->SetAngularVel(ignition::math::Vector3d::Zero);
     right_gripper_->SetLinearVel(ignition::math::Vector3d::Zero);
     res.success = true;
-  }
-  else
+  } else
   {
     res.success = false;
     res.message = "null pointers to gripper links";
