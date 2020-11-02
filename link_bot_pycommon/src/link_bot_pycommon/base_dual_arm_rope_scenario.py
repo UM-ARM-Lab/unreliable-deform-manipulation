@@ -151,16 +151,6 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     def initial_obstacle_poses_with_noise(self, env_rng: np.random.RandomState, obstacles: List):
         raise NotImplementedError()
 
-    def randomize_environment(self, env_rng, objects_params: Dict, data_collection_params: Dict):
-        # release the rope
-
-        # plan to reset joint config, we assume this will always work
-
-        # possibly randomize the obstacle configurations?
-
-        # grasp the rope again
-        pass
-
     def execute_action(self, action: Dict):
         left_gripper_points = [action['left_gripper_position']]
         right_gripper_points = [action['right_gripper_position']]

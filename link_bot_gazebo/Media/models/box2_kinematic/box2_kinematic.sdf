@@ -1,5 +1,5 @@
 <sdf version="1.6">
-    <model name="box2">
+    <model name="box2_kinematic">
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <kinematic>true</kinematic>

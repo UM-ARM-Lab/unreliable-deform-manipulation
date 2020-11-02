@@ -111,10 +111,12 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         return left_req, right_req
 
     def attach_rope_to_grippers(self):
-        # FIXME: the robot's name in gazebo may NOT be synonymous with the robot namespace
-        left_req, right_req = self.attach_or_detach_requests()
-        self.attach_srv(left_req)
-        self.attach_srv(right_req)
+        seq_req = SetDualGripperPointsRequest()
+        self.set_rope_end_points_srv(set_req)
+        # # FIXME: the robot's name in gazebo may NOT be synonymous with the robot namespace
+        # left_req, right_req = self.attach_or_detach_requests()
+        # self.attach_srv(left_req)
+        # self.attach_srv(right_req)
 
     def detach_rope_to_grippers(self):
         left_req, right_req = self.attach_or_detach_requests()
@@ -133,3 +135,22 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         move.right_gripper.y = desired_rope_point_positions[1, 1]
         move.right_gripper.z = desired_rope_point_positions[1, 2]
         self.set_rope_end_points_srv(move)
+
+    def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
+        # release the rope
+        # self.robot.open_left_gripper()
+        # self.robot.open_right_gripper()
+        # self.detach_rope_to_grippers()
+
+        # plan to reset joint config, we assume this will always work
+        # self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
+
+        # possibly randomize the obstacle configurations?
+        random_object_poses = self.random_new_object_poses(env_rng, params)
+        self.set_object_poses(random_object_poses)
+
+        # Grasp the rope again
+        # self.service_provider.pause()
+        # self.move_rope_to_match_grippers()
+        # self.attach_rope_to_grippers()
+        # self.service_provider.play()

@@ -35,12 +35,14 @@ add_service_files(
         LinkBotReset.srv
         LinkBotState.srv
         Position3DAction.srv
-        Position3DDeltaAction.srv
         Position3DEnable.srv
+        Position3DStop.srv
         Reconstruction.srv
+        RegisterPosition3DController.srv
         SetDualGripperPoints.srv
         SetRopeState.srv
         StateSpaceDescription.srv
+        UnregisterPosition3DController.srv
         WorldControl.srv
 )
 

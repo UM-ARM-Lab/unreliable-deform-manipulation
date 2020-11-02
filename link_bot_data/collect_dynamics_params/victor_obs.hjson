@@ -41,14 +41,27 @@
     1.4
   ]
   objects_extent: [
+    0.6
+    1.0
+    -0.5
+    0.5
+    0.6
+    0.6
   ]
   objects: [
+      box1
+      box2
+      box3
+      box4
+      box5
+      hook1
+      hook2
   ]
   res: 0.02
-  max_step_size: 0.005
+  max_step_size: 0.01
   steps_per_traj: 10
   no_objects: false
-  randomize_n: null
+  randomize_n: 1
   repeat_delta_gripper_motion_probability: 0.8
   max_distance_gripper_can_move: 0.10
   max_distance_between_grippers: null

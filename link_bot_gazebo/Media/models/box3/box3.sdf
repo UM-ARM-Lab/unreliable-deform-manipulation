@@ -23,8 +23,8 @@
                     </box>
                 </geometry>
                 <material>
-                    <ambient>0.8 0.2 0.5 1.0</ambient>
-                    <diffuse>0.8 0.2 0.5 1.0</diffuse>
+                    <ambient>0.1 0.3 0.5 1.0</ambient>
+                    <diffuse>0.1 0.3 0.5 1.0</diffuse>
                 </material>
             </visual>
             <collision name="box_collision">

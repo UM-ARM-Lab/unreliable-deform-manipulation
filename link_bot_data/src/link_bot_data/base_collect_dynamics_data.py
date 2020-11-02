@@ -37,7 +37,7 @@ class DataCollector:
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
 
         service_provider.setup_env(verbose=self.verbose,
-                                   real_time_rate=2.0,
+                                   real_time_rate=1.0,
                                    max_step_size=self.params['max_step_size'])
 
     def collect_trajectory(self,
@@ -163,9 +163,7 @@ class DataCollector:
             # Randomize the environment
             randomize = self.params["randomize_n"] and traj_idx % self.params["randomize_n"] == 0
             if not self.params['no_objects'] and randomize:
-                self.scenario.randomize_environment(env_rng,
-                                                    objects_params=self.params,
-                                                    data_collection_params=self.params)
+                self.scenario.randomize_environment(env_rng, self.params)
 
             # Generate a new trajectory
             example = self.collect_trajectory(traj_idx=traj_idx, verbose=self.verbose, action_rng=action_rng)

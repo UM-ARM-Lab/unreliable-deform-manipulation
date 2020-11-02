@@ -1,3 +1,4 @@
+string scoped_link_name
 bool enable
 ---
 

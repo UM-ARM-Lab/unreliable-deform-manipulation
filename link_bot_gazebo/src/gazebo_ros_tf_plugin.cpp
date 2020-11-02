@@ -34,68 +34,53 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
     {
       frame_id_ = "robot_root";
       ROS_INFO_STREAM("using default frame " << frame_id_);
-    }
-    else
+    } else
     {
       frame_id_ = sdf->GetElement("frame")->Get<std::string>();
       ROS_INFO_STREAM("using non-standard frame " << frame_id_);
     }
-
-    // Find the links we're supposed to publish TF for
-    if (!sdf->HasElement("model_names"))
-    {
-      ROS_WARN("No element model_names, this plugin will do nothing.");
-    }
-    else
-    {
-      auto const model_names_str = sdf->GetElement("model_names")->Get<std::string>();
-      boost::split(model_names_, model_names_str, boost::is_any_of(" "));
-    }
   }
 
-  ph_ = std::make_unique<ros::NodeHandle>("ros_tf_plugin");
+  ph_ = std::make_unique<ros::NodeHandle>("gazebo_ros_tf_plugin");
   callback_queue_thread_ = std::thread([this] { PrivateQueueThread(); });
 
   ROS_INFO("Finished loading ROS TF plugin!\n");
 
-  periodic_event_thread_ = std::thread([this] {
+  auto periodic_update_func = [this]
+  {
     while (true)
     {
       PeriodicUpdate();
       usleep(100000);
     }
-  });
+  };
+  periodic_event_thread_ = std::thread(periodic_update_func);
 }
 
 void GazeboRosTfPlugin::PeriodicUpdate()
 {
-  for (auto const model_name : model_names_)
+  for (auto const &model: world_->Models())
   {
-    auto const model = world_->ModelByName(model_name);
-    if (!model)
+    for (auto const &link: model->GetLinks())
     {
-      ROS_WARN_STREAM_THROTTLE(1, "could not find model with name " << model_name);
-      ROS_WARN_STREAM_THROTTLE(1, "possible model names are:");
-      for (auto const available_model : world_->Models())
-      {
-        ROS_WARN_STREAM_THROTTLE(1, available_model->GetScopedName() << "[ scoped: " << available_model->GetScopedName() << " ]");
-      }
-      continue;
-    }
+      auto const model_name = model->GetName();
+      auto const link_name = link->GetName();
+      auto const frame_id = model_name + "/" + link_name;
 
-    auto const pose = model->WorldPose();
-    geometry_msgs::TransformStamped transform_msg;
-    transform_msg.header.frame_id = frame_id_;
-    transform_msg.header.stamp = ros::Time::now();
-    transform_msg.child_frame_id = model->GetName() + "_gazebo";
-    transform_msg.transform.translation.x = pose.Pos().X();
-    transform_msg.transform.translation.y = pose.Pos().Y();
-    transform_msg.transform.translation.z = pose.Pos().Z();
-    transform_msg.transform.rotation.w = pose.Rot().W();
-    transform_msg.transform.rotation.x = pose.Rot().X();
-    transform_msg.transform.rotation.y = pose.Rot().Y();
-    transform_msg.transform.rotation.z = pose.Rot().Z();
-    tb_.sendTransform(transform_msg);
+      auto const pose = link->WorldPose();
+      geometry_msgs::TransformStamped transform_msg;
+      transform_msg.header.frame_id = frame_id_;
+      transform_msg.header.stamp = ros::Time::now();
+      transform_msg.child_frame_id = frame_id;
+      transform_msg.transform.translation.x = pose.Pos().X();
+      transform_msg.transform.translation.y = pose.Pos().Y();
+      transform_msg.transform.translation.z = pose.Pos().Z();
+      transform_msg.transform.rotation.w = pose.Rot().W();
+      transform_msg.transform.rotation.x = pose.Rot().X();
+      transform_msg.transform.rotation.y = pose.Rot().Y();
+      transform_msg.transform.rotation.z = pose.Rot().Z();
+      tb_.sendTransform(transform_msg);
+    }
   }
 }
 

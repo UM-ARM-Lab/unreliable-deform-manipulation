@@ -35,3 +35,30 @@ gazebo::physics::JointPtr GetJoint(char const *plugin_name, gazebo::physics::Mod
   }
   return joint;
 }
+
+gazebo::physics::LinkPtr GetLink(char const *plugin_name,
+                                 gazebo::physics::WorldPtr world,
+                                 std::string const scoped_link_name)
+{
+  std::vector<std::string> possible_names;
+  for (auto const &model : world->Models())
+  {
+    for (auto const &link : model->GetLinks())
+    {
+      if (link->GetScopedName() == scoped_link_name)
+      {
+        return link;
+      } else
+      {
+        possible_names.emplace_back(link->GetScopedName());
+      }
+    }
+  }
+  ROS_ERROR_STREAM_NAMED(plugin_name, "No link " << scoped_link_name << " found");
+  ROS_WARN_STREAM_NAMED(plugin_name, "Available joints are:");
+  for (auto const &n : possible_names)
+  {
+    ROS_WARN_STREAM_NAMED(plugin_name, n);
+  }
+  return nullptr;
+}
