@@ -176,6 +176,8 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.robot.close_left_gripper()
         self.robot.close_right_gripper()
 
+        self.reset_cdcpd()
+
     def move_rope_out_of_the_scene(self):
         set_req = Position3DActionRequest()
         set_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")

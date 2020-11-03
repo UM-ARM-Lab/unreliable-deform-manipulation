@@ -12,11 +12,10 @@ from geometry_msgs.msg import PoseStamped
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import SetDualGripperPoints, \
-    ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
+from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
 from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState, PointCloud2
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, EmptyRequest
 from tf.transformations import quaternion_from_euler
 
 
@@ -31,6 +30,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
                                                    queue_size=10)
         self.goto_home_srv = rospy.ServiceProxy("goto_home", Empty)
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
+        self.cdcpd_reset_srv = rospy.ServiceProxy("cdcpd/reset", Empty)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
 
@@ -167,3 +167,6 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
     @staticmethod
     def robot_name():
         raise NotImplementedError()
+
+    def reset_cdcpd(self):
+        self.cdcpd_reset_srv(EmptyRequest())

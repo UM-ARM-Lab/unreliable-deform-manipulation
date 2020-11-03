@@ -58,7 +58,7 @@
       hook2
   ]
   res: 0.02
-  max_step_size: 0.007
+  max_step_size: 0.008
   steps_per_traj: 10
   no_objects: false
   randomize_n: 16
