@@ -6,22 +6,28 @@ namespace gazebo
 {
 
 LinkPosition3dPIDController::LinkPosition3dPIDController(char const *plugin_name,
-                                                         std::string scoped_link_name,
-                                                         physics::WorldPtr world,
+                                                         physics::LinkPtr link,
                                                          double const kp_pos,
                                                          double const kp_vel,
                                                          double const max_force,
                                                          double const max_vel,
                                                          bool const grav_comp) :
-    BaseLinkPositionController(plugin_name, scoped_link_name, world),
+    BaseLinkPositionController(plugin_name, link),
     kP_pos_(kp_pos),
     kP_vel_(kp_vel),
     max_force_(max_force),
     max_vel_(max_vel),
     gravity_compensation_(grav_comp)
 {
+  if (!link_)
+  {
+    ROS_ERROR_STREAM_NAMED(plugin_name_, "pointer to the link " << scoped_link_name_ << " is null");
+    return;
+  }
+
   // compute total mass
-  const std::vector<physics::LinkPtr> &links = model_->GetLinks();
+  auto const model = link_->GetModel();
+  const std::vector<physics::LinkPtr> &links = model->GetLinks();
   for (const auto &link : links)
   {
     total_mass_ += link->GetInertial()->Mass();
@@ -29,18 +35,22 @@ LinkPosition3dPIDController::LinkPosition3dPIDController(char const *plugin_name
 
   pos_pid_ = common::PID(kP_pos_, 0, kD_pos_, 0, 0, max_vel_, -max_vel_);
   vel_pid_ = common::PID(kP_vel_, 0, kD_vel_, 0, 0, max_force_, -max_force_);
-
-  target_position_ = link_->WorldPose().Pos();
 }
 
-void LinkPosition3dPIDController::Update()
+void LinkPosition3dPIDController::Update(ignition::math::Vector3d const &setpoint)
 {
-  auto const dt = model_->GetWorld()->Physics()->GetMaxStepSize();
+  if (!link_)
+  {
+    ROS_ERROR_STREAM_NAMED(plugin_name_, "pointer to the link " << scoped_link_name_ << " is null");
+    return;
+  }
+
+  auto const dt = link_->GetWorld()->Physics()->GetMaxStepSize();
 
   auto const pos = link_->WorldPose().Pos();
   auto const vel_ = link_->WorldLinearVel();
 
-  pos_error_ = pos - target_position_;
+  pos_error_ = pos - setpoint;
   auto const target_vel = pos_error_.Normalized() * pos_pid_.Update(pos_error_.Length(), dt);
 
   auto const vel_error = vel_ - target_vel;
@@ -48,7 +58,7 @@ void LinkPosition3dPIDController::Update()
 
   if (gravity_compensation_)
   {
-    auto const max_i = total_mass_ * model_->GetWorld()->Gravity().Length();
+    auto const max_i = total_mass_ * link_->GetWorld()->Gravity().Length();
     auto const z_comp = kI_vel_ * z_integral_;
 
     // FIXME: there's a bug waiting here, one of these branches is wrong but I don't know which one...
@@ -66,30 +76,6 @@ void LinkPosition3dPIDController::Update()
   {
     link_->AddForce(force);
   }
-}
-
-void LinkPosition3dPIDController::Stop()
-{
-  enabled_ = true;
-  target_position_ = link_->WorldPose().Pos();
-}
-
-void LinkPosition3dPIDController::Enable(bool const enable)
-{
-  enabled_ = enable;
-  if (enable)
-  {
-    target_position_ = link_->WorldPose().Pos();
-  }
-}
-
-void LinkPosition3dPIDController::Set(geometry_msgs::Point const position)
-{
-  // Only set the position, don't step physics
-  enabled_ = true;
-  target_position_.X(position.x);
-  target_position_.Y(position.y);
-  target_position_.Z(position.z);
 }
 
 }  // namespace gazebo

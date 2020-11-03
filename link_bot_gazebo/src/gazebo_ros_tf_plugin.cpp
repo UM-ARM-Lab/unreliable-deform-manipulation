@@ -49,7 +49,7 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
     while (true)
     {
       PeriodicUpdate();
-      usleep(100000);
+      usleep(1000);
     }
   };
   periodic_event_thread_ = std::thread(periodic_update_func);
@@ -57,6 +57,13 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
 
 void GazeboRosTfPlugin::PeriodicUpdate()
 {
+  auto const now = ros::Time::now();
+  auto const dt = now - last_tf_update_;
+  if (dt == ros::Duration(0))
+  {
+    return;
+  }
+
   for (auto const &model: world_->Models())
   {
     for (auto const &link: model->GetLinks())
@@ -68,7 +75,7 @@ void GazeboRosTfPlugin::PeriodicUpdate()
       auto const pose = link->WorldPose();
       geometry_msgs::TransformStamped transform_msg;
       transform_msg.header.frame_id = frame_id_;
-      transform_msg.header.stamp = ros::Time::now();
+      transform_msg.header.stamp = now;
       transform_msg.child_frame_id = frame_id;
       transform_msg.transform.translation.x = pose.Pos().X();
       transform_msg.transform.translation.y = pose.Pos().Y();
@@ -80,7 +87,7 @@ void GazeboRosTfPlugin::PeriodicUpdate()
       tb_.sendTransform(transform_msg);
     }
 
-    ros::Rate(50).sleep();
+    last_tf_update_ = now;
   }
 }
 

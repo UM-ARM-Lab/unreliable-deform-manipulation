@@ -35,6 +35,7 @@ class GazeboRosTfPlugin : public WorldPlugin
   physics::WorldPtr world_;
   std::vector<std::string> model_names_;
   std::string frame_id_;
+  ros::Time last_tf_update_;
 
   void PrivateQueueThread();
 

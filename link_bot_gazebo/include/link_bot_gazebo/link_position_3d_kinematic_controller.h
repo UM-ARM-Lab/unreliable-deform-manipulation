@@ -10,22 +10,12 @@ namespace gazebo
 class LinkPosition3dKinematicController : public BaseLinkPositionController
 {
  public:
-  LinkPosition3dKinematicController(char const *plugin_name,
-                                    std::string scoped_link_name,
-                                    physics::WorldPtr world);
+  LinkPosition3dKinematicController(char const *plugin_name, physics::LinkPtr link);
 
-  void Stop() override;
+  void Update(ignition::math::Vector3d const &setpoint) override;
 
-  void Enable(bool enable) override;
 
-  void Update() override;
-
-  void Set(geometry_msgs::Point position) override;
-
-  physics::WorldPtr world_;
-  physics::ModelPtr model_;
-  char const *plugin_name_;
-  geometry_msgs::Point setpoint_;
+  void OnEnable(bool enable) override;
 };
 
 }  // namespace gazebo

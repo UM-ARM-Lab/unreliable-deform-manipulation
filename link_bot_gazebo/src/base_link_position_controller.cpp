@@ -5,24 +5,73 @@
 namespace gazebo
 {
 
-BaseLinkPositionController::BaseLinkPositionController(char const *plugin_name,
-                                                       std::string scoped_link_name,
-                                                       physics::WorldPtr world) :
-    world_(world),
-    plugin_name_(plugin_name)
+BaseLinkPositionController::BaseLinkPositionController(char const *plugin_name, physics::LinkPtr link) :
+    plugin_name_(plugin_name),
+    link_(link),
+    scoped_link_name_(link->GetScopedName()),
+    tf_listener_(tf_buffer_),
+    setpoint_(link->WorldPose().Pos())
 {
-  link_ = GetLink(plugin_name_, world, scoped_link_name);
 }
 
-geometry_msgs::Point BaseLinkPositionController::Get() const
+std::optional<ignition::math::Vector3d> BaseLinkPositionController::Get() const
 {
-  auto const pos = link_->WorldPose().Pos();
-  geometry_msgs::Point out_pos;
-  out_pos.x = pos.X();
-  out_pos.y = pos.Y();
-  out_pos.z = pos.Z();
+  return link_->WorldPose().Pos();
+}
 
-  return out_pos;
+void BaseLinkPositionController::OnFollow(std::string const &frame_id)
+{
+  OnEnable(true);
+  following_ = true;
+  following_frame_id_ = frame_id;
+}
+
+void BaseLinkPositionController::OnUpdate()
+{
+  if (not enabled_)
+  {
+    return;
+  }
+
+  if (following_)
+  {
+    try
+    {
+      auto const transform_stamped = tf_buffer_.lookupTransform("world", following_frame_id_, ros::Time(0));
+      auto const trans = transform_stamped.transform.translation;
+      Update({trans.x, trans.y, trans.z});
+    }
+    catch (tf2::TransformException &ex)
+    {
+      ROS_WARN("%s", ex.what());
+    }
+  } else
+  {
+    Update(setpoint_);
+  }
+}
+
+void BaseLinkPositionController::Set(geometry_msgs::Point position)
+{
+  OnEnable(true);
+  following_ = false;
+  setpoint_ = point_to_ign_vector_3d(position);
+}
+
+
+void BaseLinkPositionController::OnStop()
+{
+  auto const pos = Get();
+  if (pos)
+  {
+    setpoint_ = *pos;
+  }
+}
+
+void BaseLinkPositionController::OnEnable(bool enable)
+{
+  enabled_ = enable;
+  OnStop();
 }
 
 }  // namespace gazebo

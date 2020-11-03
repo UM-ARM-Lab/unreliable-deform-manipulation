@@ -19,24 +19,15 @@ class LinkPosition3dPIDController : public BaseLinkPositionController
 {
  public:
   LinkPosition3dPIDController(char const *plugin_name,
-                              std::string scoped_link_name,
-                              physics::WorldPtr world,
+                              physics::LinkPtr link,
                               double kp_pos,
                               double kp_vel,
                               double max_force,
                               double max_vel,
                               bool grav_comp);
 
-  void Stop() override;
+  void Update(ignition::math::Vector3d const &setpoint) override;
 
-  void Update() override;
-
-  void Enable(bool enable) override;
-
-  void Set(geometry_msgs::Point position) override;
-
-  physics::WorldPtr world_;
-  physics::ModelPtr model_;
   char const *plugin_name_;
   double kP_pos_;
   double kP_vel_;
@@ -48,10 +39,8 @@ class LinkPosition3dPIDController : public BaseLinkPositionController
   double kD_vel_{0.0};
 
   bool enabled_{false};
-  physics::LinkPtr link_;
   common::PID pos_pid_;
   common::PID vel_pid_;
-  ignition::math::Vector3d target_position_{0, 0, 0};
   ignition::math::Vector3d pos_error_{0, 0, 0};
   double total_mass_{0.0};
   bool gravity_compensation_{false};

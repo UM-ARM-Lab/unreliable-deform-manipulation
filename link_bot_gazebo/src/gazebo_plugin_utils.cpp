@@ -40,7 +40,7 @@ gazebo::physics::LinkPtr GetLink(char const *plugin_name,
                                  gazebo::physics::WorldPtr world,
                                  std::string const scoped_link_name)
 {
-  std::vector<std::string> possible_names;
+  std::vector <std::string> possible_names;
   for (auto const &model : world->Models())
   {
     for (auto const &link : model->GetLinks())
@@ -61,4 +61,18 @@ gazebo::physics::LinkPtr GetLink(char const *plugin_name,
     ROS_WARN_STREAM_NAMED(plugin_name, n);
   }
   return nullptr;
+}
+
+geometry_msgs::Point ign_vector_3d_to_point(ignition::math::Vector3d const &pos)
+{
+  geometry_msgs::Point point;
+  point.x = pos.X();
+  point.y = pos.Y();
+  point.z = pos.Z();
+  return point;
+}
+
+ignition::math::Vector3d point_to_ign_vector_3d(geometry_msgs::Point const &pos)
+{
+  return ignition::math::Vector3d(pos.x, pos.y, pos.z);
 }

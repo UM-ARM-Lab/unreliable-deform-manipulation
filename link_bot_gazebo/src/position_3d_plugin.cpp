@@ -5,6 +5,7 @@
 #include <link_bot_gazebo/link_position_3d_pid_controller.h>
 #include <link_bot_gazebo/link_position_3d_kinematic_controller.h>
 #include <ros/console.h>
+#include <link_bot_gazebo/gazebo_plugin_utils.h>
 
 #define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
@@ -36,6 +37,8 @@ void Position3dPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
   }
 
   CreateServices();
+
+  // FIXME: none of this code is threadsafe
 }
 
 void Position3dPlugin::CreateServices()
@@ -80,6 +83,15 @@ void Position3dPlugin::CreateServices()
   }
 
   {
+    auto follow_bind = [this](peter_msgs::Position3DFollowRequest &req, peter_msgs::Position3DFollowResponse &res)
+    {
+      return OnFollow(req, res);
+    };
+    auto follow_so = create_service_options(peter_msgs::Position3DFollow, "follow", follow_bind);
+    follow_service_ = private_ros_node_->advertiseService(follow_so);
+  }
+
+  {
     auto pos_set_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
     {
       return OnSet(req, res);
@@ -108,13 +120,18 @@ void Position3dPlugin::CreateServices()
 bool Position3dPlugin::OnRegister(peter_msgs::RegisterPosition3DControllerRequest &req,
                                   peter_msgs::RegisterPosition3DControllerResponse &res)
 {
+  auto const link = GetLink(PLUGIN_NAME, world_, req.scoped_link_name);
+  if (!link)
+  {
+    return true;
+  }
+
   if (req.controller_type == "pid")
   {
     // TODO: where do PID params come from?
     controllers_map_.emplace(req.scoped_link_name,
                              std::make_unique<LinkPosition3dPIDController>(PLUGIN_NAME,
-                                                                           req.scoped_link_name,
-                                                                           world_,
+                                                                           link,
                                                                            1.0,
                                                                            1.0,
                                                                            1.0,
@@ -124,9 +141,7 @@ bool Position3dPlugin::OnRegister(peter_msgs::RegisterPosition3DControllerReques
   } else if (req.controller_type == "kinematic")
   {
     controllers_map_.emplace(req.scoped_link_name,
-                             std::make_unique<LinkPosition3dKinematicController>(PLUGIN_NAME,
-                                                                                 req.scoped_link_name,
-                                                                                 world_));
+                             std::make_unique<LinkPosition3dKinematicController>(PLUGIN_NAME, link));
     ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME, "registered kinematic controller for link " << req.scoped_link_name);
   } else
   {
@@ -151,7 +166,7 @@ bool Position3dPlugin::OnStop(peter_msgs::Position3DStopRequest &req, peter_msgs
   auto const it = controllers_map_.find(req.scoped_link_name);
   if (it != controllers_map_.cend())
   {
-    it->second->Stop();
+    it->second->OnStop();
   } else
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
@@ -166,7 +181,21 @@ bool Position3dPlugin::OnEnable(peter_msgs::Position3DEnableRequest &req, peter_
   auto const it = controllers_map_.find(req.scoped_link_name);
   if (it != controllers_map_.cend())
   {
-    it->second->Enable(req.enable);
+    it->second->OnEnable(req.enable);
+  } else
+  {
+    ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
+  }
+  return true;
+}
+
+bool Position3dPlugin::OnFollow(peter_msgs::Position3DFollowRequest &req, peter_msgs::Position3DFollowResponse &res)
+{
+  (void) res;
+  auto const it = controllers_map_.find(req.scoped_link_name);
+  if (it != controllers_map_.cend())
+  {
+    it->second->OnFollow(req.frame_id);
   } else
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
@@ -180,6 +209,7 @@ bool Position3dPlugin::OnSet(peter_msgs::Position3DActionRequest &req, peter_msg
   auto const it = controllers_map_.find(req.scoped_link_name);
   if (it != controllers_map_.cend())
   {
+    it->second->OnEnable(true);
     it->second->Set(req.position);
   } else
   {
@@ -193,7 +223,11 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
   auto const it = controllers_map_.find(req.scoped_link_name);
   if (it != controllers_map_.cend())
   {
-    res.pos = it->second->Get();
+    auto const pos = it->second->Get();
+    if (pos)
+    {
+      res.pos = ign_vector_3d_to_point(*pos);
+    }
   } else
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
@@ -223,7 +257,7 @@ void Position3dPlugin::OnUpdate()
 {
   for (auto &[k, v] : controllers_map_)
   {
-    v->Update();
+    v->OnUpdate();
   }
 }
 

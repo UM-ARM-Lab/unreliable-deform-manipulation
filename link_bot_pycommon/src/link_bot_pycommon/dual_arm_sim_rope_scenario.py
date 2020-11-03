@@ -10,8 +10,13 @@ from gazebo_ros_link_attacher.srv import AttachRequest
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
 from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse, \
-    Position3DActionRequest, Position3DAction
+    Position3DActionRequest, Position3DAction, RegisterPosition3DControllerRequest, RegisterPosition3DController, \
+    Position3DFollow, Position3DFollowRequest, Position3DEnableRequest, Position3DEnable
 from rosgraph.names import ns_join
+
+
+def gz_scope(*args):
+    return "::".join(args)
 
 
 class SimDualArmRopeScenario(BaseDualArmRopeScenario):
@@ -24,6 +29,10 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         # register a new callback to stop when the rope is overstretched
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
         self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set"), Position3DAction)
+        self.register_controller_srv = rospy.ServiceProxy("/position_3d_plugin/register", RegisterPosition3DController)
+        self.pos3d_follow_srv = rospy.ServiceProxy("/position_3d_plugin/follow", Position3DFollow)
+        self.pos3d_enable_srv = rospy.ServiceProxy("/position_3d_plugin/enable", Position3DEnable)
+        self.pos3d_set_srv = rospy.ServiceProxy("/position_3d_plugin/set", Position3DAction)
 
     def overstretching_stop_condition(self, feedback: FollowJointTrajectoryFeedback):
         res: GetBoolResponse = self.overstretching_srv(GetBoolRequest())
@@ -68,6 +77,9 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
     def on_before_data_collection(self, params: Dict):
         super().on_before_data_collection(params)
 
+        # register kinematic controllers for fake-grasping
+        self.register_fake_grasping()
+
         # Mark the rope as a not-obstacle
         exclude = ExcludeModelsRequest()
         exclude.model_names.append("rope_3d")
@@ -76,25 +88,24 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         # let go
         # TODO: if not grasp:
         #  see the real_victor scenario on_before_data_collection
-
         # else don't bother
-        self.robot.open_left_gripper()
-        self.robot.open_right_gripper()
-        self.detach_rope_to_grippers()
+        self.move_rope_out_of_the_scene()
 
         # move to init positions
         self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
 
-        # Grasp the rope and move to a certain position to start data collection
-        self.service_provider.pause()
-        self.move_rope_to_match_grippers()
-        self.attach_rope_to_grippers()
-        self.service_provider.play()
+        # Grasp the rope again
+        self.grasp_rope_endpoints()
 
-        rospy.sleep(2)
-
-        self.robot.close_left_gripper()
-        self.robot.close_right_gripper()
+    def register_fake_grasping(self):
+        register_left_req = RegisterPosition3DControllerRequest()
+        register_left_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        register_left_req.controller_type = "kinematic"
+        self.register_controller_srv(register_left_req)
+        register_right_req = RegisterPosition3DControllerRequest()
+        register_right_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        register_right_req.controller_type = "kinematic"
+        self.register_controller_srv(register_right_req)
 
     def attach_or_detach_requests(self):
         left_req = AttachRequest()
@@ -116,10 +127,16 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         set_req = Position3DActionRequest()
         self.set_rope_end_points_srv(set_req)
 
-    def detach_rope_to_grippers(self):
-        left_req, right_req = self.attach_or_detach_requests()
-        self.detach_srv(left_req)
-        self.detach_srv(right_req)
+    def detach_rope_from_grippers(self):
+        left_enable_req = Position3DEnableRequest()
+        left_enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        left_enable_req.enable = False
+        self.pos3d_enable_srv(left_enable_req)
+
+        right_enable_req = Position3DEnableRequest()
+        right_enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        right_enable_req.enable = False
+        self.pos3d_enable_srv(right_enable_req)
 
     def move_rope_to_match_grippers(self):
         left_transform = self.tf.get_transform("robot_root", self.robot.left_tool_name)
@@ -135,20 +152,52 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.set_rope_end_points_srv(move)
 
     def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
-        # release the rope
-        # self.robot.open_left_gripper()
-        # self.robot.open_right_gripper()
-        # self.detach_rope_to_grippers()
+        # teleport the rope out of there
+        self.move_rope_out_of_the_scene()
 
         # plan to reset joint config, we assume this will always work
-        # self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
+        self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
 
         # possibly randomize the obstacle configurations?
         random_object_poses = self.random_new_object_poses(env_rng, params)
         self.set_object_poses(random_object_poses)
 
         # Grasp the rope again
-        # self.service_provider.pause()
-        # self.move_rope_to_match_grippers()
-        # self.attach_rope_to_grippers()
-        # self.service_provider.play()
+        self.grasp_rope_endpoints()
+
+    def grasp_rope_endpoints(self):
+        self.robot.open_left_gripper()
+        self.robot.open_right_gripper()
+
+        self.service_provider.pause()
+        self.make_rope_endpoints_follow_gripper()
+        self.service_provider.play()
+        rospy.sleep(5)
+        self.robot.close_left_gripper()
+        self.robot.close_right_gripper()
+
+    def move_rope_out_of_the_scene(self):
+        set_req = Position3DActionRequest()
+        set_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        set_req.position.x = 1.3
+        set_req.position.y = 0.3
+        set_req.position.z = 1.3
+        self.pos3d_set_srv(set_req)
+
+        set_req = Position3DActionRequest()
+        set_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        set_req.position.x = 1.3
+        set_req.position.y = -0.3
+        set_req.position.z = 1.3
+        self.pos3d_set_srv(set_req)
+
+    def make_rope_endpoints_follow_gripper(self):
+        left_follow_req = Position3DFollowRequest()
+        left_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        left_follow_req.frame_id = "left_tool"
+        self.pos3d_follow_srv(left_follow_req)
+
+        right_follow_req = Position3DFollowRequest()
+        right_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        right_follow_req.frame_id = "right_tool"
+        self.pos3d_follow_srv(right_follow_req)

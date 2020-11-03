@@ -3517,7 +3517,7 @@
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius>0.024</radius>
+                        <radius>0.01</radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -3550,7 +3550,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.01</cfm>
+                    <cfm>0.02</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -3595,7 +3595,7 @@
                 <pose frame=''>0 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
-                        <radius>0.024</radius>
+                        <radius>0.01</radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -3627,7 +3627,7 @@
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.01</cfm>
+                    <cfm>0.02</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>

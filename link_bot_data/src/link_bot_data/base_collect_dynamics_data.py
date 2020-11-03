@@ -37,7 +37,7 @@ class DataCollector:
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
 
         service_provider.setup_env(verbose=self.verbose,
-                                   real_time_rate=1.0,
+                                   real_time_rate=0.0,
                                    max_step_size=self.params['max_step_size'])
 
     def collect_trajectory(self,
@@ -85,6 +85,13 @@ class DataCollector:
                                                  state=state,
                                                  action_params=self.params)
 
+            # Visualization
+            self.scenario.plot_state_rviz(state, label='actual')
+            if time_idx < self.params['steps_per_traj'] - 1:  # skip the last action in visualization as well
+                self.scenario.plot_action_rviz(state, action)
+            self.scenario.plot_time_idx_rviz(time_idx)
+            # End Visualization
+
             # execute action
             self.scenario.execute_action(action)
 
@@ -97,12 +104,6 @@ class DataCollector:
                 state_component = state[state_component_name]
                 states[state_component_name].append(state_component)
             time_indices.append(time_idx)
-
-            # Visualization
-            self.scenario.plot_state_rviz(state, label='actual')
-            if time_idx < self.params['steps_per_traj'] - 1:  # skip the last action in visualization as well
-                self.scenario.plot_action_rviz(state, action)
-            self.scenario.plot_time_idx_rviz(time_idx)
 
         feature.update(states)
         feature.update(actions)

@@ -5,6 +5,7 @@
 #include <geometry_msgs/Pose.h>
 #include <peter_msgs/GetPosition3D.h>
 #include <peter_msgs/Position3DAction.h>
+#include <peter_msgs/Position3DFollow.h>
 #include <peter_msgs/Position3DEnable.h>
 #include <peter_msgs/RegisterPosition3DController.h>
 #include <peter_msgs/UnregisterPosition3DController.h>
@@ -34,6 +35,8 @@ class Position3dPlugin : public WorldPlugin
   bool OnStop(peter_msgs::Position3DStopRequest &req, peter_msgs::Position3DStopResponse &res);
 
   bool OnEnable(peter_msgs::Position3DEnableRequest &req, peter_msgs::Position3DEnableResponse &res);
+
+  bool OnFollow(peter_msgs::Position3DFollowRequest &req, peter_msgs::Position3DFollowResponse &res);
 
   bool OnSet(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res);
 
@@ -68,6 +71,7 @@ class Position3dPlugin : public WorldPlugin
   ros::ServiceServer unregister_service_;
   ros::ServiceServer enable_service_;
   ros::ServiceServer set_service_;
+  ros::ServiceServer follow_service_;
   ros::ServiceServer stop_service_;
   ros::ServiceServer get_position_service_;
 

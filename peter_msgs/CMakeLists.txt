@@ -35,6 +35,7 @@ add_service_files(
         LinkBotReset.srv
         LinkBotState.srv
         Position3DAction.srv
+        Position3DFollow.srv
         Position3DEnable.srv
         Position3DStop.srv
         Reconstruction.srv
