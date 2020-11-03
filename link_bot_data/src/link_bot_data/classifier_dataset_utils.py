@@ -5,10 +5,11 @@ from typing import Dict, List, Optional
 
 import hjson
 import tensorflow as tf
-from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
 
+from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature
+from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
+    add_label
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
 from state_space_dynamics import model_utils
@@ -43,7 +44,8 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None):
     labeling_params = json.load(labeling_params.open("r"))
-    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, use_gt_rope, start_at, stop_at)
+    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, use_gt_rope, start_at,
+                                             stop_at)
 
 
 def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
@@ -77,9 +79,11 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
     classifier_dataset_hparams['stop-at'] = stop_at
     hjson.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
+    # because we're currently making this dataset, we can't call "get_dataset" but we can still use it to visualize
+    classifier_dataset_for_viz = ClassifierDataset([outdir], use_gt_rope=use_gt_rope)
+
     t0 = perf_counter()
     total_example_idx = 0
-    stepper = RvizSimpleStepper()
     for mode in ['train', 'val', 'test']:
         tf_dataset = dataset.get_datasets(mode=mode)
 
@@ -89,16 +93,15 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
         batch_size = 8
         out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
         for out_example in out_examples:
-            actual_batch_size = out_example[0]['is_close'].shape[0]
+            actual_batch_size = out_example[0]['traj_idx'].shape[0]
             for batch_idx in range(actual_batch_size):
                 for out_example_for_start_t in out_example:
                     out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
 
-                    DEBUG = False
+                    DEBUG = True
                     if DEBUG:
-                        if out_example_b['is_close'][0]:
-                            # ClassifierDataset.plot_transition_rviz(out_example_b)
-                            stepper.step()
+                        add_label(out_example_b, labeling_params['threshold'])
+                        classifier_dataset_for_viz.plot_transition_rviz(out_example_b)
 
                     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
 

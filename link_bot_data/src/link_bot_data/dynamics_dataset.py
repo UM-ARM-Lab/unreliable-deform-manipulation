@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDataset
+from link_bot_data.link_bot_dataset_utils import use_gt_rope
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
@@ -89,12 +90,8 @@ class DynamicsDataset(BaseDataset):
 
         dataset = dataset.map(_add_scenario_metadata)
 
-        def _use_gt_rope(example: Dict):
-            example['rope'] = example['gt_rope']
-            return example
-
         if self.use_gt_rope:
-            dataset = dataset.map(_use_gt_rope)
+            dataset = dataset.map(use_gt_rope)
 
         return dataset
 

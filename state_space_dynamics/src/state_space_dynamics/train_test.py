@@ -168,11 +168,10 @@ def eval_main(dataset_dirs: List[pathlib.Path],
         print(f"{name}: {value}")
 
     # more metrics that can't be expressed as just an average over metrics on each batch
-    key = 'link_bot'  # FIXME: hard coded state key
     all_errors = None
     for batch in test_tf_dataset:
         outputs = runner.model(batch, training=False)
-        errors_for_batch = tf.linalg.norm(outputs[key] - batch[key], axis=2)
+        errors_for_batch = test_dataset.scenario.classifier_distance(outputs, batch)
         if all_errors is not None:
             all_errors = tf.concat([all_errors, errors_for_batch], axis=0)
         else:

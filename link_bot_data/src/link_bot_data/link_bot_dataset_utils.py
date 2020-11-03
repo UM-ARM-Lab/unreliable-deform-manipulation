@@ -314,3 +314,13 @@ def in_maybe_predicted(k: str, e: Dict):
     elif not (k in e or add_predicted(k) in e):
         return False
     return True
+
+
+def use_gt_rope(example: Dict):
+    example['rope'] = example['gt_rope']
+    return example
+
+
+def add_label(example: Dict, threshold: float):
+    is_close = example['error'] < threshold
+    example['is_close'] = tf.cast(is_close, dtype=tf.float32)

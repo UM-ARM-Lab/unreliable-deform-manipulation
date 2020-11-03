@@ -50,5 +50,6 @@ def main():
                             start_at=args.start_at,
                             stop_at=args.stop_at)
 
-    if __name__ == '__main__':
-        main()
+
+if __name__ == '__main__':
+    main()

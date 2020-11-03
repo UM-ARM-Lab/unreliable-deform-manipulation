@@ -774,12 +774,6 @@ class FloatingRopeScenario(Base3DScenario):
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance
 
-    @staticmethod
-    def full_distance_tf(s1: Dict, s2: Dict):
-        """ the same as the distance metric used in planning """
-        distance = tf.linalg.norm(s1['rope'] - s2['rope'], axis=-1)
-        return distance
-
     def classifier_distance(self, s1: Dict, s2: Dict):
         labeling_states = s1['rope']
         labeling_predicted_states = s2['rope']

@@ -6,7 +6,7 @@ from merrrt_visualization.rviz_animation_controller import RvizAnimationControll
 
 import rospy
 from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.link_bot_dataset_utils import add_predicted, use_gt_rope, add_label
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.moonshine_utils import numpify
 
@@ -15,12 +15,14 @@ class ClassifierDataset(BaseDataset):
 
     def __init__(self,
                  dataset_dirs: List[pathlib.Path],
+                 use_gt_rope: bool,
                  load_true_states=False,
                  no_balance=True,
                  threshold: Optional[float] = None):
         super(ClassifierDataset, self).__init__(dataset_dirs)
         self.no_balance = no_balance
         self.load_true_states = load_true_states
+        self.use_gt_rope = use_gt_rope
         self.labeling_params = self.hparams['labeling_params']
         self.threshold = threshold if threshold is not None else self.labeling_params['threshold']
         rospy.loginfo(f"classifier using threshold {self.threshold}")
@@ -87,11 +89,13 @@ class ClassifierDataset(BaseDataset):
         threshold = self.threshold
 
         def _label(example: Dict):
-            is_close = example['error'] < threshold
-            example['is_close'] = tf.cast(is_close, dtype=tf.float32)
+            add_label(example, threshold)
             return example
 
         dataset = dataset.map(_label)
+
+        if self.use_gt_rope:
+            dataset = dataset.map(use_gt_rope)
 
         return dataset
 
