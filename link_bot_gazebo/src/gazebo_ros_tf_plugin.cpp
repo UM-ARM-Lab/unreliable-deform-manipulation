@@ -49,7 +49,7 @@ void GazeboRosTfPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
     while (true)
     {
       PeriodicUpdate();
-      usleep(1000);
+      ros::Duration(0.001).sleep();
     }
   };
   periodic_event_thread_ = std::thread(periodic_update_func);

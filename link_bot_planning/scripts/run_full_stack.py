@@ -260,7 +260,8 @@ class FullStackRunner:
     def planning_evaluation(self, runlog: Dict, seed: int):
         classifier_model_dir = pathlib.Path(runlog['learn_classifier']['model_dir'])
         udnn_model_dirs = paths_from_json(runlog['learn_dynamics']['model_dirs'])
-        full_dynamics_model_dirs = paths_from_json(runlog['learn_full_dynamics']['model_dirs'])
+        # full_dynamics_model_dirs = paths_from_json(runlog['learn_full_dynamics']['model_dirs'])
+        full_dynamics_model_dirs = []
         recovery_model_dir = pathlib.Path(runlog['learn_recovery']['model_dir'])
         planning_module_path = pathlib.Path(r.get_path('link_bot_planning'))
         planning_evaluation_params = self.full_stack_params["planning_evaluation"]
@@ -310,6 +311,14 @@ class FullStackRunner:
                 method_classifier_model_dir = [classifier_model_dir / 'best_checkpoint']
                 recovery = {
                     'recovery_model_dir': recovery_model_dir / 'best_checkpoint',
+                    'use_recovery': True,
+                }
+            elif method_name == "random_recovery_no_classifier":
+                method_fwd_model_dirs = [d / 'best_checkpoint' for d in udnn_model_dirs]
+                method_classifier_model_dir = [pathlib.Path('cl_trials/none_baseline/none')]
+                link_bot_planning_path = pathlib.Path(r.get_path('link_bot_planning'))
+                recovery = {
+                    'recovery_model_dir': link_bot_planning_path / 'recovery_trials' / 'random' / 'random',
                     'use_recovery': True,
                 }
             elif method_name == "random_recovery":
@@ -406,13 +415,13 @@ def main():
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
-
-    if 'learn_full_dynamics' not in runlog and (included_steps is None or 'learn_full_dynamics' in included_steps):
-        learn_full_dynamics_out = fsr.learn_full_dynamics(runlog, seed)
-        runlog['learn_full_dynamics'] = learn_full_dynamics_out
-        with logfile_name.open("w") as logfile:
-            hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
-        rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
+    #
+    # if 'learn_full_dynamics' not in runlog and (included_steps is None or 'learn_full_dynamics' in included_steps):
+    #     learn_full_dynamics_out = fsr.learn_full_dynamics(runlog, seed)
+    #     runlog['learn_full_dynamics'] = learn_full_dynamics_out
+    #     with logfile_name.open("w") as logfile:
+    #         hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
+    #     rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
 
     if 'make_classifier_dataset' not in runlog and (
             included_steps is None or 'make_classifier_dataset' in included_steps):

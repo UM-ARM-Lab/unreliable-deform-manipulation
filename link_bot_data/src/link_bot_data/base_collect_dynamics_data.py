@@ -37,7 +37,7 @@ class DataCollector:
         print(Fore.CYAN + f"Using seed: {self.seed}" + Fore.RESET)
 
         service_provider.setup_env(verbose=self.verbose,
-                                   real_time_rate=0.0,
+                                   real_time_rate=self.params['real_time_rate'],
                                    max_step_size=self.params['max_step_size'])
 
     def collect_trajectory(self,
@@ -69,6 +69,7 @@ class DataCollector:
         last_state = self.scenario.get_state()
         for time_idx in range(self.params['steps_per_traj']):
             # get current state and sample action
+            t0 = perf_counter()
             state = self.scenario.get_state()
 
             # DEBUG

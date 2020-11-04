@@ -1,6 +1,0 @@
-<launch>
-    <include file="$(find link_bot_gazebo)/launch/kinect_static_transforms.launch">
-    </include>
-    <include file="$(find cdcpd_ros)/launch/gazebo_victor_tracking.launch">
-    </include>
-</launch>

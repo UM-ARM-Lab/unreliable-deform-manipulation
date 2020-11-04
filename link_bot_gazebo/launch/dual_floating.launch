@@ -2,7 +2,7 @@
     <arg name="gui" default="true"/>
     <arg name="use_cdcpd" default="true"/>
 
-    <include file="robot_in_gazebo.launch">
+    <include file="$(find link_bot_gazebo)/launch/robot_in_gazebo.launch">
         <arg name="world" value="dual_floating_grippers.world"/>
         <arg name="use_victor" value="false"/>
         <arg name="use_val" value="false"/>
@@ -17,16 +17,12 @@
         <param name="rope_ns" value="kinematic_rope"/>
     </node>
 
-    <node pkg="link_bot_gazebo_python" type="gazebo_link_states_to_tf.py" name="gazebo_link_states_to_tf"
-          args="--config-file $(find link_bot_gazebo_python)/config/exclude_victor.hjson"/>
-
-
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool"
-              args="0 0 0 0 0 0 kinematic_rope/left_gripper left_tool">
+              args="0 0 0 0 0 0 gazebo/kinematic_rope/left_gripper left_tool">
         </node>
         <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool"
-              args="0 0 0 0 0 0 kinematic_rope/right_gripper right_tool">
+              args="0 0 0 0 0 0 gazebo/kinematic_rope/right_gripper right_tool">
         </node>
     </group>
 

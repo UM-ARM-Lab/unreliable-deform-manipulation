@@ -2,17 +2,22 @@
   seed: 1
   nickname: sim_dual
   service_provider: gazebo
+  use_gt_rope: true
   collect_dynamics_1: {
+    robot_namespace: null
     launch: dual_floating.launch
     scenario: dual_floating
-    params: collect_dynamics_params/dual_no_obs.json
-    n_trajs: 5120
+    params: collect_dynamics_params/dual_no_obs.hjson
+    world: null
+    n_trajs: 1024
   }
   collect_dynamics_2: {
-    launch: victor_tabletop.launch
-    scenario: dual_arm
-    params: collect_dynamics_params/dual_obs.json
-    n_trajs: 2048
+    robot_namespace: victor
+    launch: main.launch
+    scenario: dual_arm_rope_sim_victor
+    world: tabletop_rope_obstacles2.world
+    params: collect_dynamics_params/victor_obs.hjson
+    n_trajs: 1024
   }
   learn_dynamics: {
     scenario: dual_floating
@@ -53,11 +58,12 @@
     test_scenes_dir: test_scenes/dual_1599931915/
     launch: victor_tabletop.launch
     methods: [
-#      learned_recovery
+     learned_recovery
 #      no_classifier
 #      classifier
-      full_dynamics
-      random_recovery
+#      full_dynamics
+#      random_recovery
+      random_recovery_no_classifier
     ]
   }
 }

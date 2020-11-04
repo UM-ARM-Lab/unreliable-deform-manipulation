@@ -591,21 +591,6 @@ class FloatingRopeScenario(Base3DScenario):
         }
 
     def get_rgbd(self):
-        # from time import perf_counter
-        # t0 = perf_counter()
-        # while True:
-        #     color_msg: Image = self.color_image_listener.get()
-        #     dt = (rospy.Time.now() - color_msg.header.stamp).to_sec()
-        #     if dt <= 0.1:
-        #         break
-        #
-        # while True:
-        #     depth_msg = self.depth_image_listener.get()
-        #     dt = (rospy.Time.now() - depth_msg.header.stamp).to_sec()
-        #     if dt <= 0.1:
-        #         break
-        # print(perf_counter() - t0)
-
         color_msg: Image = self.color_image_listener.get()
         depth_msg = self.depth_image_listener.get()
 
