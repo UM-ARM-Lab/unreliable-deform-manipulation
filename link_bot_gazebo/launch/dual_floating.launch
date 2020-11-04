@@ -2,7 +2,7 @@
     <arg name="gui" default="true"/>
     <arg name="use_cdcpd" default="true"/>
 
-    <include file="$(find link_bot_gazebo)/launch/gazebo.launch">
+    <include file="robot_in_gazebo.launch">
         <arg name="world" value="dual_floating_grippers.world"/>
         <arg name="use_victor" value="false"/>
         <arg name="use_val" value="false"/>

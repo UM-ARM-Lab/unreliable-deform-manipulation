@@ -75,6 +75,10 @@ gazebo_plugin(gazebo_ros_moveit_planning_scene src/gazebo_ros_moveit_planning_sc
 
 gazebo_plugin(gazebo_ros_tf_plugin src/gazebo_ros_tf_plugin.cpp)
 
+gazebo_plugin(kinematic_robotiq_3f_gripper_plugin
+        src/gazebo_plugin_utils.cpp
+        src/kinematic_robotiq_3f_gripper_plugin.cpp)
+
 #gazebo_plugin(rosparam_plugin src/rosparam_plugin.cpp)
 
 #gazebo_plugin(arm_video_recorder_plugin src/arm_video_recorder_plugin.cpp)

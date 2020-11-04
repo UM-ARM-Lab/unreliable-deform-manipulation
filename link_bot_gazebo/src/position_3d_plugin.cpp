@@ -6,6 +6,8 @@
 #include <link_bot_gazebo/link_position_3d_kinematic_controller.h>
 #include <ros/console.h>
 #include <link_bot_gazebo/gazebo_plugin_utils.h>
+#include <link_bot_gazebo/kinematic_robotiq_3f_gripper_plugin.h>
+
 
 #define create_service_options(type, name, bind)                                                                       \
   ros::AdvertiseServiceOptions::create<type>(name, bind, ros::VoidPtr(), &queue_)
@@ -235,6 +237,14 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
   return true;
 }
 
+void Position3dPlugin::OnUpdate()
+{
+  for (auto &[k, v] : controllers_map_)
+  {
+    v->OnUpdate();
+  }
+}
+
 void Position3dPlugin::QueueThread()
 {
   double constexpr timeout = 0.01;
@@ -250,14 +260,6 @@ void Position3dPlugin::PrivateQueueThread()
   while (private_ros_node_->ok())
   {
     private_queue_.callAvailable(ros::WallDuration(timeout));
-  }
-}
-
-void Position3dPlugin::OnUpdate()
-{
-  for (auto &[k, v] : controllers_map_)
-  {
-    v->OnUpdate();
   }
 }
 

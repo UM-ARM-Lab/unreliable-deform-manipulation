@@ -22,23 +22,33 @@
         </node>
     </group>
 
-    <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world)"/>
-        <arg name="verbose" default="$(arg verbose)"/>
-        <arg name="paused" default="$(arg pause)"/>
-        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
-        <arg name="gui" value="$(arg gui)"/>
-        <arg name="debug" default="$(arg debug_gazebo)"/>
-    </include>
+    <!-- /////////////////////////////////////////////// -->
+    <!-- Gazebo -->
+    <group>
+        <!-- because we use ros_control only for the joints of the arms, not the grippers,
+             this is used to rename the joint_states topic it published -->
+        <remap from="$(arg robot_name)/joint_states" to="$(arg robot_name)/arms_joint_states"/>
+        <include file="$(find gazebo_ros)/launch/empty_world.launch">
+            <arg name="world_name" value="$(find link_bot_gazebo)/worlds/$(arg world)"/>
+            <arg name="verbose" default="$(arg verbose)"/>
+            <arg name="paused" default="$(arg pause)"/>
+            <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+            <arg name="gui" value="$(arg gui)"/>
+            <arg name="debug" default="$(arg debug_gazebo)"/>
+        </include>
+    </group>
 
+    <!-- /////////////////////////////////////////////// -->
+    <!-- Robot -->
     <group if="$(arg use_victor)">
         <!-- uploads robot description and setups up other parameters -->
+        <!-- TODO: namespace tf and the robot_description -->
         <include file="$(find victor_moveit_config)/launch/planning_context.launch">
             <arg name="load_robot_description" value="true"/>
         </include>
 
         <!-- start the controllers -->
-        <include file="$(find victor_control)/launch/victor_control.launch">
+        <include file="$(find victor_control)/launch/victor_control_gazebo.launch">
             <arg name="robot_namespace" value="$(arg robot_name)"/>
         </include>
 

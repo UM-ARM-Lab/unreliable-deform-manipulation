@@ -142,22 +142,24 @@ void GazeboRosMoveItPlanningScene::Load(physics::ModelPtr _model, sdf::ElementPt
     res.all_model_names = excluded_model_names_;
     return true;
   };
-  auto exclude_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExcludeModels>("exclude_models_from_planning_scene", exclude_bind,
-                                                                                    ros::VoidPtr(), &queue_);
+  auto exclude_so = ros::AdvertiseServiceOptions::create<peter_msgs::ExcludeModels>(
+      "exclude_models_from_planning_scene", exclude_bind,
+      ros::VoidPtr(), &queue_);
   excluded_models_srv_ = rosnode_->advertiseService(exclude_so);
 
   // Custom Callback Queue for services
   this->callback_queue_thread_ = boost::thread(boost::bind(&GazeboRosMoveItPlanningScene::QueueThread, this));
 
-  periodic_event_thread_ = std::thread([this]
-                                       {
-                                         while (ros::ok())
-                                         {
-                                           using namespace std::chrono_literals;
-                                           std::this_thread::sleep_for(0.01s);
-                                           PeriodicUpdate();
-                                         }
-                                       });
+  auto periodic_update = [this]()
+  {
+    while (ros::ok())
+    {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(0.01s);
+      PeriodicUpdate();
+    }
+  };
+  periodic_event_thread_ = std::thread(periodic_update);
 }
 
 void GazeboRosMoveItPlanningScene::PeriodicUpdate()
@@ -496,7 +498,7 @@ moveit_msgs::PlanningScene GazeboRosMoveItPlanningScene::BuildMessage()
         }
         ROS_DEBUG("model %s has %zu links", model_name.c_str(), links.size());
         ROS_DEBUG("model %s has %zu meshes, %zu mesh poses", model_name.c_str(), object.meshes.size(),
-                        object.mesh_poses.size());
+                  object.mesh_poses.size());
       }
     }
   }
