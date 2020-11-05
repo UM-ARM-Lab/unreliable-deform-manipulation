@@ -89,9 +89,6 @@ def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):
     train_tf_dataset = batch_tf_dataset(train_tf_dataset, batch_size, drop_remainder=True)
     val_tf_dataset = batch_tf_dataset(val_tf_dataset, batch_size, drop_remainder=True)
 
-    # shuffle again so batches are not presented in the same order
-    train_tf_dataset = train_tf_dataset.shuffle(16)
-
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
