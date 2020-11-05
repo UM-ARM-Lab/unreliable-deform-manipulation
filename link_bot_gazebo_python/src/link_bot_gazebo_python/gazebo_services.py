@@ -82,6 +82,8 @@ class GazeboServices(BaseServices):
         set_physics_msg.time_step = max_step_size
         self.set_physics.call(set_physics_msg)
 
+        self.play()
+
     def play(self):
         try:
             self.play_srv(EmptyRequest())
