@@ -5,7 +5,7 @@ import rospy
 from actionlib_msgs.msg import GoalStatus
 from arm_robots.robot import MoveitEnabledRobot
 from control_msgs.msg import FollowJointTrajectoryFeedback
-from peter_msgs.srv import GetBool, GetBoolResponse, GetBoolRequest
+from peter_msgs.srv import GetOverstretching, GetOverstretchingResponse, GetOverstretchingRequest
 from rosgraph.names import ns_join
 
 
@@ -35,6 +35,6 @@ def dual_arm_rope_execute_action(robot: MoveitEnabledRobot, action: Dict):
 
 
 def overstretching_stop_condition(feedback: FollowJointTrajectoryFeedback, rope_namespace='rope_3d'):
-    overstretching_srv = rospy.ServiceProxy(ns_join(rope_namespace, "rope_overstretched"), GetBool)
-    res: GetBoolResponse = overstretching_srv(GetBoolRequest())
-    return res.data
+    overstretching_srv = rospy.ServiceProxy(ns_join(rope_namespace, "rope_overstretched"), GetOverstretching)
+    res: GetOverstretchingResponse = overstretching_srv(GetOverstretchingRequest())
+    return res.overstretched

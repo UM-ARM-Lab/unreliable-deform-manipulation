@@ -12,8 +12,8 @@ from geometry_msgs.msg import PoseStamped
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetBoolResponse, GetBoolRequest, \
-    GetBool
+from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetOverstretchingResponse, GetOverstretchingRequest, \
+    GetOverstretching
 from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Empty, EmptyRequest
@@ -34,7 +34,6 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         self.cdcpd_reset_srv = rospy.ServiceProxy("cdcpd/reset", Empty)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
-        self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
 
         exclude_srv_name = ns_join(self.robot_namespace, "exclude_models_from_planning_scene")
         self.exclude_from_planning_scene_srv = rospy.ServiceProxy(exclude_srv_name, ExcludeModels)
@@ -47,8 +46,8 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
                                           state: Dict,
                                           action_params: Dict,
                                           stateless: Optional[bool] = False):
-        res: GetBoolResponse = self.overstretching_srv(GetBoolRequest())
-        if res.data:
+        res: GetOverstretchingResponse = self.overstretching_srv(GetOverstretchingRequest())
+        if res.overstretched:
             return
         return self.sample_action(action_rng=action_rng,
                                   environment=environment,

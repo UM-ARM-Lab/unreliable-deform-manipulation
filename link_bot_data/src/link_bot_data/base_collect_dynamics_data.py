@@ -43,7 +43,7 @@ class DataCollector:
     def collect_trajectory(self,
                            traj_idx: int,
                            verbose: int,
-                           action_rng: np.random.RandomState
+                           action_rng: np.random.RandomState,
                            ):
         if self.params['no_objects']:
             rows, cols, channels = extent_to_env_shape(self.params['extent'], self.params['res'])
@@ -164,7 +164,7 @@ class DataCollector:
 
             # Randomize the environment
             randomize = self.params["randomize_n"] and traj_idx % self.params["randomize_n"] == 0
-            if not self.params['no_objects'] and randomize:
+            if (not self.params['no_objects'] and randomize) or self.scenario.needs_reset():
                 self.scenario.randomize_environment(env_rng, self.params)
 
             # Generate a new trajectory

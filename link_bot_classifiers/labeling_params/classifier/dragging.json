@@ -1,5 +1,0 @@
-{
-  "threshold": 0.08,
-  "classifier_horizon": 2,
-  "start_step": 5
-}

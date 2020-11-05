@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import json
 import pathlib
 import time
 from typing import List, Optional
 
+import hjson
 import numpy as np
 import tensorflow as tf
 
@@ -15,8 +15,7 @@ from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.pycommon import paths_to_json
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
-from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf,
-                                       sequence_of_dicts_to_dict_of_sequences)
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_sequences
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model.utils import reduce_mean_dict
@@ -30,6 +29,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                batch_size: int,
                epochs: int,
                seed: int,
+               use_gt_rope: bool,
                checkpoint: Optional[pathlib.Path] = None,
                take: Optional[int] = None,
                ensemble_idx: Optional[int] = None,
@@ -39,13 +39,13 @@ def train_main(dataset_dirs: List[pathlib.Path],
     # Datasets
     ###############
     # set load_true_states=True when debugging
-    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
-    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
+    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
 
     ###############
     # Model
     ###############
-    model_hparams = json.load((model_hparams).open('r'))
+    model_hparams = hjson.load((model_hparams).open('r'))
     model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
     model_hparams['batch_size'] = batch_size
     model_hparams['seed'] = seed

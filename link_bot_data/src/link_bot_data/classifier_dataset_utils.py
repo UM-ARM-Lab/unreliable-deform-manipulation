@@ -1,4 +1,3 @@
-import json
 import pathlib
 from time import perf_counter
 from typing import Dict, List, Optional
@@ -43,7 +42,7 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             use_gt_rope: bool,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None):
-    labeling_params = json.load(labeling_params.open("r"))
+    labeling_params = hjson.load(labeling_params.open("r"))
     make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, use_gt_rope, start_at,
                                              stop_at)
 
@@ -216,15 +215,24 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
         error = scenario.classifier_distance(sliced_actual, sliced_predictions)
         out_example['error'] = tf.cast(error, dtype=tf.float32)
 
-        # is_first_predicted_state_close = is_close[:, 0]
-        # valid_indices = tf.where(is_first_predicted_state_close)
-        # valid_indices = tf.squeeze(valid_indices, axis=1)
-        # # keep only valid_indices from every key in out_example...
-        # valid_out_example = gather_dict(out_example, valid_indices)
-        # valid_out_examples.append(valid_out_example)
+        # perception reliability
+        if labeling_params['perception_reliability_method'] == 'gt':
+            perception_reliability = gt_perception_reliability(sliced_actual, sliced_predictions)
+        out_example['perception_reliability'] = perception_reliability
 
         valid_out_examples.append(out_example)
     return valid_out_examples
+
+
+def zero_through_inf_to_one_through_zero(x):
+    """ maps [0, inf) to [1, 0) """
+    return 1 / (1 + x)
+
+
+def gt_perception_reliability(self, actual: Dict, predicted: Dict):
+    gt_perception_error = actual['gt_rope'] - predicted['rope']
+    perception_reliability = zero_through_inf_to_one_through_zero(gt_perception_error)
+    return perception_reliability
 
 
 def batch_of_many_of_actions_sequences_to_dict(actions, n_actions_sampled, n_start_states, n_actions):

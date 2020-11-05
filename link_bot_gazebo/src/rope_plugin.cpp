@@ -20,7 +20,7 @@
  * - get_rope_state
  *   - type: peter_msgs::GetRopeState
  * - rope_overstretched
- *   - type: peter_msgs::GetBool
+ *   - type: peter_msgs::GetOverstretching
  */
 
 namespace gazebo
@@ -61,7 +61,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
                                                                                      ros::VoidPtr(), &queue_);
 
   auto overstretched_bind = [this](auto &&req, auto &&res) { return GetOverstretched(req, res); };
-  auto overstretched_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetBool>(
+  auto overstretched_so = ros::AdvertiseServiceOptions::create<peter_msgs::GetOverstretching>(
       "rope_overstretched", overstretched_bind, ros::VoidPtr(), &queue_);
 
   ros_node_ = std::make_unique<ros::NodeHandle>(model_->GetScopedName());
@@ -170,7 +170,7 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
   return true;
 }
 
-bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res)
+bool RopePlugin::GetOverstretched(peter_msgs::GetOverstretchingRequest &req, peter_msgs::GetOverstretchingResponse &res)
 {
   (void) req;  // unused
 
@@ -181,7 +181,8 @@ bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::G
   }
   auto const distance = (rope_link1_->WorldPose().Pos() - rope_link2_->WorldPose().Pos()).Length();
   auto const overstretched = distance > (rest_distance_ * overstretching_factor_);
-  res.data = overstretched;
+  res.overstretched = overstretched;
+  res.magnitude = distance / rest_distance_;
   if (overstretched)
   {
     ROS_DEBUG_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "overstretching detected!");

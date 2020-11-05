@@ -17,7 +17,7 @@ from link_bot_pycommon.grid_utils import batch_idx_to_point_3d_in_env_tf, \
     batch_point_to_idx_tf_3d_in_batched_envs
 from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function, \
-    compute_weighted_mean_loss
+    class_weighted_mean_loss
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
 from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
 from moonshine.raster_3d import raster_3d
@@ -183,15 +183,26 @@ class NNClassifier(MyKerasModel):
         return tf.transpose(conv_outputs, [1, 0, 2])
 
     def compute_loss(self, dataset_element, outputs):
-        # skip the first element, the label will always be 1
+        # the labels are based on whether the predicted & observed rope states are close after the action, so t>=1
         is_close_after_start = dataset_element['is_close'][:, 1:]
         labels = tf.expand_dims(is_close_after_start, axis=2)
         logits = outputs['logits']
         bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
+
         # mask out / ignore examples where is_close [0] is 0
         is_close_at_start = dataset_element['is_close'][:, 0]
         bce = bce * is_close_at_start
-        total_bce = compute_weighted_mean_loss(bce, is_close_after_start)
+
+        # weight examples by the perception reliability, loss reliable means less important to predict, so lower loss
+        if 'perception_reliability' in dataset_element and self.hparams.get('use_perception_reliability_loss', False):
+            perception_reliability_weight = dataset_element['perception_reliability']
+        else:
+            perception_reliability_weight = tf.ones_like(bce)
+        perception_reliability_weighted_bce = bce * perception_reliability_weight
+
+        # mini-batches may not be balanced, weight the losses for positive and negative examples to balance
+        total_bce = class_weighted_mean_loss(perception_reliability_weighted_bce, is_close_after_start)
+
         return {
             'loss': total_bce
         }

@@ -33,7 +33,8 @@ from link_bot_pycommon.pycommon import default_if_none
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest, GetDualGripperPointsResponse
+    GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetOverstretchingResponse, GetOverstretchingRequest, \
+    GetOverstretching
 from sensor_msgs.msg import Image, PointCloud2
 from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
@@ -266,12 +267,18 @@ class FloatingRopeScenario(Base3DScenario):
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+        self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"),
+                                                     GetOverstretching)
         self.stdev_pub = rospy.Publisher("stdev", Float32, queue_size=10)
         self.error_pub = rospy.Publisher("error", Float32, queue_size=10)
 
         self.max_action_attempts = 500
 
         self.robot_reset_rng = np.random.RandomState(0)
+
+    def needs_reset(self):
+        res: GetOverstretchingResponse = self.overstretching_srv(GetOverstretchingRequest())
+        return res.magnitude > 1.30
 
     def trajopt_distance_to_goal_differentiable(self, final_state, goal_state: Dict):
         return self.cfm_distance(final_state['z'], goal_state['z'])
@@ -332,8 +339,8 @@ class FloatingRopeScenario(Base3DScenario):
                       state: Dict,
                       action_params: Dict,
                       stateless: Optional[bool] = False):
-        self.viz_action_sample_bbox(self.get_action_sample_extent(action_params, 'left'))
-        self.viz_action_sample_bbox(self.get_action_sample_extent(action_params, 'right'))
+        self.viz_action_sample_bbox(self.left_gripper_bbox_pub, self.get_action_sample_extent(action_params, 'left'))
+        self.viz_action_sample_bbox(self.right_gripper_bbox_pub, self.get_action_sample_extent(action_params, 'right'))
 
         action = None
         for _ in range(self.max_action_attempts):
@@ -360,7 +367,7 @@ class FloatingRopeScenario(Base3DScenario):
 
             if self.is_action_valid(action, action_params):
                 self.last_action = action
-            return action
+                return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
@@ -383,10 +390,10 @@ class FloatingRopeScenario(Base3DScenario):
             gripper_extent = np.array(action_params['extent']).reshape([3, 2])
         return gripper_extent
 
-    def viz_action_sample_bbox(self, gripper_extent):
+    def viz_action_sample_bbox(self, gripper_bbox_pub: rospy.Publisher, gripper_extent):
         gripper_bbox_msg = extent_array_to_bbox(gripper_extent)
         gripper_bbox_msg.header.frame_id = 'world'
-        self.gripper_bbox_pub.publish(gripper_bbox_msg)
+        gripper_bbox_pub.publish(gripper_bbox_msg)
 
     def sample_delta_position(self, action_params, action_rng):
         pitch = action_rng.uniform(-np.pi, np.pi)

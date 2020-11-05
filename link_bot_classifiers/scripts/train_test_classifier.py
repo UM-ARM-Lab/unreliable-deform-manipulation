@@ -10,8 +10,6 @@ import rospy
 from link_bot_classifiers import train_test_classifier
 from moonshine.gpu_config import limit_gpu_mem
 
-limit_gpu_mem(9)
-
 
 def train_main(args):
     if args.seed is None:
@@ -63,6 +61,7 @@ def main():
     train_parser.add_argument('--validation-every', type=int,
                               help='report validation every this many epochs', default=1)
     train_parser.add_argument('--seed', type=int, default=None)
+    train_parser.add_argument('--use-gt-rope', action='store_true')
     train_parser.set_defaults(func=train_main)
 
     test_parser = subparsers.add_parser('test')
@@ -72,6 +71,7 @@ def main():
     test_parser.add_argument('--batch-size', type=int, default=8)
     test_parser.add_argument('--verbose', '-v', action='count', default=0)
     test_parser.add_argument('--take', type=int)
+    test_parser.add_argument('--use-gt-rope', action='store_true')
     test_parser.set_defaults(func=test_main)
 
     eval_parser = subparsers.add_parser('eval')
@@ -81,6 +81,7 @@ def main():
     eval_parser.add_argument('--batch-size', type=int, default=8)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--only-errors', action='store_true')
+    eval_parser.add_argument('--use-gt-rope', action='store_true')
     eval_parser.set_defaults(func=eval_main)
 
     eval_ensemble_parser = subparsers.add_parser('eval_ensemble')
@@ -90,6 +91,7 @@ def main():
     eval_ensemble_parser.add_argument('--batch-size', type=int, default=1)
     eval_ensemble_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_ensemble_parser.add_argument('--only-errors', action='store_true')
+    eval_ensemble_parser.add_argument('--use-gt-rope', action='store_true')
     eval_ensemble_parser.set_defaults(func=eval_ensemble_main)
 
     args = parser.parse_args()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <peter_msgs/GetBool.h>
+#include <peter_msgs/GetOverstretching.h>
 #include <peter_msgs/GetRopeState.h>
 #include <peter_msgs/SetRopeState.h>
 #include <ros/callback_queue.h>
@@ -34,7 +34,7 @@ public:
 
   bool GetRopeState(peter_msgs::GetRopeStateRequest &req, peter_msgs::GetRopeStateResponse &res);
 
-  bool GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res);
+  bool GetOverstretched(peter_msgs::GetOverstretchingRequest &req, peter_msgs::GetOverstretchingResponse &res);
 
 private:
   void QueueThread();

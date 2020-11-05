@@ -229,7 +229,7 @@ class ExperimentScenario:
     def randomization_initialization(self):
         raise NotImplementedError()
 
-    def randomize_environment(self, env_rng: np.random.RandomState, objects_params: Dict, data_collection_params: Dict):
+    def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
         raise NotImplementedError()
 
     def plot_traj_idx_rviz(self, traj_idx):
@@ -268,6 +268,9 @@ class ExperimentScenario:
 
     def on_after_data_collection(self, params):
         pass
+
+    def needs_reset(self):
+        raise NotImplementedError()
 
 
 def sample_object_position(env_rng, xyz_range: Dict):

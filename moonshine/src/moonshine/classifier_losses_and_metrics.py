@@ -10,11 +10,11 @@ def class_weighted_binary_classification_sequence_loss_function(dataset_element,
     labels = tf.expand_dims(is_close, axis=2)
     logits = predictions['logits']
     bce = tf.keras.losses.binary_crossentropy(y_true=labels, y_pred=logits, from_logits=True)
-    total_bce = compute_weighted_mean_loss(bce, is_close)
+    total_bce = class_weighted_mean_loss(bce, is_close)
     return total_bce
 
 
-def compute_weighted_mean_loss(bce, positives):
+def class_weighted_mean_loss(bce, positives):
     # https://www.tensorflow.org/tutorials/structured_data/imbalanced_data#class_weights
     negatives = 1 - positives
     n_positive = tf.math.reduce_sum(positives)
@@ -46,7 +46,7 @@ def reconverging_weighted_binary_classification_sequence_loss_function(dataset_e
     reconverging = tf.cast(is_reconverging(dataset_element['is_close']), tf.float32)
     T = is_close.shape[1]
     reconverging_per_step = tf.stack([reconverging] * T, axis=1)
-    total_bce = compute_weighted_mean_loss(bce, reconverging_per_step, indices)
+    total_bce = class_weighted_mean_loss(bce, reconverging_per_step, indices)
     return total_bce
 
 

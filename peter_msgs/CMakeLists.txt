@@ -29,6 +29,7 @@ add_service_files(
         GetDualGripperPoints.srv
         GetFloat32.srv
         GetJointState.srv
+        GetOverstretching.srv
         GetPosition3D.srv
         GetRopeState.srv
         GrippersTrajectory.srv
