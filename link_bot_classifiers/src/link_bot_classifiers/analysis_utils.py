@@ -1,8 +1,9 @@
 from typing import Dict, List
 
-import rospy
 import numpy as np
 import tensorflow as tf
+
+import rospy
 from link_bot_classifiers.nn_classifier import NNClassifierWrapper
 from link_bot_data.classifier_dataset_utils import \
     batch_of_many_of_actions_sequences_to_dict
@@ -12,11 +13,11 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.ros_pycommon import (get_environment_for_extents_3d,
                                             make_movable_object_services)
-from moonshine.moonshine_utils import numpify, sequence_of_dicts_to_dict_of_tensors
-from state_space_dynamics.model_utils import EnsembleDynamicsFunction
+from moonshine.ensemble import Ensemble
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
 
 
-def predict(fwd_model: EnsembleDynamicsFunction,
+def predict(fwd_model: Ensemble,
             environment: Dict,
             start_states: List[Dict],
             actions: List[List[List[Dict]]],
@@ -54,7 +55,7 @@ def predict(fwd_model: EnsembleDynamicsFunction,
     return predictions_list
 
 
-def predict_and_classify(fwd_model: EnsembleDynamicsFunction,
+def predict_and_classify(fwd_model: Ensemble,
                          classifier: NNClassifierWrapper,
                          environment: Dict,
                          start_states: List[Dict],
@@ -92,7 +93,7 @@ def predict_and_classify(fwd_model: EnsembleDynamicsFunction,
                                                                   predictions=predictions_dict,
                                                                   actions=actions_batched,
                                                                   state_sequence_length=state_sequence_length,
-                                                                  batch_size=n_start_states*n_actions_sampled)
+                                                                  batch_size=n_start_states * n_actions_sampled)
     accept_probabilities = tf.reshape(
         accept_probabilities, [n_start_states, n_actions_sampled, state_sequence_length - 1, -1])
 
@@ -145,7 +146,8 @@ def execute(service_provider: BaseServices,
     return actual_state_sequences
 
 
-def setup(service_provider: BaseServices, fwd_model: EnsembleDynamicsFunction, test_params: Dict, real_time_rate: float = 0):
+def setup(service_provider: BaseServices, fwd_model: Ensemble, test_params: Dict,
+          real_time_rate: float = 0):
     max_step_size = fwd_model.data_collection_params['max_step_size']
     service_provider.setup_env(verbose=0, real_time_rate=real_time_rate, max_step_size=max_step_size)
 
@@ -160,7 +162,7 @@ def setup(service_provider: BaseServices, fwd_model: EnsembleDynamicsFunction, t
 
 
 def predict_and_execute(service_provider,
-                        fwd_model: EnsembleDynamicsFunction,
+                        fwd_model: Ensemble,
                         environment: Dict,
                         start_states: List[Dict],
                         actions: List[List[List[Dict]]],
@@ -180,18 +182,3 @@ def predict_and_execute(service_provider,
     actual_states_lists = execute(service_provider, scenario, start_states, actions)
 
     return fwd_model, environment, actual_states_lists, predictions
-
-
-def sample_actions(scenario: ExperimentScenario, environment: Dict, start_states: List[Dict], n_samples: int, horizon: int):
-    action_rng = np.random.RandomState(0)
-    action_sequences = []
-    for i, start_state in enumerate(start_states):
-        action_sequences_for_start_state = []
-        for j in range(n_samples):
-            action_sequence = []
-            for t in range(horizon):
-                action = scenario.sample_action(action_rng=action_rng, environment=environment, state=start_state, action_params=)
-                action_sequence.append(action)
-            action_sequences_for_start_state.append(action_sequence)
-        action_sequences.append(action_sequences_for_start_state)
-    return action_sequences

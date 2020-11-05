@@ -10,7 +10,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_pycommon import pycommon
-from link_bot_pycommon.filesystem_utils import mkdir_and_ask
+from arc_utilities.filesystem_utils import mkdir_and_ask
 from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000

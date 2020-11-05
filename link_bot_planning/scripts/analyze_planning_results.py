@@ -15,7 +15,7 @@ from tabulate import tabulate
 import rospy
 from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.filesystem_utils import get_all_subfolders
+from arc_utilities.filesystem_utils import get_all_subfolders
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import dict_to_pvalue_table
 

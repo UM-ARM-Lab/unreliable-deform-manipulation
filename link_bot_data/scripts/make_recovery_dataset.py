@@ -10,7 +10,7 @@ import colorama
 
 from link_bot_data.recovery_actions_utils import make_recovery_dataset
 from link_bot_pycommon.args import my_formatter
-from link_bot_pycommon.filesystem_utils import mkdir_and_ask
+from arc_utilities.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(7.5)
