@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import pathlib
-import time
 from typing import List, Optional, Callable
 
 import hjson
@@ -11,12 +10,11 @@ import rospy
 import state_space_dynamics
 from link_bot_data.dynamics_dataset import DynamicsDataset
 from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
-from link_bot_pycommon.pycommon import paths_to_json
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
-from state_space_dynamics import model_utils
+from state_space_dynamics import model_utils, common_train_hparams
 
 
 def train_main(dataset_dirs: List[pathlib.Path],
@@ -36,10 +34,10 @@ def train_main(dataset_dirs: List[pathlib.Path],
     train_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
     val_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
 
-    model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset))
+    model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
     model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
 
-    checkpoint_name, trial_path = setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory)
+    checkpoint_name, trial_path = setup_training_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory)
 
     runner = ModelRunner(model=model,
                          training=True,
@@ -55,7 +53,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
     return trial_path
 
 
-def setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
+def setup_training_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
     trial_path = None
     checkpoint_name = None
     if checkpoint:
@@ -72,14 +70,12 @@ def setup_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory):
     return checkpoint_name, trial_path
 
 
-def setup_hparams(batch_size, dataset_dirs, seed, train_dataset):
-    return {
-        'batch_size': batch_size,
-        'seed': seed,
-        'datasets': paths_to_json(dataset_dirs),
-        'latest_training_time': int(time.time()),
+def setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope):
+    hparams = common_train_hparams.setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope)
+    hparams.update({
         'dynamics_dataset_hparams': train_dataset.hparams,
-    }
+    })
+    return hparams
 
 
 def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):

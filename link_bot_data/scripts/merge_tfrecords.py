@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import json
+import hjson
 import pathlib
 import shutil
 
@@ -19,12 +19,12 @@ def main():
     args.outdir.mkdir(exist_ok=True)
 
     if not args.dry_run:
-        path = args.indirs[0] / 'hparams.json'
-        new_path = args.outdir / 'hparams.json'
+        path = args.indirs[0] / 'hparams.hjson'
+        new_path = args.outdir / 'hparams.hjson'
         # log this operation in the params!
-        hparams = json.load(path.open('r'))
+        hparams = hjson.load(path.open('r'))
         hparams['created_by_merging'] = [str(indir) for indir in args.indirs]
-        json.dump(hparams, new_path.open('w'), indent=2)
+        hjson.dump(hparams, new_path.open('w'), indent=2)
         print(path, '-->', new_path)
 
     for mode in ['train', 'test', 'val']:

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import pathlib
-import time
 from typing import List, Optional
 
 import hjson
@@ -13,74 +12,29 @@ from link_bot_classifiers.classifier_utils import load_generic_model
 from link_bot_data.classifier_dataset import ClassifierDataset
 from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
-from link_bot_pycommon.pycommon import paths_to_json
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_sequences
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
+from state_space_dynamics import common_train_hparams
+from state_space_dynamics.train_test import setup_training_paths
 from std_msgs.msg import Float32
 
 
-def train_main(dataset_dirs: List[pathlib.Path],
-               model_hparams: pathlib.Path,
-               log: str,
-               batch_size: int,
-               epochs: int,
-               seed: int,
-               use_gt_rope: bool,
-               checkpoint: Optional[pathlib.Path] = None,
-               take: Optional[int] = None,
-               ensemble_idx: Optional[int] = None,
-               trials_directory: Optional[pathlib.Path] = None,
-               **kwargs):
-    ###############
-    # Datasets
-    ###############
-    # set load_true_states=True when debugging
-    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+def setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope):
+    hparams = common_train_hparams.setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope)
+    hparams.update({
+        'classifier_dataset_hparams': train_dataset.hparams,
+    })
+    return hparams
 
-    ###############
-    # Model
-    ###############
-    model_hparams = hjson.load((model_hparams).open('r'))
-    model_hparams['classifier_dataset_hparams'] = train_dataset.hparams
-    model_hparams['batch_size'] = batch_size
-    model_hparams['seed'] = seed
-    model_hparams['latest_training_time'] = int(time.time())
-    model_hparams['datasets'] = paths_to_json(dataset_dirs)
-    trial_path = None
-    if checkpoint:
-        trial_path = checkpoint.parent.absolute()
-    group_name = log if trial_path is None else None
-    if ensemble_idx is not None:
-        group_name = f"{group_name}_{ensemble_idx}"
-    trial_path, _ = filepath_tools.create_or_load_trial(group_name=group_name,
-                                                        params=model_hparams,
-                                                        trial_path=trial_path,
-                                                        trials_directory=trials_directory,
-                                                        write_summary=False)
-    model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
 
-    model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
-
-    runner = ModelRunner(model=model,
-                         training=True,
-                         params=model_hparams,
-                         trial_path=trial_path,
-                         key_metric=AccuracyMetric,
-                         checkpoint=checkpoint,
-                         mid_epoch_val_batches=100,
-                         val_every_n_batches=1000,
-                         save_every_n_minutes=20,
-                         validate_first=True,
-                         batch_metadata=train_dataset.batch_metadata)
-
+def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', take=take, shuffle_files=True)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', take=take, shuffle_files=True)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', shuffle_files=True)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', shuffle_files=True)
 
     train_tf_dataset = train_tf_dataset.shuffle(model_hparams['shuffle_buffer_size'], reshuffle_each_iteration=True)
 
@@ -94,15 +48,54 @@ def train_main(dataset_dirs: List[pathlib.Path],
     train_tf_dataset = train_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
     val_tf_dataset = val_tf_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
+    return train_tf_dataset, val_tf_dataset
+
+
+def train_main(dataset_dirs: List[pathlib.Path],
+               model_hparams: pathlib.Path,
+               log: str,
+               batch_size: int,
+               epochs: int,
+               seed: int,
+               use_gt_rope: bool,
+               checkpoint: Optional[pathlib.Path] = None,
+               ensemble_idx: Optional[int] = None,
+               trials_directory: Optional[pathlib.Path] = None,
+               **kwargs):
+    model_hparams = hjson.load(model_hparams.open('r'))
+    model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
+
+    # set load_true_states=True when debugging
+    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+
+    model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
+    model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
+
+    checkpoint_name, trial_path = setup_training_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory)
+
+    runner = ModelRunner(model=model,
+                         training=True,
+                         params=model_hparams,
+                         trial_path=trial_path,
+                         key_metric=AccuracyMetric,
+                         checkpoint=checkpoint,
+                         mid_epoch_val_batches=100,
+                         val_every_n_batches=1000,
+                         save_every_n_minutes=20,
+                         validate_first=True,
+                         batch_metadata=train_dataset.batch_metadata)
+    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset)
+
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
     return trial_path
 
 
 def test_main(dataset_dirs: List[pathlib.Path],
-              take: int,
               mode: str,
               batch_size: int,
+              use_gt_rope: bool,
               checkpoint: Optional[pathlib.Path] = None,
               trials_directory=pathlib.Path,
               **kwargs):
@@ -110,15 +103,14 @@ def test_main(dataset_dirs: List[pathlib.Path],
     # Model
     ###############
     trial_path = checkpoint.parent.absolute()
-    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
-                                                    trials_directory=trials_directory)
+    _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
     model = link_bot_classifiers.get_model(params['model_class'])
 
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
-    test_tf_dataset = test_dataset.get_datasets(mode=mode, take=take)
+    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = balance(test_tf_dataset)
     scenario = test_dataset.scenario
 
@@ -147,6 +139,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               mode: str,
               batch_size: int,
               only_errors: bool,
+              use_gt_rope: bool,
               **kwargs):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
@@ -164,7 +157,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True)
+    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     scenario = test_dataset.scenario
 
@@ -293,6 +286,7 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
                        mode: str,
                        batch_size: int,
                        only_errors: bool,
+                       use_gt_rope: bool,
                        **kwargs):
     dynamics_stdev_pub_ = rospy.Publisher("dynamics_stdev", Float32, queue_size=10)
     classifier_stdev_pub_ = rospy.Publisher("classifier_stdev", Float32, queue_size=10)
@@ -307,7 +301,7 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset([dataset_dir], load_true_states=True)
+    test_dataset = ClassifierDataset([dataset_dir], load_true_states=True, use_gt_rope=use_gt_rope)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, batch_size, drop_remainder=True)
     scenario = test_dataset.scenario

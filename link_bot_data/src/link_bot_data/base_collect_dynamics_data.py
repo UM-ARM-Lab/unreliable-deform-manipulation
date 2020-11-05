@@ -164,7 +164,10 @@ class DataCollector:
 
             # Randomize the environment
             randomize = self.params["randomize_n"] and traj_idx % self.params["randomize_n"] == 0
-            if (not self.params['no_objects'] and randomize) or self.scenario.needs_reset():
+            needs_reset = self.scenario.needs_reset()
+            if (not self.params['no_objects'] and randomize) or needs_reset:
+                if needs_reset:
+                    rospy.logwarn("Reset required!")
                 self.scenario.randomize_environment(env_rng, self.params)
 
             # Generate a new trajectory

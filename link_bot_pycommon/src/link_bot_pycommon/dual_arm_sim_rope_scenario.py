@@ -42,12 +42,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         exclude.model_names.append("rope_3d")
         self.exclude_from_planning_scene_srv(exclude)
 
-        # let go
-        # TODO: if not grasp:
-        #  see the real_victor scenario on_before_data_collection
-        # else don't bother
-        self.move_rope_out_of_the_scene()
-
         # move to init positions
         self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
 
@@ -70,9 +64,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
         # teleport movable objects out of the way
         self.move_objects_out_of_scene(params)
-
-        # teleport the rope out of there
-        self.move_rope_out_of_the_scene()
 
         # plan to reset joint config, we assume this will always work
         self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
