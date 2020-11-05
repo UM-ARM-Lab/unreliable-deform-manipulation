@@ -1,0 +1,42 @@
+from typing import Dict
+
+import ros_numpy
+import rospy
+from actionlib_msgs.msg import GoalStatus
+from arm_robots.robot import MoveitEnabledRobot
+from control_msgs.msg import FollowJointTrajectoryFeedback
+from peter_msgs.srv import GetBool, GetBoolResponse, GetBoolRequest
+from rosgraph.names import ns_join
+
+
+def dual_arm_rope_execute_action(robot: MoveitEnabledRobot, action: Dict):
+    print(robot.get_gripper_positions())
+    start_left_gripper_position, start_right_gripper_position = robot.get_gripper_positions()
+    left_gripper_points = [action['left_gripper_position']]
+    right_gripper_points = [action['right_gripper_position']]
+    tool_names = [robot.left_tool_name, robot.right_tool_name]
+    grippers = [left_gripper_points, right_gripper_points]
+
+    def _stop_condition(feedback):
+        return overstretching_stop_condition(feedback)
+
+    traj, result, state = robot.follow_jacobian_to_position(group_name=r"both_arms",
+                                                            tool_names=tool_names,
+                                                            preferred_tool_orientations=None,
+                                                            points=grippers,
+                                                            stop_condition=_stop_condition)
+
+    if state == GoalStatus.PREEMPTED:
+        rev_grippers = [[ros_numpy.numpify(start_left_gripper_position)],
+                        [ros_numpy.numpify(start_right_gripper_position)]]
+        robot.follow_jacobian_to_position("both_arms",
+                                          tool_names,
+                                          preferred_tool_orientations=None,
+                                          points=rev_grippers)
+        print(robot.get_gripper_positions())
+
+
+def overstretching_stop_condition(feedback: FollowJointTrajectoryFeedback, rope_namespace='rope_3d'):
+    overstretching_srv = rospy.ServiceProxy(ns_join(rope_namespace, "rope_overstretched"), GetBool)
+    res: GetBoolResponse = overstretching_srv(GetBoolRequest())
+    return res.data

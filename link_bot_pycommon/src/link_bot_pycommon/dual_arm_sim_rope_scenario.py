@@ -2,15 +2,11 @@ from typing import Dict
 
 import numpy as np
 
-import ros_numpy
 import rospy
-from actionlib import SimpleActionClient, GoalStatus
-from control_msgs.msg import FollowJointTrajectoryFeedback, FollowJointTrajectoryGoal
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
-from peter_msgs.srv import ExcludeModelsRequest, SetDualGripperPointsRequest, GetBoolRequest, GetBool, GetBoolResponse, \
-    Position3DActionRequest, Position3DAction, RegisterPosition3DControllerRequest, RegisterPosition3DController, \
-    Position3DFollow, Position3DFollowRequest, Position3DEnableRequest, Position3DEnable
+from link_bot_pycommon.dual_arm_rope_action import dual_arm_rope_execute_action
+from peter_msgs.srv import *
 from rosgraph.names import ns_join
 
 
@@ -26,52 +22,14 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.service_provider = GazeboServices()
 
         # register a new callback to stop when the rope is overstretched
-        self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
         self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set"), Position3DAction)
         self.register_controller_srv = rospy.ServiceProxy("/position_3d_plugin/register", RegisterPosition3DController)
         self.pos3d_follow_srv = rospy.ServiceProxy("/position_3d_plugin/follow", Position3DFollow)
         self.pos3d_enable_srv = rospy.ServiceProxy("/position_3d_plugin/enable", Position3DEnable)
         self.pos3d_set_srv = rospy.ServiceProxy("/position_3d_plugin/set", Position3DAction)
 
-    def overstretching_stop_condition(self, feedback: FollowJointTrajectoryFeedback):
-        res: GetBoolResponse = self.overstretching_srv(GetBoolRequest())
-        return res.data
-
     def execute_action(self, action: Dict):
-        start_left_gripper_position, start_right_gripper_position = self.robot.get_gripper_positions()
-        left_gripper_points = [action['left_gripper_position']]
-        right_gripper_points = [action['right_gripper_position']]
-        tool_names = [self.robot.left_tool_name, self.robot.right_tool_name]
-        grippers = [left_gripper_points, right_gripper_points]
-
-        def _stop_condition(feedback):
-            return self.overstretching_stop_condition(feedback)
-
-        traj, result, state = self.robot.follow_jacobian_to_position(group_name=r"both_arms",
-                                                                     tool_names=tool_names,
-                                                                     preferred_tool_orientations=None,
-                                                                     points=grippers,
-                                                                     stop_condition=_stop_condition)
-
-        if state == GoalStatus.PREEMPTED:
-            def _rev_stop_condition(feedback):
-                return not self.overstretching_stop_condition(feedback)
-
-            rev_grippers = [[ros_numpy.numpify(start_left_gripper_position)],
-                            [ros_numpy.numpify(start_right_gripper_position)]]
-            self.robot.follow_jacobian_to_position("both_arms",
-                                                   tool_names,
-                                                   preferred_tool_orientations=None,
-                                                   points=rev_grippers,
-                                                   stop_condition=_rev_stop_condition)
-
-    def stop_on_rope_overstretching(self,
-                                    client: SimpleActionClient,
-                                    goal: FollowJointTrajectoryGoal,
-                                    feedback: FollowJointTrajectoryFeedback):
-        stop = self.overstretching_stop_condition(feedback)
-        if stop:
-            client.cancel_all_goals()
+        return dual_arm_rope_execute_action(self.robot, action)
 
     def on_before_data_collection(self, params: Dict):
         super().on_before_data_collection(params)

@@ -41,12 +41,13 @@ private:
 
   physics::ModelPtr model_;
   physics::LinkPtr rope_link1_;
+  physics::LinkPtr rope_link2_;
   physics::LinkPtr left_gripper_;
   physics::LinkPtr right_gripper_;
   event::ConnectionPtr updateConnection_;
   double length_{ 0.0 };
   bool velocity_initialized_{false };
-  double rest_distance_between_left_gripper_and_link_1_{ 0.0 };
+  double rest_distance_{0.0 };
   unsigned int num_links_{ 0U };
   std::unique_ptr<ros::NodeHandle> ros_node_;
   ros::ServiceServer set_state_service_;
@@ -57,5 +58,6 @@ private:
   ros::CallbackQueue queue_;
   std::thread ros_queue_thread_;
   double overstretching_factor_{ 1.0 };
+  unsigned long n_links_{1ul};
 };
 }  // namespace gazebo

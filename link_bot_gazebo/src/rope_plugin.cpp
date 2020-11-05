@@ -1,16 +1,16 @@
 #include "rope_plugin.h"
 
-#include <std_srvs/EmptyRequest.h>
-
-#include <link_bot_gazebo/gazebo_plugin_utils.h>
-#include <boost/regex.hpp>
-
 #include <cstdio>
-#include <gazebo/common/Time.hh>
 #include <memory>
 #include <sstream>
 
+#include <boost/regex.hpp>
+#include <gazebo/common/Time.hh>
+#include <ros/console.h>
+#include <std_srvs/EmptyRequest.h>
+
 #include <arc_utilities/enumerate.h>
+#include <link_bot_gazebo/gazebo_plugin_utils.h>
 
 /**
  * This plugin offers the following ROS API
@@ -25,7 +25,7 @@
 
 namespace gazebo
 {
-auto constexpr PLUGIN_NAME{ "RopePlugin" };
+auto constexpr PLUGIN_NAME{"RopePlugin"};
 
 void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
 {
@@ -39,13 +39,17 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     ros::init(argc, argv, "rope_plugin", ros::init_options::NoSigintHandler);
   }
 
-  rope_link1_ = GetLink(PLUGIN_NAME, model_, "rope_link_1");
+  n_links_ = model_->GetLinks().size() - 2;
+  auto const link1_idx = n_links_ / 2 - 1;
+  auto const link2_idx = n_links_ / 2;
+  ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME, "checking overstretching between links " << link1_idx << " and " << link2_idx);
+  rope_link1_ = GetLink(PLUGIN_NAME, model_, "rope_link_" + std::to_string(link1_idx));
+  rope_link2_ = GetLink(PLUGIN_NAME, model_, "rope_link_" + std::to_string(link2_idx));
   left_gripper_ = GetLink(PLUGIN_NAME, model_, "left_gripper");
   right_gripper_ = GetLink(PLUGIN_NAME, model_, "right_gripper");
   if (left_gripper_ and rope_link1_)
   {
-    rest_distance_between_left_gripper_and_link_1_ =
-        (left_gripper_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
+    rest_distance_ = (rope_link1_->WorldPose().Pos() - rope_link2_->WorldPose().Pos()).Length();
   }
 
   auto set_state_bind = [this](auto &&req, auto &&res) { return SetRopeState(req, res); };
@@ -76,8 +80,7 @@ void RopePlugin::Load(physics::ModelPtr const parent, sdf::ElementPtr const sdf)
     if (!sdf->HasElement("num_links"))
     {
       printf("using default num_links=%u\n", num_links_);
-    }
-    else
+    } else
     {
       num_links_ = sdf->GetElement("num_links")->Get<unsigned int>();
     }
@@ -98,10 +101,9 @@ bool RopePlugin::SetRopeState(peter_msgs::SetRopeStateRequest &req, peter_msgs::
   }
   if (left_gripper_ and right_gripper_)
   {
-    left_gripper_->SetWorldPose({ req.left_gripper.x, req.left_gripper.y, req.left_gripper.z, 0, 0, 0 });
-    right_gripper_->SetWorldPose({ req.right_gripper.x, req.right_gripper.y, req.right_gripper.z, 0, 0, 0 });
-  }
-  else
+    left_gripper_->SetWorldPose({req.left_gripper.x, req.left_gripper.y, req.left_gripper.z, 0, 0, 0});
+    right_gripper_->SetWorldPose({req.right_gripper.x, req.right_gripper.y, req.right_gripper.z, 0, 0, 0});
+  } else
   {
     ROS_ERROR_STREAM("Tried to set link to pose but couldn't find the gripper links");
     ROS_ERROR_STREAM("Available link names are");
@@ -142,16 +144,14 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
         velocity.x = pt.x - previous_res.positions[i].x;
         velocity.y = pt.y - previous_res.positions[i].y;
         velocity.z = pt.z - previous_res.positions[i].z;
-      }
-      else
+      } else
       {
         velocity.x = 0;
         velocity.y = 0;
         velocity.z = 0;
       }
       res.velocities.emplace_back(velocity);
-    }
-    else
+    } else
     {
       // ROS_INFO_STREAM("skipping link with name " << name);
     }
@@ -172,15 +172,20 @@ bool RopePlugin::GetRopeState(peter_msgs::GetRopeStateRequest &, peter_msgs::Get
 
 bool RopePlugin::GetOverstretched(peter_msgs::GetBoolRequest &req, peter_msgs::GetBoolResponse &res)
 {
-  (void)req;  // unused
+  (void) req;  // unused
 
   // check the distance between the position of rope_link_1 and gripper_1
-  if (not left_gripper_ or not rope_link1_)
+  if (not rope_link1_ or not rope_link2_)
   {
     return false;
   }
-  auto const distance = (left_gripper_->WorldPose().Pos() - rope_link1_->WorldPose().Pos()).Length();
-  res.data = distance > (rest_distance_between_left_gripper_and_link_1_ * overstretching_factor_);
+  auto const distance = (rope_link1_->WorldPose().Pos() - rope_link2_->WorldPose().Pos()).Length();
+  auto const overstretched = distance > (rest_distance_ * overstretching_factor_);
+  res.data = overstretched;
+  if (overstretched)
+  {
+    ROS_DEBUG_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "overstretching detected!");
+  }
   return true;
 }
 
