@@ -1,12 +1,6 @@
-from typing import Optional, List, Dict
-
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib import cm
 from ompl import base as ob
 
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import states_are_equal, listify
+from moonshine.moonshine_utils import listify
 
 
 def planner_data_to_json(planner_data, scenario):
