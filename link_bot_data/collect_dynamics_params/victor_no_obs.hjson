@@ -1,5 +1,5 @@
 {
-  scene: victor_no_obs,
+  name: victor_no_obs
   reset_joint_config: [
     # left arm
     -1.1462081323840563,
