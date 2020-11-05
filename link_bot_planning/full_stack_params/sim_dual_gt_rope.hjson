@@ -2,7 +2,7 @@
   seed: 1
   nickname: sim_dual
   service_provider: gazebo
-  use_gt_rope: false
+  use_gt_rope: true
   collect_dynamics_1: {
     robot_namespace: null
     launch: dual_floating.launch
