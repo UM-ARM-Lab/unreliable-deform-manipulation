@@ -27,10 +27,26 @@ class ExperimentScenario:
     def execute_action(self, action: Dict):
         raise NotImplementedError()
 
+    def sample_action_for_data_collection(self,
+                                          action_rng: np.random.RandomState,
+                                          environment: Dict,
+                                          state: Dict,
+                                          action_params: Dict,
+                                          stateless: Optional[bool] = False):
+        return self.sample_action(action_rng=action_rng,
+                                  environment=environment,
+                                  state=state,
+                                  action_params=action_params,
+                                  stateless=stateless)
+
+    def is_action_valid(self, action: Dict, action_params: Dict):
+        return True
+
     def sample_action(self,
                       action_rng: np.random.RandomState,
                       environment: Dict,
-                      state: Dict, action_params: Dict,
+                      state: Dict,
+                      action_params: Dict,
                       stateless: Optional[bool] = False):
         raise NotImplementedError()
 

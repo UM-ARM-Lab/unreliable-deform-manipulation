@@ -63,7 +63,7 @@
   steps_per_traj: 10
   no_objects: false
   randomize_n: 16
-  repeat_delta_gripper_motion_probability: 0.8
+  repeat_delta_gripper_motion_probability: 0.7
   max_distance_gripper_can_move: 0.10
   max_distance_between_grippers: null
   state_keys: [

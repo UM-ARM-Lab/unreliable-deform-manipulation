@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -12,7 +12,8 @@ from geometry_msgs.msg import PoseStamped
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse
+from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetBoolResponse, GetBoolRequest, \
+    GetBool
 from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Empty, EmptyRequest
@@ -33,11 +34,27 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         self.cdcpd_reset_srv = rospy.ServiceProxy("cdcpd/reset", Empty)
         self.attach_srv = rospy.ServiceProxy("/link_attacher_node/attach", Attach)
         self.detach_srv = rospy.ServiceProxy("/link_attacher_node/detach", Attach)
+        self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"), GetBool)
 
         exclude_srv_name = ns_join(self.robot_namespace, "exclude_models_from_planning_scene")
         self.exclude_from_planning_scene_srv = rospy.ServiceProxy(exclude_srv_name, ExcludeModels)
         # FIXME: this blocks until the robot is available, we need lazy construction
         self.robot = get_moveit_robot(self.robot_namespace)
+
+    def sample_action_for_data_collection(self,
+                                          action_rng: np.random.RandomState,
+                                          environment: Dict,
+                                          state: Dict,
+                                          action_params: Dict,
+                                          stateless: Optional[bool] = False):
+        res: GetBoolResponse = self.overstretching_srv(GetBoolRequest())
+        if res.data:
+            return
+        return self.sample_action(action_rng=action_rng,
+                                  environment=environment,
+                                  state=state,
+                                  action_params=action_params,
+                                  stateless=stateless)
 
     def add_boxes_around_tools(self):
         # add spheres to prevent moveit from smooshing the rope and ends of grippers into obstacles

@@ -10,7 +10,6 @@ from rosgraph.names import ns_join
 
 
 def dual_arm_rope_execute_action(robot: MoveitEnabledRobot, action: Dict):
-    print(robot.get_gripper_positions())
     start_left_gripper_position, start_right_gripper_position = robot.get_gripper_positions()
     left_gripper_points = [action['left_gripper_position']]
     right_gripper_points = [action['right_gripper_position']]
@@ -33,7 +32,6 @@ def dual_arm_rope_execute_action(robot: MoveitEnabledRobot, action: Dict):
                                           tool_names,
                                           preferred_tool_orientations=None,
                                           points=rev_grippers)
-        print(robot.get_gripper_positions())
 
 
 def overstretching_stop_condition(feedback: FollowJointTrajectoryFeedback, rope_namespace='rope_3d'):

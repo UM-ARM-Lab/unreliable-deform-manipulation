@@ -332,6 +332,9 @@ class FloatingRopeScenario(Base3DScenario):
                       state: Dict,
                       action_params: Dict,
                       stateless: Optional[bool] = False):
+        self.viz_action_sample_bbox(self.get_action_sample_extent(action_params, 'left'))
+        self.viz_action_sample_bbox(self.get_action_sample_extent(action_params, 'right'))
+
         action = None
         for _ in range(self.max_action_attempts):
             # move in the same direction as the previous action with some probability
@@ -341,20 +344,8 @@ class FloatingRopeScenario(Base3DScenario):
                 right_gripper_delta_position = self.last_action['right_gripper_delta_position']
             else:
                 # Sample a new random action
-                pitch_1 = action_rng.uniform(-np.pi, np.pi)
-                pitch_2 = action_rng.uniform(-np.pi, np.pi)
-                yaw_1 = action_rng.uniform(-np.pi, np.pi)
-                yaw_2 = action_rng.uniform(-np.pi, np.pi)
-                displacement1 = action_rng.uniform(0, action_params['max_distance_gripper_can_move'])
-                displacement2 = action_rng.uniform(0, action_params['max_distance_gripper_can_move'])
-
-                rotation_matrix_1 = transformations.euler_matrix(0, pitch_1, yaw_1)
-                left_gripper_delta_position_homo = rotation_matrix_1 @ np.array([1, 0, 0, 1]) * displacement1
-                left_gripper_delta_position = left_gripper_delta_position_homo[:3]
-
-                rotation_matrix_2 = transformations.euler_matrix(0, pitch_2, yaw_2)
-                right_gripper_delta_position_homo = rotation_matrix_2 @ np.array([1, 0, 0, 1]) * displacement2
-                right_gripper_delta_position = right_gripper_delta_position_homo[:3]
+                left_gripper_delta_position = self.sample_delta_position(action_params, action_rng)
+                right_gripper_delta_position = self.sample_delta_position(action_params, action_rng)
 
             # Apply delta and check for out of bounds
             left_gripper_position = state['left_gripper'] + left_gripper_delta_position
@@ -366,36 +357,45 @@ class FloatingRopeScenario(Base3DScenario):
                 'left_gripper_delta_position': left_gripper_delta_position,
                 'right_gripper_delta_position': right_gripper_delta_position,
             }
-            out_of_bounds = FloatingRopeScenario.grippers_out_of_bounds(left_gripper_position,
-                                                                        right_gripper_position,
-                                                                        action_params)
 
-            max_gripper_d = default_if_none(action_params['max_distance_between_grippers'], 1000)
-            too_far = np.linalg.norm(left_gripper_position - right_gripper_position) > max_gripper_d
-
-            if 'left_gripper_action_sample_extent' in action_params:
-                left_gripper_extent = np.array(action_params['left_gripper_action_sample_extent']).reshape(
-                    [3, 2])
-            else:
-                left_gripper_extent = np.array(action_params['extent']).reshape([3, 2])
-            left_gripper_bbox_msg = extent_array_to_bbox(left_gripper_extent)
-            left_gripper_bbox_msg.header.frame_id = 'world'
-            self.left_gripper_bbox_pub.publish(left_gripper_bbox_msg)
-
-            if 'right_gripper_action_sample_extent' in action_params:
-                right_gripper_extent = np.array(action_params['right_gripper_action_sample_extent']).reshape(
-                    [3, 2])
-            else:
-                right_gripper_extent = np.array(action_params['extent']).reshape([3, 2])
-            right_gripper_bbox_msg = extent_array_to_bbox(right_gripper_extent)
-            right_gripper_bbox_msg.header.frame_id = 'world'
-            self.right_gripper_bbox_pub.publish(right_gripper_bbox_msg)
-            if not out_of_bounds and not too_far:
+            if self.is_action_valid(action, action_params):
                 self.last_action = action
-                return action
+            return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
+
+    def is_action_valid(self, action: Dict, action_params: Dict):
+        out_of_bounds = FloatingRopeScenario.grippers_out_of_bounds(action['left_gripper_position'],
+                                                                    action['right_gripper_position'],
+                                                                    action_params)
+
+        max_gripper_d = default_if_none(action_params['max_distance_between_grippers'], 1000)
+        too_far = np.linalg.norm(action['left_gripper_position'] - action['right_gripper_position']) > max_gripper_d
+
+        return not out_of_bounds and not too_far
+
+    def get_action_sample_extent(self, action_params: Dict, prefix: str):
+        k = prefix + 'gripper_action_sample_extent'
+        if k in action_params:
+            gripper_extent = np.array(action_params[k]).reshape([3, 2])
+        else:
+            gripper_extent = np.array(action_params['extent']).reshape([3, 2])
+        return gripper_extent
+
+    def viz_action_sample_bbox(self, gripper_extent):
+        gripper_bbox_msg = extent_array_to_bbox(gripper_extent)
+        gripper_bbox_msg.header.frame_id = 'world'
+        self.gripper_bbox_pub.publish(gripper_bbox_msg)
+
+    def sample_delta_position(self, action_params, action_rng):
+        pitch = action_rng.uniform(-np.pi, np.pi)
+        yaw = action_rng.uniform(-np.pi, np.pi)
+        displacement = action_rng.uniform(0, action_params['max_distance_gripper_can_move'])
+        rotation_matrix = transformations.euler_matrix(0, pitch, yaw)
+        gripper_delta_position_homo = rotation_matrix @ np.array([1, 0, 0, 1]) * displacement
+        gripper_delta_position = gripper_delta_position_homo[:3]
+        return gripper_delta_position
 
     @staticmethod
     def grippers_out_of_bounds(left_gripper, right_gripper, action_params: Dict):
