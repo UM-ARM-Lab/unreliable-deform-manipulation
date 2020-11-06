@@ -7,13 +7,13 @@ import numpy as np
 import colorama
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch, numpify
 from state_space_dynamics.train_test import viz_dataset
 
 
-def viz_func(batch, predictions, test_dataset: DynamicsDataset):
+def viz_func(batch, predictions, test_dataset: DynamicsDatasetLoader):
     """ we assume batch size of 1 """
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))

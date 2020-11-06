@@ -5,7 +5,7 @@ from time import perf_counter
 
 import progressbar
 
-from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.raster_2d import add_traj_image
@@ -21,7 +21,7 @@ def main():
 
     args = parser.parse_args()
 
-    dataset = ClassifierDataset(args.dataset_dir)
+    dataset = ClassifierDatasetLoader(args.dataset_dir)
     dataset.cache_negative = False
 
     t0 = perf_counter()

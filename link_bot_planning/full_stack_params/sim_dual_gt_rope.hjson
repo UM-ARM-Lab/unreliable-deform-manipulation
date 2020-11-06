@@ -36,11 +36,11 @@
     evaluate: false
   }
   make_classifier_dataset: {
-    labeling_params: labeling_params/classifier/dual.json
+    labeling_params: labeling_params/classifier/dual.hjson
   }
   learn_classifier: {
     epochs: 10
-    classifier_hparams: hparams/classifier/dual.json
+    classifier_hparams: hparams/classifier/dual.hjson
     batch_size: 8
   }
   make_recovery_dataset: {

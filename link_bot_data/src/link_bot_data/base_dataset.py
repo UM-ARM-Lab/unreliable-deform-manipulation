@@ -7,13 +7,13 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_data.link_bot_dataset_utils import parse_and_deserialize
+from link_bot_data.dataset_utils import parse_and_deserialize
 
 DEFAULT_VAL_SPLIT = 0.125
 DEFAULT_TEST_SPLIT = 0.125
 
 
-class BaseDataset:
+class BaseDatasetLoader:
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs

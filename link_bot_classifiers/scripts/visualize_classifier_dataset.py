@@ -9,9 +9,10 @@ import numpy as np
 import tensorflow as tf
 from scipy import stats
 
+import link_bot_data.visualization
 import rospy
-from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
+from link_bot_data.dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch
@@ -48,7 +49,7 @@ def main():
 
     rospy.init_node("visualize_classifier_data")
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs, load_true_states=True, threshold=args.threshold)
+    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs, load_true_states=True, threshold=args.threshold)
 
     visualize_dataset(args, classifier_dataset)
 
@@ -122,7 +123,7 @@ def visualize_dataset(args, classifier_dataset):
             # print(example['is_close'])
             if example['is_close'][0] == 0:
                 continue
-            classifier_dataset.plot_transition_rviz(example)
+            classifier_dataset.anim_transition_rviz(example)
 
         elif args.display_type == 'stdev':
             for t in range(1, classifier_dataset.horizon):

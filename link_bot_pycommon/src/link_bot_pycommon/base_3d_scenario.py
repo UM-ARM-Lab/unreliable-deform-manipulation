@@ -7,7 +7,7 @@ import rospy
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_data.link_bot_dataset_utils import NULL_PAD_VALUE
+from link_bot_data.dataset_utils import NULL_PAD_VALUE
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, extent_to_bbox

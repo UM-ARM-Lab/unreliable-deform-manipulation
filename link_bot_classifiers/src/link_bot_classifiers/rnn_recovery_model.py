@@ -10,7 +10,7 @@ from tensorflow import keras
 from tensorflow_probability import distributions as tfd
 
 from link_bot_classifiers.base_recovery_actions_model import BaseRecoveryActionsModels
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.dataset_utils import add_predicted
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine import classifier_losses_and_metrics
 from moonshine.get_local_environment import get_local_env_and_origin_2d_tf as get_local_env

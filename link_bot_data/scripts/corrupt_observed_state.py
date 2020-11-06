@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 
@@ -30,7 +30,7 @@ def main():
     modify_dynamics_dataset(args.dataset_dir, outdir, corrupt_example)
 
 
-def corrupt_example(dataset: DynamicsDataset, example: Dict):
+def corrupt_example(dataset: DynamicsDatasetLoader, example: Dict):
     k = 'link_bot'
     rope_points = example[k].reshape([dataset.steps_per_traj, -1, 3])
 

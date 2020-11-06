@@ -3,14 +3,14 @@ from typing import List
 
 import tensorflow as tf
 
-from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import filter_and_cache
+from link_bot_data.base_dataset import BaseDatasetLoader
+from link_bot_data.dataset_utils import filter_and_cache
 
 
-class RecoveryDataset(BaseDataset):
+class RecoveryDatasetLoader(BaseDatasetLoader):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
-        super(RecoveryDataset, self).__init__(dataset_dirs)
+        super(RecoveryDatasetLoader, self).__init__(dataset_dirs)
         self.state_keys = self.hparams['state_keys']
         self.action_keys = self.hparams['action_keys']
 
@@ -60,5 +60,5 @@ class RecoveryDataset(BaseDataset):
             return example
 
         dataset = dataset.map(_add_recovery_probabilities)
-        dataset = filter_and_cache(dataset, RecoveryDataset.is_stuck)
+        dataset = filter_and_cache(dataset, RecoveryDatasetLoader.is_stuck)
         return dataset

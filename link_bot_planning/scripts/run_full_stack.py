@@ -29,13 +29,13 @@ r = rospkg.RosPack()
 
 class FullStackRunner:
 
-    def __init__(self, full_stack_params: Dict, launch: Optional[bool] = False):
+    def __init__(self, nickname: str, unique_nickname: str, full_stack_params: Dict, launch: Optional[bool] = False):
         self.launch = launch
         self.gui = True
         self.full_stack_params = full_stack_params
         self.use_gt_rope = self.full_stack_params['use_gt_rope']
-        self.nickname = full_stack_params['nickname']
-        self.unique_nickname = f"{self.nickname}_{int(time.time())}"
+        self.nickname = nickname
+        self.unique_nickname = unique_nickname
         service_provider_name = full_stack_params['service_provider']
         self.service_provider = get_service_provider(service_provider_name)
 
@@ -130,6 +130,7 @@ class FullStackRunner:
         classifier_threshold = train_test.compute_classifier_threshold(dataset_dirs=[dynamics_dataset_dir],
                                                                        checkpoint=trial_paths[0] / 'best_checkpoint',
                                                                        mode='val',
+                                                                       use_gt_rope=self.use_gt_rope,
                                                                        batch_size=batch_size)
         return {
             'model_dirs': trial_paths,
@@ -184,6 +185,7 @@ class FullStackRunner:
                                                                           fwd_model_dir=udnn_model_dirs,
                                                                           labeling_params=labeling_params,
                                                                           outdir=outdir,
+                                                                          visualize=False,
                                                                           use_gt_rope=self.use_gt_rope)
         rospy.loginfo(Fore.GREEN + outdir.as_posix())
         return {
@@ -204,6 +206,7 @@ class FullStackRunner:
                                                       checkpoint=None,
                                                       batch_size=batch_size,
                                                       epochs=epochs,
+                                                      use_gt_rope=self.use_gt_rope,
                                                       seed=seed)
         return {
             'model_dir': trial_path,
@@ -360,37 +363,50 @@ def main():
     tf.get_logger().setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
+
+    parser = argparse.ArgumentParser(prog='PROG')
     parser.add_argument("full_stack_param", type=pathlib.Path)
-    parser.add_argument("--from-logfile", type=pathlib.Path)
     parser.add_argument("--gui", action='store_true')
     parser.add_argument("--launch", action='store_true')
     parser.add_argument("--steps", help="a comma separated list of steps to explicitly include, regardless of logfile")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--nickname', type=str)
+    group.add_argument('--logfile', type=pathlib.Path)
 
     args = parser.parse_args()
 
     rospy.init_node("run_full_stack")
 
+    if args.nickname is None:
+        with args.logfile.open("r") as logfile:
+            runlog = hjson.loads(logfile.read())
+        logfile_name = args.logfile
+        with logfile_name.open("r") as logfile:
+            log = hjson.load(logfile)
+        nickname = log['nickname']
+        unique_nickname = f"{nickname}_{int(time.time())}"
+    else:
+        nickname = args.nickname
+        unique_nickname = f"{nickname}_{int(time.time())}"
+        # create a logfile
+        logfile_dir = pathlib.Path("results") / "log" / unique_nickname
+        logfile_dir.mkdir(parents=True)
+        logfile_name = logfile_dir / "logfile.hjson"
+        runlog = {}
+
     with args.full_stack_param.open('r') as f:
         full_stack_params = hjson.load(f)
 
-    fsr = FullStackRunner(full_stack_params, launch=args.launch)
+    fsr = FullStackRunner(nickname=nickname,
+                          unique_nickname=unique_nickname,
+                          full_stack_params=full_stack_params,
+                          launch=args.launch)
     fsr.gui = args.gui
     if args.steps is not None:
         included_steps = args.steps.split(",")
     else:
         included_steps = None
-
-    if args.from_logfile:
-        with args.from_logfile.open("r") as logfile:
-            runlog = hjson.loads(logfile.read())
-        logfile_name = args.from_logfile
-    else:
-        # create a logfile
-        logfile_dir = pathlib.Path("results") / "log" / fsr.unique_nickname
-        logfile_dir.mkdir(parents=True)
-        logfile_name = logfile_dir / "logfile.hjson"
-        logfile = logfile_name.open("w")
-        runlog = {}
 
     seed = full_stack_params['seed']
     if 'collect_dynamics_data_1' not in runlog and (

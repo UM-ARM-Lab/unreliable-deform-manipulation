@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import is_reconverging, null_pad, NULL_PAD_VALUE, num_reconverging, \
+from link_bot_data.dataset_utils import is_reconverging, null_pad, NULL_PAD_VALUE, num_reconverging, \
     num_reconverging_subsequences, add_predicted, remove_predicted, remove_predicted_from_dict
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch

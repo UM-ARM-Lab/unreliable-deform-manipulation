@@ -10,7 +10,7 @@ from tensorflow.keras import layers
 import rospy
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers.base_constraint_checker import BaseConstraintChecker
-from link_bot_data.link_bot_dataset_utils import add_predicted
+from link_bot_data.dataset_utils import add_predicted
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.grid_utils import batch_idx_to_point_3d_in_env_tf, \
@@ -33,11 +33,14 @@ class NNClassifier(MyKerasModel):
 
         self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
         self.raster_debug_pubs = [rospy.Publisher(
-            f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=True) for i in range(3)]
+            f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=False) for i in range(3)]
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
         self.dynamics_dataset_hparams = self.classifier_dataset_hparams['fwd_model_hparams']['dynamics_dataset_hparams']
+        self.true_state_keys = self.classifier_dataset_hparams['true_state_keys']
+        self.pred_state_keys = [add_predicted(k) for k in self.classifier_dataset_hparams['predicted_state_keys']]
+        self.pred_state_keys.append(add_predicted('stdev'))
         self.local_env_h_rows = self.hparams['local_env_h_rows']
         self.local_env_w_cols = self.hparams['local_env_w_cols']
         self.local_env_c_channels = self.hparams['local_env_c_channels']
@@ -70,6 +73,9 @@ class NNClassifier(MyKerasModel):
                                  bias_regularizer=keras.regularizers.l2(self.hparams['bias_reg']))
             self.dense_layers.append(dense)
 
+        # self.local_env_shape = (self.local_env_h_rows, self.local_env_w_cols, self.local_env_c_channels)
+        # self.encoder = tf.keras.applications.ResNet50(include_top=False, weights=None, input_shape=self.local_env_shape)
+
         self.lstm = layers.LSTM(self.hparams['rnn_size'], unroll=True, return_sequences=True)
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
@@ -91,12 +97,15 @@ class NNClassifier(MyKerasModel):
         pixel_indices = tf.expand_dims(pixel_indices, axis=0)
         pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
-        # # DEBUG
+        # # # DEBUG
+        # from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
+        # from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, numpify
+        # from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, grid_to_bbox, send_occupancy_tf
+        # from link_bot_data.dataset_utils import index_time_with_metadata
         # stepper = RvizSimpleStepper()
         # input_dict.pop("batch_size")
         # input_dict.pop("time")
-        # import numpy as np
-        # b = np.random.random_integers(0, 2)
+        # b = 0
         # example = index_dict_of_batched_vectors_tf(input_dict, b)
         # # END DEBUG
 
@@ -123,7 +132,7 @@ class NNClassifier(MyKerasModel):
 
             local_voxel_grid_t_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
             local_voxel_grid_t_array = local_voxel_grid_t_array.write(0, local_env_t)
-            for i, state_component_t in enumerate(state_t.values()):
+            for i, (k, state_component_t) in enumerate(state_t.items()):
                 state_component_voxel_grid = raster_3d(state=state_component_t,
                                                        pixel_indices=pixel_indices,
                                                        res=input_dict['res'],
@@ -155,10 +164,15 @@ class NNClassifier(MyKerasModel):
             #     'res': input_dict['res'][b].numpy(),
             # }
             # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
-            # link_bot_sdf_utils.send_occupancy_tf(self.scenario.broadcaster, local_env_dict, frame='local_occupancy')
+            # send_occupancy_tf(self.scenario.tf.tf_broadcaster, local_env_dict, frame='local_occupancy')
             # self.debug_pub.publish(msg)
             #
-            # self.scenario.plot_transition_rviz(example, t)
+            # pred_t = index_time_with_metadata(self.scenario, example, self.pred_state_keys, t)
+            # true_t = index_time_with_metadata(self.scenario, example, self.true_state_keys, t)
+            # self.scenario.plot_state_rviz(numpify(true_t), label='actual', color='#ff0000ff', scale=1.1)
+            # self.scenario.plot_state_rviz(numpify(pred_t), label='predicted', color='#0000ffff')
+            # label_t = example['is_close'][1]
+            # self.scenario.plot_is_close(label_t)
             # bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
             #                         cols=self.local_env_w_cols,
             #                         channels=self.local_env_c_channels,
@@ -166,7 +180,7 @@ class NNClassifier(MyKerasModel):
             # bbox_msg.header.frame_id = 'local_occupancy'
             # self.local_env_bbox_pub.publish(bbox_msg)
             #
-            # # stepper.step()
+            # stepper.step()
             # # END DEBUG
 
             conv_z = local_voxel_grid_t

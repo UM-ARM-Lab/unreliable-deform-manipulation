@@ -8,8 +8,8 @@ import tensorflow as tf
 
 import rospy
 import state_space_dynamics
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_data.dataset_utils import batch_tf_dataset
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch
 from shape_completion_training.model import filepath_tools
@@ -31,8 +31,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
     model_hparams = hjson.load(model_hparams.open('r'))
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
 
-    train_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
-    val_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
+    train_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
+    val_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
 
     model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
     model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
@@ -101,7 +101,7 @@ def compute_classifier_threshold(dataset_dirs: List[pathlib.Path],
                                  batch_size: int,
                                  use_gt_rope: bool,
                                  ):
-    test_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
+    test_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
 
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
@@ -139,7 +139,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               batch_size: int,
               use_gt_rope: bool,
               ):
-    test_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
+    test_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
 
     trials_directory = pathlib.Path('trials').absolute()
     trial_path = checkpoint.parent.absolute()
@@ -178,13 +178,12 @@ def eval_main(dataset_dirs: List[pathlib.Path],
 def viz_main(dataset_dirs: List[pathlib.Path],
              checkpoint: pathlib.Path,
              mode: str,
-             use_gt_rope: bool,
-             ):
+             **kwargs):
     viz_dataset(dataset_dirs=dataset_dirs,
                 checkpoint=checkpoint,
                 mode=mode,
                 viz_func=viz_example,
-                use_gt_rope=use_gt_rope)
+                **kwargs)
 
 
 def viz_dataset(dataset_dirs: List[pathlib.Path],
@@ -193,7 +192,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
                 viz_func: Callable,
                 use_gt_rope: bool,
                 ):
-    test_dataset = DynamicsDataset(dataset_dirs, use_gt_rope=use_gt_rope)
+    test_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
 
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, 1, drop_remainder=True)
@@ -207,7 +206,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
         viz_func(batch, outputs, test_dataset, model)
 
 
-def viz_example(batch, outputs, test_dataset: DynamicsDataset, model):
+def viz_example(batch, outputs, test_dataset: DynamicsDatasetLoader, model):
     test_dataset.scenario.plot_environment_rviz(remove_batch(batch))
     anim = RvizAnimationController(np.arange(test_dataset.steps_per_traj))
     while not anim.done:

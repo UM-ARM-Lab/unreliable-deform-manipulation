@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import hjson
 import numpy as np
@@ -9,10 +9,12 @@ import tensorflow as tf
 import link_bot_classifiers
 import rospy
 from link_bot_classifiers.classifier_utils import load_generic_model
-from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, balance
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
+from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, balance
+from link_bot_data.visualization import init_viz_env, stdev_viz_t
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
-from merrrt_visualization.rviz_animation_controller import RvizAnimationController
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from merrrt_visualization.rviz_animation_controller import RvizAnimation
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_sequences
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
@@ -66,8 +68,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
 
     # set load_true_states=True when debugging
-    train_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    val_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    train_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    val_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
 
     model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
     model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
@@ -80,8 +82,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          checkpoint=checkpoint,
-                         mid_epoch_val_batches=100,
-                         val_every_n_batches=1000,
+                         # mid_epoch_val_batches=100,
+                         # val_every_n_batches=1000,
                          save_every_n_minutes=20,
                          validate_first=True,
                          batch_metadata=train_dataset.batch_metadata)
@@ -109,7 +111,7 @@ def test_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    test_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = balance(test_tf_dataset)
     scenario = test_dataset.scenario
@@ -157,7 +159,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    test_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     scenario = test_dataset.scenario
 
@@ -209,8 +211,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
             if only_errors and tf.reduce_all(classifier_is_correct[b]):
                 continue
 
-            # if only_collision
-            predicted_rope_states = tf.reshape(example[add_predicted('link_bot')][1], [-1, 3])
+            predicted_rope_states = tf.reshape(example[add_predicted('rope')][1], [-1, 3])
             xs = predicted_rope_states[:, 0]
             ys = predicted_rope_states[:, 1]
             zs = predicted_rope_states[:, 2]
@@ -222,20 +223,9 @@ def eval_main(dataset_dirs: List[pathlib.Path],
             if not (in_collision and accept):
                 continue
 
-            time_steps = np.arange(test_dataset.horizon)
-            scenario.plot_environment_rviz(example)
-            anim = RvizAnimationController(time_steps)
-            while not anim.done:
-                t = anim.t()
-                # use scenario plot transition function here
-                scenario.plot_transition_rviz(example, t)
+            # if label and only_positive
 
-                # TODO: reconsider where this goes, see visualize_classifier_dataset.py
-                stdev_t = example[add_predicted('stdev')][t, 0].numpy()
-                stdev_msg = Float32()
-                stdev_msg.data = stdev_t
-                stdev_pub_.publish(stdev_msg)
-
+            def _custom_viz_t(scenario: ExperimentScenario, e: Dict, t: int):
                 if t > 0:
                     accept_probability_t = predictions['probabilities'][b, t - 1, 0].numpy()
                 else:
@@ -248,8 +238,16 @@ def eval_main(dataset_dirs: List[pathlib.Path],
                 traj_idx_msg.data = batch_idx * batch_size + b
                 traj_idx_pub_.publish(traj_idx_msg)
 
-                # this will return when either the animation is "playing" or because the user stepped forward
-                anim.step()
+            anim = RvizAnimation(scenario=scenario,
+                                 n_time_steps=test_dataset.horizon,
+                                 init_funcs=[init_viz_env,
+                                             test_dataset.init_viz_action(),
+                                             ],
+                                 t_funcs=[_custom_viz_t,
+                                          test_dataset.classifier_transition_viz_t(),
+                                          stdev_viz_t(stdev_pub_),
+                                          ])
+            anim.play(example)
 
     all_accuracies_over_time = tf.concat(all_accuracies_over_time, axis=0)
     mean_accuracies_over_time = tf.reduce_mean(all_accuracies_over_time, axis=0)
@@ -301,7 +299,7 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDataset([dataset_dir], load_true_states=True, use_gt_rope=use_gt_rope)
+    test_dataset = ClassifierDatasetLoader([dataset_dir], load_true_states=True, use_gt_rope=use_gt_rope)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, batch_size, drop_remainder=True)
     scenario = test_dataset.scenario

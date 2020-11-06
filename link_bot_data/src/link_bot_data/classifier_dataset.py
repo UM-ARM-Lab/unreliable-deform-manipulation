@@ -2,16 +2,16 @@ import pathlib
 from typing import List, Dict, Optional
 
 import tensorflow as tf
-from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 
 import rospy
-from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, use_gt_rope, add_label
+from link_bot_data.base_dataset import BaseDatasetLoader
+from link_bot_data.dataset_utils import add_predicted, use_gt_rope, add_label, index_time_with_metadata
+from link_bot_data.visualization import classifier_transition_viz_t, init_viz_action, init_viz_env
 from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.moonshine_utils import numpify
+from merrrt_visualization.rviz_animation_controller import RvizAnimation
 
 
-class ClassifierDataset(BaseDataset):
+class ClassifierDatasetLoader(BaseDatasetLoader):
 
     def __init__(self,
                  dataset_dirs: List[pathlib.Path],
@@ -19,7 +19,7 @@ class ClassifierDataset(BaseDataset):
                  load_true_states=False,
                  no_balance=True,
                  threshold: Optional[float] = None):
-        super(ClassifierDataset, self).__init__(dataset_dirs)
+        super(ClassifierDatasetLoader, self).__init__(dataset_dirs)
         self.no_balance = no_balance
         self.load_true_states = load_true_states
         self.use_gt_rope = use_gt_rope
@@ -45,7 +45,6 @@ class ClassifierDataset(BaseDataset):
             'res',
             'traj_idx',
             'prediction_start_t',
-            'is_close',
         ]
 
         self.batch_metadata = {
@@ -99,40 +98,22 @@ class ClassifierDataset(BaseDataset):
 
         return dataset
 
-    def plot_transition_rviz(self, example: Dict):
-        example = numpify(example)
-        self.scenario.plot_environment_rviz(example)
-
-        anim = RvizAnimationController(n_time_steps=2)
-        action = {k: example[k][0] for k in self.action_keys}
-        pred_0 = self.index_pred_state_time(example, 0)
-        self.scenario.plot_action_rviz(pred_0, action)
-        while not anim.done:
-            t = anim.t()
-
-            pred_t = self.index_pred_state_time(example, t)
-            self.scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffff')
-
-            label_t = example['is_close'][1]
-            self.scenario.plot_is_close(label_t)
-
-            # true state(not known to classifier!)
-            true_t = self.index_true_state_time(example, t)
-            self.scenario.plot_state_rviz(true_t, label='actual', color='#ff0000ff', scale=1.1)
-            anim.step()
+    def anim_transition_rviz(self, example: Dict):
+        anim = RvizAnimation(scenario=self.scenario,
+                             n_time_steps=self.horizon,
+                             init_funcs=[init_viz_env, self.init_viz_action()],
+                             t_funcs=[self.classifier_transition_viz_t()])
+        anim.play(example)
 
     def index_true_state_time(self, example: Dict, t: int):
-        e_t = {}
-        for k in self.true_state_keys:
-            e_t[k] = example[k][t]
-        e_t.update(self.scenario_metadata)
-
-        return e_t
+        return index_time_with_metadata(self.scenario, example, self.true_state_keys, t)
 
     def index_pred_state_time(self, example: Dict, t: int):
-        e_t = {}
-        for k in self.predicted_state_keys:
-            e_t[k] = example[k][t]
-        e_t.update(self.scenario_metadata)
+        return index_time_with_metadata(self.scenario, example, self.predicted_state_keys, t)
 
-        return e_t
+    def classifier_transition_viz_t(self):
+        return classifier_transition_viz_t(predicted_state_keys=self.predicted_state_keys,
+                                           true_state_keys=self.true_state_keys)
+
+    def init_viz_action(self):
+        return init_viz_action(self.action_keys, self.predicted_state_keys)

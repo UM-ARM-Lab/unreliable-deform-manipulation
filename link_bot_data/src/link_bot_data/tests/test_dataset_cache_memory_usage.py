@@ -6,7 +6,7 @@ import unittest
 import progressbar
 import psutil
 
-from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 
 
 def iterate_and_record_max_ram_usage(dataset):
@@ -24,12 +24,12 @@ def iterate_and_record_max_ram_usage(dataset):
 
 class MyTestCase(unittest.TestCase):
     def test_mem_usage(self):
-        no_cache_dataset = ClassifierDataset([pathlib.Path('classifier_data/rope_relaxed_mer')])
+        no_cache_dataset = ClassifierDatasetLoader([pathlib.Path('classifier_data/rope_relaxed_mer')])
         no_cache_dataset.cache_negative = False
         max_ram_no_cache = iterate_and_record_max_ram_usage(no_cache_dataset)
         del no_cache_dataset
 
-        cache_dataset = ClassifierDataset([pathlib.Path('classifier_data/rope_relaxed_mer')])
+        cache_dataset = ClassifierDatasetLoader([pathlib.Path('classifier_data/rope_relaxed_mer')])
         cache_dataset.cache_negative = True
         max_ram_yes_cache = iterate_and_record_max_ram_usage(cache_dataset)
 

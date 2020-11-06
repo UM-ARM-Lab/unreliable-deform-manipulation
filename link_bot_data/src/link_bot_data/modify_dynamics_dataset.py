@@ -6,8 +6,8 @@ import hjson
 import tensorflow as tf
 
 from arc_utilities import algorithms
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
 
 
 def modify_hparams(in_dir: pathlib.Path, out_dir: pathlib.Path, update: Optional[Dict] = None):
@@ -34,7 +34,7 @@ def modify_dynamics_dataset(dataset_dir: pathlib.Path,
     record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
     # load the dataset
-    dataset = DynamicsDataset([dataset_dir])
+    dataset = DynamicsDatasetLoader([dataset_dir])
 
     # hparams
     modify_hparams(dataset_dir, outdir, hparams_update)

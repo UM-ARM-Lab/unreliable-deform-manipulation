@@ -9,7 +9,7 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_data.classifier_dataset_utils import generate_classifier_examples_from_batch
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
 from link_bot_pycommon.args import my_formatter
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_np_arrays

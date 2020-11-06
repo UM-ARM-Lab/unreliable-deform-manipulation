@@ -7,7 +7,7 @@ import colorama
 import numpy as np
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 from moonshine.moonshine_utils import numpify
@@ -26,7 +26,7 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+dedup')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
+    def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
         example['rope'] = numpify(example['rope'])[::2]
         example['left_gripper'] = numpify(example['left_gripper'])[::2]
         example['right_gripper'] = numpify(example['right_gripper'])[::2]

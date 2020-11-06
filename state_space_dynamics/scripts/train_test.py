@@ -6,6 +6,7 @@ import colorama
 import numpy as np
 import tensorflow as tf
 
+import moonshine.viz_main
 import rospy
 from state_space_dynamics import train_test
 
@@ -32,7 +33,7 @@ def eval_main(args, seed: int):
 
 
 def viz_main(args, seed: int):
-    train_test.viz_main(args.dataset_dirs, args.checkpoint, args.mode, args.use_gt_rope)
+    train_test.viz_main(**vars(args))
 
 
 def main():

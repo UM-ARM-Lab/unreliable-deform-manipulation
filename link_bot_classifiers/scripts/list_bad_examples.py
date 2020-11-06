@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -26,7 +26,7 @@ def main():
 
     rospy.init_node("visualize_classifier_data")
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs)
 
     tf_dataset = classifier_dataset.get_datasets(mode='all')
     filenames = classifier_dataset.get_record_filenames(mode='all')

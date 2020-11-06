@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from link_bot_data.link_bot_dataset_utils import is_reconverging
+from link_bot_data.dataset_utils import is_reconverging
 from shape_completion_training import metric
 
 

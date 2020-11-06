@@ -16,7 +16,7 @@ from arc_utilities.listener import Listener
 from gazebo_msgs.msg import LinkStates
 from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_classifiers import recovery_policy_utils
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -106,7 +106,7 @@ class PlanAndExecute:
                                                                  rng=self.goal_rng,
                                                                  planner_params=self.planner_params)
         elif goal_params['type'] == 'dataset':
-            test_dataset = DynamicsDataset([pathlib.Path(goal_params['goals_dataset'])])
+            test_dataset = DynamicsDatasetLoader([pathlib.Path(goal_params['goals_dataset'])])
             test_tf_dataset = test_dataset.get_datasets(mode='val')
             goal_dataset_iterator = iter(test_tf_dataset)
 

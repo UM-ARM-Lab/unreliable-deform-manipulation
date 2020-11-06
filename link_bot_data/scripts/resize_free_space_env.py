@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 
@@ -30,7 +30,7 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+resized')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
+    def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
         example['env'] = np.zeros([args.rows, args.cols, args.channels], dtype=np.float32)
         yield example
 

@@ -1,11 +1,13 @@
 from time import sleep
+from typing import Dict, List, Callable
 
 import numpy as np
 
 import rospy
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from moonshine.moonshine_utils import numpify
 from peter_msgs.msg import AnimationControl
-from peter_msgs.srv import GetFloat32, GetFloat32Request, GetAnimControllerStateRequest, \
-    GetAnimControllerState
+from peter_msgs.srv import GetAnimControllerStateRequest, GetAnimControllerState
 from std_msgs.msg import Int64
 
 
@@ -140,3 +142,31 @@ class RvizSimpleStepper:
             sleep(0.05)
         if not self.play:
             self.should_step = False
+
+
+# pylint: disable=too-few-public-methods
+class RvizAnimation:
+
+    def __init__(self,
+                 scenario: ExperimentScenario,
+                 n_time_steps: int,
+                 init_funcs: List[Callable],
+                 t_funcs: List[Callable]):
+        self.scenario = scenario
+        self.init_funcs = init_funcs
+        self.t_funcs = t_funcs
+        self.n_time_steps = n_time_steps
+
+    def play(self, example: Dict):
+        example = numpify(example)
+        for init_func in self.init_funcs:
+            init_func(self.scenario, example)
+
+        controller = RvizAnimationController(n_time_steps=self.n_time_steps)
+        while not controller.done:
+            t = controller.t()
+
+            for t_func in self.t_funcs:
+                t_func(self.scenario, example, t)
+
+            controller.step()

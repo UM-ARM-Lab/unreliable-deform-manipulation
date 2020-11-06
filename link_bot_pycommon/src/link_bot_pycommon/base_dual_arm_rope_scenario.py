@@ -12,8 +12,8 @@ from geometry_msgs.msg import PoseStamped
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
 from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
-from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetOverstretchingResponse, GetOverstretchingRequest, \
-    GetOverstretching
+from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetOverstretchingResponse, \
+    GetOverstretchingRequest
 from rosgraph.names import ns_join
 from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Empty, EmptyRequest
@@ -149,9 +149,9 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_state = self.robot.joint_state_listener.get()
+        joint_names = self.robot.robot_commander.get_joint_names()
         return {
-            'joint_names': joint_state.name
+            'joint_names': joint_names
         }
 
     def simple_name(self):

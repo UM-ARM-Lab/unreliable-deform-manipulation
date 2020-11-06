@@ -8,7 +8,7 @@ from matplotlib import colors
 import ros_numpy
 from arc_utilities.marker_utils import scale_marker_array
 from arm_robots_msgs.msg import Points
-from link_bot_data.link_bot_dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
+from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
 from rosgraph.names import ns_join
 from std_msgs.msg import Float32

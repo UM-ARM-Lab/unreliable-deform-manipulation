@@ -1,4 +1,4 @@
-import json
+import hjson
 import pathlib
 from time import perf_counter
 from typing import Optional, List, Dict
@@ -8,8 +8,8 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_classifiers import classifier_utils
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.serialization import my_dump
 from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf)
@@ -24,7 +24,7 @@ def make_recovery_dataset(dataset_dir,
                           batch_size: int,
                           start_at: Optional[int] = None,
                           stop_at: Optional[int] = None):
-    labeling_params = json.load(labeling_params.open("r"))
+    labeling_params = hjson.load(labeling_params.open("r"))
 
     make_recovery_dataset_from_params_dict(dataset_dir, fwd_model_dir, classifier_model_dir, labeling_params, outdir,
                                            batch_size, start_at, stop_at)
@@ -47,15 +47,15 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
     np.random.seed(0)
     tf.random.set_seed(0)
 
-    dynamics_hparams = json.load((dataset_dir / 'hparams.json').open('r'))
+    dynamics_hparams = hjson.load((dataset_dir / 'hparams.hjson').open('r'))
     fwd_model, _ = model_utils.load_generic_model(fwd_model_dir)
 
     record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
-    dataset = DynamicsDataset([dataset_dir])
+    dataset = DynamicsDatasetLoader([dataset_dir])
 
     outdir.mkdir(exist_ok=True)
-    new_hparams_filename = outdir / 'hparams.json'
+    new_hparams_filename = outdir / 'hparams.hjson'
     recovery_dataset_hparams = dynamics_hparams
 
     scenario = fwd_model.scenario

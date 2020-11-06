@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataset')
     parser.add_argument('--yes', '-y', action='store_true')
     parser.add_argument('--use-gt-rope', action='store_true')
+    parser.add_argument('--visualize', action='store_true')
     parser.add_argument('out_dir', type=pathlib.Path, help='out dir')
 
     args = parser.parse_args()
@@ -47,6 +48,7 @@ def main():
                             outdir=outdir,
                             use_gt_rope=args.use_gt_rope,
                             start_at=args.start_at,
+                            visualize=args.visualize,
                             stop_at=args.stop_at)
 
 

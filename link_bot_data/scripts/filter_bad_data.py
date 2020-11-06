@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 from moonshine.moonshine_utils import numpify, add_batch, remove_batch
@@ -28,7 +28,7 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+filtered')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
+    def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
         example = numpify(example)
         rope_points = example['link_bot'].reshape([dataset.steps_per_traj, -1, 3])
         min_z_in_sequence = np.amin(np.amin(rope_points, axis=0), axis=0)[2]

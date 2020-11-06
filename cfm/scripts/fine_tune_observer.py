@@ -11,8 +11,8 @@ from colorama import Fore
 
 import rospy
 import state_space_dynamics
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_data.dataset_utils import batch_tf_dataset
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import remove_batch, numpify
@@ -41,8 +41,8 @@ def train_main(args):
     with out_hparams_filename.open("w") as out_hparams_file:
         out_hparams_file.write(out_params_str)
 
-    train_dataset = DynamicsDataset(dataset_dirs)
-    val_dataset = DynamicsDataset(dataset_dirs)
+    train_dataset = DynamicsDatasetLoader(dataset_dirs)
+    val_dataset = DynamicsDatasetLoader(dataset_dirs)
 
     model_class = state_space_dynamics.get_model(params['model_class'])
     model = model_class(hparams=params, batch_size=batch_size, scenario=train_dataset.scenario)
@@ -73,7 +73,7 @@ def viz_main(args):
 
     trial_path, params = load_trial(checkpoint.parent.absolute())
 
-    dataset = DynamicsDataset(dataset_dirs)
+    dataset = DynamicsDatasetLoader(dataset_dirs)
     scenario = dataset.scenario
 
     tf_dataset = dataset.get_datasets(mode='val')

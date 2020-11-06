@@ -11,7 +11,7 @@ from ompl import util as ou
 import rosbag
 import rospy
 from control_msgs.msg import FollowJointTrajectoryActionGoal
-from link_bot_data.link_bot_dataset_utils import data_directory
+from link_bot_data.dataset_utils import data_directory
 from link_bot_gazebo_python import gazebo_services
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner

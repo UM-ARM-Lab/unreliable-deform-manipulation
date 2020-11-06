@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 
@@ -29,7 +29,7 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + '+tfpc')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
+    def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
         points = example.pop("cdcpd")
         points = np.reshape(points, [-1, 25, 3]).transpose([2, 0, 1]).reshape([3, -1])
         ones = np.ones([1, points.shape[1]])

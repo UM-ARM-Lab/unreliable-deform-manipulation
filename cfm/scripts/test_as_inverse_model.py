@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_planning.my_planner import PlanningQuery
 from link_bot_planning.shooting_method import ShootingMethod
 from link_bot_planning.trajectory_optimizer import TrajectoryOptimizer
@@ -38,7 +38,7 @@ def main():
 
     rospy.init_node("test_as_inverse_model")
 
-    test_dataset = DynamicsDataset(args.dataset_dirs)
+    test_dataset = DynamicsDatasetLoader(args.dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     filter_model = filter_utils.load_filter([args.checkpoint])

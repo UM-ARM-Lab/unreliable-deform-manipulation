@@ -8,8 +8,8 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_classifiers.nn_recovery_policy import NNRecoveryModel
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
-from link_bot_data.recovery_dataset import RecoveryDataset
+from link_bot_data.dataset_utils import batch_tf_dataset
+from link_bot_data.recovery_dataset import RecoveryDatasetLoader
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import paths_to_json
 from shape_completion_training.model import filepath_tools
@@ -31,8 +31,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Datasets
     ###############
-    train_dataset = RecoveryDataset(dataset_dirs)
-    val_dataset = RecoveryDataset(dataset_dirs)
+    train_dataset = RecoveryDatasetLoader(dataset_dirs)
+    val_dataset = RecoveryDatasetLoader(dataset_dirs)
 
     ###############
     # Model
@@ -122,7 +122,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = RecoveryDataset(dataset_dirs)
+    test_dataset = RecoveryDatasetLoader(dataset_dirs)
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
 
     ###############

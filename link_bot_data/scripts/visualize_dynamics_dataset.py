@@ -8,14 +8,14 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset, index_time_np
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader, index_time_np
 from link_bot_pycommon.args import my_formatter
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify
 from sensor_msgs.msg import Image
 
 
-def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
+def plot_3d(args, dataset: DynamicsDatasetLoader, tf_dataset: tf.data.Dataset):
     scenario = dataset.scenario
     image_diff_viz_pub = rospy.Publisher("image_diff_viz", Image, queue_size=10, latch=True)
     for i, example in enumerate(tf_dataset):
@@ -24,11 +24,12 @@ def plot_3d(args, dataset: DynamicsDataset, tf_dataset: tf.data.Dataset):
             continue
 
         example = numpify(example)
-        time_steps = example['time_idx']
 
-        scenario.plot_environment_rviz(example)
+
+        time_steps = example['time_idx']
         anim = RvizAnimationController(time_steps)
 
+        scenario.plot_environment_rviz(example)
         while not anim.done:
             t = anim.t()
             example_t = index_time_np(dataset.time_indexed_keys, example, t)
@@ -65,7 +66,7 @@ def main():
     tf.random.set_seed(1)
 
     # load the dataset
-    dataset = DynamicsDataset(args.dataset_dir)
+    dataset = DynamicsDatasetLoader(args.dataset_dir)
     tf_dataset = dataset.get_datasets(mode=args.mode, take=args.take)
 
     if args.shuffle:

@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 from moonshine.gpu_config import limit_gpu_mem
@@ -32,7 +32,7 @@ def main():
 
     outdir = args.dataset_dir.parent / (args.dataset_dir.name + f'+L{args.desired_sequence_length}')
 
-    def _process_example(dataset: DynamicsDataset, example: Dict):
+    def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
         out_examples = dataset.split_into_sequences(example, args.desired_sequence_length)
         for out_example in out_examples:
             out_example['time_idx'] = tf.range(0, args.desired_sequence_length, dtype=tf.float32)

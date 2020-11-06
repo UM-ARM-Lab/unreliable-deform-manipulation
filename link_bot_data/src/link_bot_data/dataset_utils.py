@@ -11,6 +11,7 @@ from colorama import Fore
 
 from link_bot_pycommon import pycommon
 from arc_utilities.filesystem_utils import mkdir_and_ask
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000
@@ -324,3 +325,9 @@ def use_gt_rope(example: Dict):
 def add_label(example: Dict, threshold: float):
     is_close = example['error'] < threshold
     example['is_close'] = tf.cast(is_close, dtype=tf.float32)
+
+
+def index_time_with_metadata(scenario: ExperimentScenario, example: Dict, keys, t: int):
+    e_t = {k: example[k][t] for k in keys}
+    e_t.update(scenario.dynamics_dataset_metadata())
+    return e_t

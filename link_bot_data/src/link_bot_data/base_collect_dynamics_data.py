@@ -10,7 +10,7 @@ from colorama import Fore
 
 import rospy
 from link_bot_data.files_dataset import FilesDataset
-from link_bot_data.link_bot_dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
+from link_bot_data.dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.grid_utils import extent_to_env_shape

@@ -10,7 +10,7 @@ import progressbar
 from colorama import Style
 
 import rospy
-from link_bot_data.classifier_dataset import ClassifierDataset
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -30,7 +30,7 @@ def main():
 
     args = parser.parse_args()
 
-    classifier_dataset = ClassifierDataset(args.dataset_dirs)
+    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs)
     dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
 
     dataset = dataset.batch(args.batch_size)

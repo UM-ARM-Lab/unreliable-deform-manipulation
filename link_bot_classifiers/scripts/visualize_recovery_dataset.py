@@ -11,7 +11,7 @@ from matplotlib import cm
 from progressbar import progressbar
 
 import rospy
-from link_bot_data.recovery_dataset import RecoveryDataset
+from link_bot_data.recovery_dataset import RecoveryDatasetLoader
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import log_scale_0_to_1
 from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
@@ -34,7 +34,7 @@ def main():
 
     rospy.init_node('vis_recovery_dataset')
 
-    dataset = RecoveryDataset(args.dataset_dirs)
+    dataset = RecoveryDatasetLoader(args.dataset_dirs)
     if args.type == 'best_to_worst':
         visualize_best_to_worst(args, dataset)
     elif args.type == 'in_order':
@@ -63,7 +63,7 @@ def stats(args, dataset):
     print(f"loss to beat {tf.reduce_mean(losses)}")
 
 
-def visualize_best_to_worst(args, dataset: RecoveryDataset):
+def visualize_best_to_worst(args, dataset: RecoveryDatasetLoader):
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     # sort the dataset
@@ -89,7 +89,7 @@ def visualize_best_to_worst(args, dataset: RecoveryDataset):
     #     visualize_example(dataset, example)
 
 
-def visualize_in_order(args, dataset: RecoveryDataset):
+def visualize_in_order(args, dataset: RecoveryDatasetLoader):
     scenario = get_scenario(dataset.hparams['scenario'])
     tf_dataset = dataset.get_datasets(mode=args.mode)
 

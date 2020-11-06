@@ -5,12 +5,12 @@ from typing import Dict, List, Optional
 import hjson
 import tensorflow as tf
 
-from link_bot_data.classifier_dataset import ClassifierDataset
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
+from link_bot_data.classifier_dataset import ClassifierDatasetLoader
+from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
     add_label
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf
+from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, gather_dict
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -40,11 +40,20 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             labeling_params: pathlib.Path,
                             outdir: pathlib.Path,
                             use_gt_rope: bool,
+                            visualize: bool,
                             start_at: Optional[int] = None,
-                            stop_at: Optional[int] = None):
+                            stop_at: Optional[int] = None,
+                            ):
     labeling_params = hjson.load(labeling_params.open("r"))
-    make_classifier_dataset_from_params_dict(dataset_dir, fwd_model_dir, labeling_params, outdir, use_gt_rope, start_at,
-                                             stop_at)
+    make_classifier_dataset_from_params_dict(dataset_dir=dataset_dir,
+                                             fwd_model_dir=fwd_model_dir,
+                                             labeling_params=labeling_params,
+                                             outdir=outdir,
+                                             use_gt_rope=use_gt_rope,
+                                             visualize=visualize,
+                                             stop_at=stop_at,
+                                             start_at=start_at,
+                                             )
 
 
 def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
@@ -52,8 +61,10 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                                              labeling_params: Dict,
                                              outdir: pathlib.Path,
                                              use_gt_rope: bool,
+                                             visualize: bool,
                                              start_at: Optional[int] = None,
-                                             stop_at: Optional[int] = None):
+                                             stop_at: Optional[int] = None,
+                                             ):
     # append "best_checkpoint" before loading
     if not isinstance(fwd_model_dir, List):
         fwd_model_dir = [fwd_model_dir]
@@ -62,7 +73,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
     dynamics_hparams = hjson.load((dataset_dir / 'hparams.hjson').open('r'))
     fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
 
-    dataset = DynamicsDataset([dataset_dir], use_gt_rope=use_gt_rope)
+    dataset = DynamicsDatasetLoader([dataset_dir], use_gt_rope=use_gt_rope)
 
     new_hparams_filename = outdir / 'hparams.hjson'
     classifier_dataset_hparams = dynamics_hparams
@@ -79,7 +90,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
     hjson.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     # because we're currently making this dataset, we can't call "get_dataset" but we can still use it to visualize
-    classifier_dataset_for_viz = ClassifierDataset([outdir], use_gt_rope=use_gt_rope)
+    classifier_dataset_for_viz = ClassifierDatasetLoader([outdir], use_gt_rope=use_gt_rope)
 
     t0 = perf_counter()
     total_example_idx = 0
@@ -90,17 +101,19 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
         batch_size = 8
-        out_examples = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
-        for out_example in out_examples:
-            actual_batch_size = out_example[0]['traj_idx'].shape[0]
-            for batch_idx in range(actual_batch_size):
-                for out_example_for_start_t in out_example:
-                    out_example_b = index_dict_of_batched_vectors_tf(out_example_for_start_t, batch_idx)
+        out_examples_gen = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
+        for out_examples in out_examples_gen:
+            for out_examples_for_start_t in out_examples:
+                actual_batch_size = out_examples_for_start_t['traj_idx'].shape[0]
+                for batch_idx in range(actual_batch_size):
+                    out_example_b = index_dict_of_batched_vectors_tf(out_examples_for_start_t, batch_idx)
 
-                    DEBUG = True
-                    if DEBUG:
+                    if out_example_b['time_idx'].ndim == 0:
+                        continue
+
+                    if visualize:
                         add_label(out_example_b, labeling_params['threshold'])
-                        classifier_dataset_for_viz.plot_transition_rviz(out_example_b)
+                        classifier_dataset_for_viz.anim_transition_rviz(out_example_b)
 
                     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
 
@@ -119,7 +132,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
 
 def generate_classifier_examples(fwd_model: BaseDynamicsFunction,
                                  tf_dataset: tf.data.Dataset,
-                                 dataset: DynamicsDataset,
+                                 dataset: DynamicsDatasetLoader,
                                  labeling_params: Dict,
                                  batch_size: int):
     classifier_horizon = labeling_params['classifier_horizon']
@@ -213,14 +226,25 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
         # compute label
         threshold = labeling_params['threshold']
         error = scenario.classifier_distance(sliced_actual, sliced_predictions)
+        is_close = error < threshold
         out_example['error'] = tf.cast(error, dtype=tf.float32)
 
         # perception reliability
-        if labeling_params['perception_reliability_method'] == 'gt':
-            perception_reliability = gt_perception_reliability(sliced_actual, sliced_predictions)
-        out_example['perception_reliability'] = perception_reliability
+        if 'perception_reliability_method' in labeling_params:
+            pr_method = labeling_params['perception_reliability_method']
+            if pr_method == 'gt':
+                perception_reliability = gt_perception_reliability(scenario, sliced_actual, sliced_predictions)
+                out_example['perception_reliability'] = perception_reliability
+            else:
+                raise NotImplementedError(f"unrecognized perception reliability method {pr_method}")
 
-        valid_out_examples.append(out_example)
+        is_first_predicted_state_close = is_close[:, 0]
+        valid_indices = tf.where(is_first_predicted_state_close)
+        valid_indices = tf.squeeze(valid_indices, axis=1)
+        # keep only valid_indices from every key in out_example...
+        valid_out_example = gather_dict(out_example, valid_indices)
+        valid_out_examples.append(valid_out_example)
+        # valid_out_examples.append(out_example)
     return valid_out_examples
 
 
@@ -229,9 +253,11 @@ def zero_through_inf_to_one_through_zero(x):
     return 1 / (1 + x)
 
 
-def gt_perception_reliability(self, actual: Dict, predicted: Dict):
-    gt_perception_error = actual['gt_rope'] - predicted['rope']
-    perception_reliability = zero_through_inf_to_one_through_zero(gt_perception_error)
+def gt_perception_reliability(scenario: ExperimentScenario, actual: Dict, predicted: Dict):
+    gt_perception_error_bt = scenario.classifier_distance(actual, predicted)
+    # add over time
+    gt_perception_error_b = tf.math.reduce_sum(gt_perception_error_bt, axis=1)
+    perception_reliability = zero_through_inf_to_one_through_zero(gt_perception_error_b)
     return perception_reliability
 
 

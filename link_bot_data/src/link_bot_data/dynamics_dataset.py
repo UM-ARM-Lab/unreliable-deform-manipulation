@@ -2,20 +2,21 @@ import pathlib
 from typing import List, Dict, Optional
 
 import tensorflow as tf
+from colorama import Fore
 
-from link_bot_data.base_dataset import BaseDataset
-from link_bot_data.link_bot_dataset_utils import use_gt_rope
+from link_bot_data.base_dataset import BaseDatasetLoader
+from link_bot_data.dataset_utils import use_gt_rope
 from link_bot_pycommon.get_scenario import get_scenario
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 
-class DynamicsDataset(BaseDataset):
+class DynamicsDatasetLoader(BaseDatasetLoader):
     def __init__(self, dataset_dirs: List[pathlib.Path], step_size: int = 1, use_gt_rope: Optional[bool] = False):
         """
         :param dataset_dirs: dataset directories
         :param step_size: the number of time steps to skip when slicing the full trajectories for training
         """
-        super(DynamicsDataset, self).__init__(dataset_dirs)
+        super(DynamicsDatasetLoader, self).__init__(dataset_dirs)
 
         self.use_gt_rope = use_gt_rope
         self.step_size = step_size
@@ -91,6 +92,7 @@ class DynamicsDataset(BaseDataset):
         dataset = dataset.map(_add_scenario_metadata)
 
         if self.use_gt_rope:
+            print(Fore.GREEN + "Using ground-truth rope state")
             dataset = dataset.map(use_gt_rope)
 
         return dataset

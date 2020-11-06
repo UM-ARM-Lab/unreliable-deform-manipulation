@@ -8,7 +8,6 @@ import tensorflow as tf
 
 import rospy
 from link_bot_classifiers import train_test_classifier
-from moonshine.gpu_config import limit_gpu_mem
 
 
 def train_main(args):

@@ -50,9 +50,9 @@
   kernel_reg: 0.05
   bias_reg: 0.05
   batch_norm: true
-  local_env_h_rows: 40
-  local_env_w_cols: 40
-  local_env_c_channels: 40
+  local_env_h_rows: 44
+  local_env_w_cols: 44
+  local_env_c_channels: 44
   learning_rate: 0.001
   shuffle_buffer_size: 16
   stdev: true

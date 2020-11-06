@@ -12,8 +12,8 @@ from matplotlib import cm
 from tabulate import tabulate
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDataset
-from link_bot_data.link_bot_dataset_utils import batch_tf_dataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_data.dataset_utils import batch_tf_dataset
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import row_stats, dict_to_pvalue_table
@@ -34,7 +34,7 @@ def load_dataset_and_models(args):
         model, _ = model_utils.load_generic_model(model_dir)
         models[name] = model
 
-    dataset = DynamicsDataset(args.dataset_dirs)
+    dataset = DynamicsDatasetLoader(args.dataset_dirs)
     tf_dataset = dataset.get_datasets(mode=args.mode,
                                       shard=args.shard,
                                       take=args.take)

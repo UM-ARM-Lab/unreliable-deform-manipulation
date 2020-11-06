@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from progressbar import progressbar
 
-from link_bot_data.recovery_dataset import RecoveryDataset
+from link_bot_data.recovery_dataset import RecoveryDatasetLoader
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -26,7 +26,7 @@ def main():
 
     outfilename = args.dataset_dir.parent / (args.dataset_dir.name + "_best")
 
-    dataset = RecoveryDataset([args.dataset_dir])
+    dataset = RecoveryDatasetLoader([args.dataset_dir])
 
     tf_dataset = dataset.get_datasets(mode='train')
 
