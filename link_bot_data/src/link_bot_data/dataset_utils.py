@@ -327,7 +327,7 @@ def add_label(example: Dict, threshold: float):
     example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
 
-def index_time_with_metadata(scenario: ExperimentScenario, example: Dict, keys, t: int):
+def index_time_with_metadata(metadata: Dict, example: Dict, keys, t: int):
     e_t = {k: example[k][t] for k in keys}
-    e_t.update(scenario.dynamics_dataset_metadata())
+    e_t.update(metadata)
     return e_t

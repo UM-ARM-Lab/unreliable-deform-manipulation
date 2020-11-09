@@ -1,18 +1,19 @@
-import hjson
 import pathlib
 from time import perf_counter
 from typing import Optional, List, Dict
 
+import hjson
 import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
 from link_bot_classifiers import classifier_utils
-from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.serialization import my_dump
-from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf)
+from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_tensors)
 from state_space_dynamics import model_utils
 
 
@@ -179,6 +180,27 @@ def generate_recovery_examples(tf_dataset: tf.data.Dataset,
             yield out_examples
 
 
+def batch_stateless_sample_action(scenario: ExperimentScenario,
+                                  environment: Dict,
+                                  state: Dict,
+                                  batch_size: int,
+                                  n_action_samples: int,
+                                  n_actions: int,
+                                  data_collection_params: Dict,
+                                  action_params: Dict,
+                                  action_rng: np.random.RandomState):
+    # TODO: make the lowest level sample_action operate on batched state dictionaries
+    action_sequences = scenario.sample_action_sequences(environment=environment,
+                                                        state=state,
+                                                        action_params=action_params,
+                                                        n_action_sequences=n_action_samples,
+                                                        action_sequence_length=n_actions,
+                                                        action_rng=action_rng)
+    action_sequences = [sequence_of_dicts_to_dict_of_tensors(a) for a in action_sequences]
+    action_sequences = sequence_of_dicts_to_dict_of_tensors(action_sequences)
+    return {k: tf.tile(v, [batch_size, 1, 1, 1]) for k, v in action_sequences}
+
+
 def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
     example, actual_actions, actual_states, labeling_params, data_collection_params = data
     actual_batch_size, action_sequence_horizon, classifier_horizon, batch_size, start_t, end_t = constants
@@ -203,14 +225,18 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         n_action_samples = labeling_params['n_action_samples']
         n_actions = classifier_horizon - 1
         actual_states_t = index_dict_of_batched_vectors_tf(actual_states, t, batch_axis=1)
-        random_actions_dict = scenario.batch_stateless_sample_action(environment=environment,
-                                                                     state=actual_states_t,
-                                                                     batch_size=actual_batch_size,
-                                                                     n_action_samples=n_action_samples,
-                                                                     n_actions=n_actions,
-                                                                     data_collection_params=data_collection_params,
-                                                                     action_params=data_collection_params,
-                                                                     action_rng=action_rng)
+        # TODO: check we're sampling action sequences correctly here
+        #  I think it should be that for we sample a number of action sequences independently, but
+        #  that across the batch dimension the actions can be the same.
+        random_actions_dict = batch_stateless_sample_action(scenario=scenario,
+                                                            environment=environment,
+                                                            state=actual_states_t,
+                                                            batch_size=actual_batch_size,
+                                                            n_action_samples=n_action_samples,
+                                                            n_actions=n_actions,
+                                                            data_collection_params=data_collection_params,
+                                                            action_params=data_collection_params,
+                                                            action_rng=action_rng)
         batch_sample = actual_batch_size * n_action_samples
         random_actions_dict = {k: tf.reshape(v, [batch_sample, n_actions, -1])
                                for k, v in random_actions_dict.items()}

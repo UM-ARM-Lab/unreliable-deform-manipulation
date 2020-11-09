@@ -106,14 +106,15 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
         anim.play(example)
 
     def index_true_state_time(self, example: Dict, t: int):
-        return index_time_with_metadata(self.scenario, example, self.true_state_keys, t)
+        return index_time_with_metadata(self.scenario_metadata, example, self.true_state_keys, t)
 
     def index_pred_state_time(self, example: Dict, t: int):
-        return index_time_with_metadata(self.scenario, example, self.predicted_state_keys, t)
+        return index_time_with_metadata(self.scenario_metadata, example, self.predicted_state_keys, t)
 
     def classifier_transition_viz_t(self):
-        return classifier_transition_viz_t(predicted_state_keys=self.predicted_state_keys,
+        return classifier_transition_viz_t(metadata=self.scenario_metadata,
+                                           predicted_state_keys=self.predicted_state_keys,
                                            true_state_keys=self.true_state_keys)
 
     def init_viz_action(self):
-        return init_viz_action(self.action_keys, self.predicted_state_keys)
+        return init_viz_action(self.scenario_metadata, self.action_keys, self.predicted_state_keys)

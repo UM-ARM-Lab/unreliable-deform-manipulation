@@ -143,6 +143,7 @@ class DataCollector:
             'n_trajs': n_trajs,
             'data_collection_params': self.params,
             'scenario': self.scenario_name,
+            # FIXME: rename this key?
             'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
             'state_description': state_description,
             'action_description': action_description,

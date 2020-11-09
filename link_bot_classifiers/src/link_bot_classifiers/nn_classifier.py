@@ -241,7 +241,7 @@ class NNClassifier(MyKerasModel):
             print("no hparam 'with_robot_frame'. This must be an old model!")
             concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
         elif self.hparams['with_robot_frame']:
-            states_in_robot_frame = self.scenario.put_state_in_robot_frame(states)
+            states_in_ullrobot_frame = self.scenario.put_state_in_robot_frame(states)
             concat_args = ([conv_output] + list(states_in_robot_frame.values()) +
                            list(states_in_local_frame.values()) + padded_actions)
         else:

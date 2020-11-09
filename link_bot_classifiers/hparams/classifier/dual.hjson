@@ -57,4 +57,5 @@
   shuffle_buffer_size: 16
   stdev: true
   use_perception_reliability_loss: false
+  voxel_noise: 0.3
 }

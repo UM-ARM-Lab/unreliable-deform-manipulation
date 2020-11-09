@@ -149,9 +149,9 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             self.joint_state_viz_pub.publish(joint_msg)
 
     def dynamics_dataset_metadata(self):
-        joint_names = self.robot.robot_commander.get_joint_names()
+        joint_state: JointState = self.robot.joint_state_listener.get()
         return {
-            'joint_names': joint_names
+            'joint_names': joint_state.name
         }
 
     def simple_name(self):

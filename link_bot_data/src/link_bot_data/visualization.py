@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional
 
 import numpy as np
 
@@ -7,8 +7,6 @@ from geometry_msgs.msg import Point
 from link_bot_data.dataset_utils import index_time_with_metadata, add_predicted
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import vector_to_points_2d
-from merrrt_visualization.rviz_animation_controller import RvizAnimationController, RvizAnimation
-from moonshine.moonshine_utils import numpify
 from std_msgs.msg import Float32
 from visualization_msgs.msg import Marker
 
@@ -121,25 +119,25 @@ if __name__ == '__main__':
     plt.show()
 
 
-def classifier_transition_viz_t(predicted_state_keys, true_state_keys: Optional):
+def classifier_transition_viz_t(metadata: Dict, predicted_state_keys, true_state_keys: Optional):
     def _classifier_transition_viz_t(scenario: ExperimentScenario, example: Dict, t: int):
-        pred_t = index_time_with_metadata(scenario, example, predicted_state_keys, t=t)
+        pred_t = index_time_with_metadata(metadata, example, predicted_state_keys, t=t)
         scenario.plot_state_rviz(pred_t, label='predicted', color='#0000ffff')
 
         label_t = example['is_close'][t]
         scenario.plot_is_close(label_t)
 
         if true_state_keys is not None:
-            true_t = index_time_with_metadata(scenario, example, true_state_keys, t=t)
+            true_t = index_time_with_metadata(metadata, example, true_state_keys, t=t)
             scenario.plot_state_rviz(true_t, label='actual', color='#ff0000ff', scale=1.1)
 
     return _classifier_transition_viz_t
 
 
-def init_viz_action(action_keys, state_keys):
+def init_viz_action(metadata: Dict, action_keys, state_keys):
     def _init_viz_action(scenario: ExperimentScenario, example: Dict):
         action = {k: example[k][0] for k in action_keys}
-        pred_0 = index_time_with_metadata(scenario, example, state_keys, t=0)
+        pred_0 = index_time_with_metadata(metadata, example, state_keys, t=0)
         scenario.plot_action_rviz(pred_0, action)
 
     return _init_viz_action
