@@ -59,11 +59,14 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.register_controller_srv(register_right_req)
 
     def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
-        # release the rope
-        self.release_rope_endpoints()
-
         # teleport movable objects out of the way
         self.move_objects_out_of_scene(params)
+
+        # release the rope
+        self.robot.open_left_gripper()
+        self.robot.open_right_gripper()
+        # self.detach_rope_from_grippers()
+        self.detach_rope_from_gripper('left_gripper')
 
         # plan to reset joint config, we assume this will always work
         self.robot.plan_to_joint_config("both_arms", params['reset_joint_config'])
@@ -87,11 +90,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         self.robot.close_right_gripper()
 
         self.reset_cdcpd()
-
-    def release_rope_endpoints(self):
-        self.robot.open_left_gripper()
-        self.robot.open_right_gripper()
-        self.detach_rope_from_grippers()
 
     def move_rope_out_of_the_scene(self):
         set_req = Position3DActionRequest()
@@ -119,16 +117,15 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         right_follow_req.frame_id = "right_tool"
         self.pos3d_follow_srv(right_follow_req)
 
-    def detach_rope_from_grippers(self):
-        left_enable_req = Position3DEnableRequest()
-        left_enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
-        left_enable_req.enable = False
-        self.pos3d_enable_srv(left_enable_req)
+    def detach_rope_from_gripper(self, rope_link_name: str):
+        enable_req = Position3DEnableRequest()
+        enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, rope_link_name)
+        enable_req.enable = False
+        self.pos3d_enable_srv(enable_req)
 
-        right_enable_req = Position3DEnableRequest()
-        right_enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
-        right_enable_req.enable = False
-        self.pos3d_enable_srv(right_enable_req)
+    def detach_rope_from_grippers(self):
+        self.detach_rope_from_gripper('left_gripper')
+        self.detach_rope_from_gripper('right_gripper')
 
     def move_objects_out_of_scene(self, params: Dict):
         position = [0, 2, 0]

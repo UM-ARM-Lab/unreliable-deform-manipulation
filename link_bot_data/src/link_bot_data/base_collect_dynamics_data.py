@@ -59,9 +59,6 @@ class DataCollector:
         feature['traj_idx'] = traj_idx
 
         # Visualization
-        self.scenario.plot_environment_rviz(environment)
-        self.scenario.plot_traj_idx_rviz(traj_idx)
-
         actions = {k: [] for k in self.params['action_keys']}
         states = {k: [] for k in self.params['state_keys']}
 
@@ -87,6 +84,8 @@ class DataCollector:
                                                  action_params=self.params)
 
             # Visualization
+            self.scenario.plot_environment_rviz(environment)
+            self.scenario.plot_traj_idx_rviz(traj_idx)
             self.scenario.plot_state_rviz(state, label='actual')
             if time_idx < self.params['steps_per_traj'] - 1:  # skip the last action in visualization as well
                 self.scenario.plot_action_rviz(state, action)
