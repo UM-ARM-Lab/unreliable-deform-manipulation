@@ -1,0 +1,34 @@
+{
+  nickname: naive_rope_tracking
+  collect_dynamics_data_1:
+  {
+    dynamics_dataset_dir: fwd_model_data/sim_dual_phase1_1604090284_d164991089_2048
+  }
+  collect_dynamics_data_2:
+  {
+    dynamics_dataset_dir: fwd_model_data/sim_victor_cdcpd_1604608051
+  }
+  learn_dynamics:
+  {
+    model_dirs:
+    [
+      dy_trials/naive_rope_tracking_1604641033_0/November_06_00-37-14_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_1/November_06_00-51-54_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_2/November_06_01-06-31_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_3/November_06_01-21-08_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_4/November_06_01-35-45_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_5/November_06_01-50-22_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_6/November_06_02-04-59_79f81bebd9
+      dy_trials/naive_rope_tracking_1604641033_7/November_06_02-19-35_79f81bebd9
+    ]
+    classifier_threshold: 0.024352473206818104
+  }
+  make_classifier_dataset:
+  {
+    classifier_dataset_dir: classifier_data/naive_rope_tracking_1604641033
+  }
+  learn_classifier:
+  {
+    model_dir: cl_trials/naive_rope_tracking_1604672239/November_06_09-17-20_79f81bebd9
+  }
+}

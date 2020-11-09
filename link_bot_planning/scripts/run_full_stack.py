@@ -390,7 +390,7 @@ def main():
         nickname = args.nickname
         unique_nickname = f"{nickname}_{int(time.time())}"
         # create a logfile
-        logfile_dir = pathlib.Path("results") / "log" / unique_nickname
+        logfile_dir = pathlib.Path("log") / unique_nickname
         logfile_dir.mkdir(parents=True)
         logfile_name = logfile_dir / "logfile.hjson"
         runlog = {}

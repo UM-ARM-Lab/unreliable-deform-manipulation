@@ -24,7 +24,7 @@ def plot_3d(args, dataset: DynamicsDatasetLoader, tf_dataset: tf.data.Dataset):
 
         example = numpify(example)
 
-        print(i, example['traj_idx'])
+        print(f"Example {i}, Trajectory #{int(example['traj_idx'])}")
 
         time_steps = example['time_idx']
         anim = RvizAnimationController(time_steps)
@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--plot-type', choices=['3d', 'sanity_check', 'just_count'], default='3d')
     parser.add_argument('--take', type=int)
     parser.add_argument('--start-at', type=int)
-    parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='train', help='train test or val')
+    parser.add_argument('--mode', choices=['train', 'test', 'val', 'all'], default='all', help='train test or val')
     parser.add_argument('--shuffle', action='store_true', help='shuffle')
 
     args = parser.parse_args()

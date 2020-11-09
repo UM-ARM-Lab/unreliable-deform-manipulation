@@ -1,0 +1,34 @@
+{
+  nickname: baseline_gt_rope
+  collect_dynamics_data_1:
+  {
+    dynamics_dataset_dir: fwd_model_data/sim_dual_phase1_1604090284_d164991089_2048
+  }
+  collect_dynamics_data_2:
+  {
+    dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604957966
+  }
+  learn_dynamics:
+  {
+    model_dirs:
+    [
+      dy_trials/sim_dual_1604610861_0/November_05_16-14-22_21f836b68d
+      dy_trials/sim_dual_1604610861_1/November_05_16-29-45_0629c9cce9
+      dy_trials/sim_dual_1604610861_2/November_05_16-45-01_79f81bebd9
+      dy_trials/sim_dual_1604610861_3/November_05_17-00-08_79f81bebd9
+      dy_trials/sim_dual_1604610861_4/November_05_17-14-58_79f81bebd9
+      dy_trials/sim_dual_1604610861_5/November_05_17-29-42_79f81bebd9
+      dy_trials/sim_dual_1604610861_6/November_05_17-44-40_79f81bebd9
+      dy_trials/sim_dual_1604610861_7/November_05_17-59-37_79f81bebd9
+    ]
+    classifier_threshold: 0.03734910301864147
+  }
+  make_classifier_dataset:
+  {
+    classifier_dataset_dir: classifier_data/baseline_gt_rope_1604691512
+  }
+  learn_classifier:
+  {
+    model_dir: cl_trials/baseline_gt_rope_1604696548/November_06_16-02-30_e2b6a14663
+  }
+}
