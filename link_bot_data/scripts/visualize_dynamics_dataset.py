@@ -19,19 +19,19 @@ def plot_3d(args, dataset: DynamicsDatasetLoader, tf_dataset: tf.data.Dataset):
     scenario = dataset.scenario
     image_diff_viz_pub = rospy.Publisher("image_diff_viz", Image, queue_size=10, latch=True)
     for i, example in enumerate(tf_dataset):
-        print(i)
         if args.start_at is not None and i < args.start_at:
             continue
 
         example = numpify(example)
 
+        print(i, example['traj_idx'])
 
         time_steps = example['time_idx']
         anim = RvizAnimationController(time_steps)
 
-        scenario.plot_environment_rviz(example)
         while not anim.done:
             t = anim.t()
+            scenario.plot_environment_rviz(example)
             example_t = index_time_np(dataset.time_indexed_keys, example, t)
             scenario.plot_state_rviz(example_t, label='')
             scenario.plot_action_rviz_internal(example_t, label='')

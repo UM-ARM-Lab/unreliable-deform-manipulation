@@ -76,14 +76,14 @@ void RVizAnimationController::TimeCallback(const std_msgs::Int64::ConstPtr &msg)
   QString text;
   text.sprintf("%3ld", msg->data);
   ui.step_number_label->setText(text);
-  emit update();
+  update();
 }
 
 void RVizAnimationController::MaxTimeCallback(const std_msgs::Int64::ConstPtr &msg)
 {
   auto const text = QString::number(msg->data);
   ui.max_step_number_label->setText(text);
-  emit update();
+  update();
 }
 
 void RVizAnimationController::DoneClicked()
