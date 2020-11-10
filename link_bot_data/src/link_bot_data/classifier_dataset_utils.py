@@ -5,9 +5,10 @@ from typing import Dict, List, Optional
 import hjson
 import tensorflow as tf
 
+import rospy
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
-    add_label
+    add_label, write_example
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, gather_dict
@@ -115,16 +116,8 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                         add_label(out_example_b, labeling_params['threshold'])
                         classifier_dataset_for_viz.anim_transition_rviz(out_example_b)
 
-                    features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example_b.items()}
-
-                    example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-                    example = example_proto.SerializeToString()
-                    record_filename = "example_{:09d}.tfrecords".format(total_example_idx)
-                    full_filename = full_output_directory / record_filename
-                    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
-                    with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                        writer.write(example)
-                    print(f"Examples: {total_example_idx:10d}, Time: {perf_counter() - t0:.3f}")
+                    write_example(full_output_directory, out_example_b, total_example_idx)
+                    rospy.loginfo_throttle(10, f"Examples: {total_example_idx:10d}, Time: {perf_counter() - t0:.3f}")
                     total_example_idx += 1
 
     return outdir

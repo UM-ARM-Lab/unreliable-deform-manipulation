@@ -36,9 +36,6 @@ class DynamicsDatasetLoader(BaseDatasetLoader):
             'traj_idx',
         ]
 
-        # this is used for adding joint_names
-        self.scenario_metadata = self.hparams['scenario_metadata']
-
         self.time_indexed_keys = self.state_keys + self.action_keys
 
         self.int64_keys = ['time_idx']
@@ -83,14 +80,6 @@ class DynamicsDatasetLoader(BaseDatasetLoader):
             yield out_example
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int, **kwargs):
-        scenario_metadata = self.scenario_metadata
-
-        def _add_scenario_metadata(example: Dict):
-            example.update(scenario_metadata)
-            return example
-
-        dataset = dataset.map(_add_scenario_metadata)
-
         if self.use_gt_rope:
             print(Fore.GREEN + "Using ground-truth rope state")
             dataset = dataset.map(use_gt_rope)

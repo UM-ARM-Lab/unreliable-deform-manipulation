@@ -9,7 +9,6 @@ import numpy as np
 import tensorflow as tf
 from scipy import stats
 
-import link_bot_data.visualization
 import rospy
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted
@@ -34,6 +33,7 @@ def main():
     parser.add_argument('--threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--take', type=int)
+    parser.add_argument('--use-gt-rope', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--only-positive', action='store_true')
     parser.add_argument('--only-in-collision', action='store_true')
@@ -49,7 +49,8 @@ def main():
 
     rospy.init_node("visualize_classifier_data")
 
-    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs, load_true_states=True, threshold=args.threshold)
+    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs, load_true_states=True, threshold=args.threshold,
+                                                 use_gt_rope=args.use_gt_rope)
 
     visualize_dataset(args, classifier_dataset)
 
@@ -73,17 +74,7 @@ def visualize_dataset(args, classifier_dataset):
     stdevs_for_negative = []
     stdevs_for_positive = []
 
-    done = False
-    while not done:
-        iter_t0 = perf_counter()
-        try:
-            example = next(iterator)
-        except StopIteration:
-            break
-        iter_dt = perf_counter() - iter_t0
-        if args.perf:
-            print("{:6.4f}".format(iter_dt))
-
+    for i, example in enumerate(tf_dataset):
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
@@ -103,6 +94,8 @@ def visualize_dataset(args, classifier_dataset):
 
         if args.only_positive and not np.any(is_close[1:]):
             continue
+
+        print(f"Example {i}, Trajectory #{int(example['traj_idx'])}")
 
         if count == 0:
             print_dict(example)

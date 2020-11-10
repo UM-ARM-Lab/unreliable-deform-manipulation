@@ -8,7 +8,7 @@ import numpy as np
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
-from link_bot_data.modify_dynamics_dataset import modify_dynamics_dataset
+from link_bot_data.modify_dataset import modify_dynamics_dataset
 from link_bot_pycommon.args import my_formatter
 
 

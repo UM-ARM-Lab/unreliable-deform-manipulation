@@ -331,3 +331,16 @@ def index_time_with_metadata(metadata: Dict, example: Dict, keys, t: int):
     e_t = {k: example[k][t] for k in keys}
     e_t.update(metadata)
     return e_t
+
+
+def write_example(full_output_directory: pathlib.Path,
+                  out_example: Dict,
+                  example_idx: int):
+    features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example.items()}
+    example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+    example_str = example_proto.SerializeToString()
+    record_filename = "example_{:09d}.tfrecords".format(example_idx)
+    full_filename = full_output_directory / record_filename
+    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
+    with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
+        writer.write(example_str)

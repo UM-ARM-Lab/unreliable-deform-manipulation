@@ -30,8 +30,8 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
         self.scenario = get_scenario(self.hparams['scenario'])
 
         self.true_state_keys = self.hparams['true_state_keys']
-        self.true_state_keys.append('error')
-        self.scenario_metadata = self.hparams['scenario_metadata']
+        # self.true_state_keys.append('error')
+        self.true_state_keys.append('is_close')
         self.predicted_state_keys = [add_predicted(k) for k in self.hparams['predicted_state_keys']]
         self.predicted_state_keys.append(add_predicted('stdev'))
         self.action_keys = self.hparams['action_keys']
@@ -76,22 +76,13 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
 
         # dataset = dataset.map(_add_time)
 
-        # this is used for adding joint_names
-        scenario_metadata = self.scenario_metadata
-
-        def _add_scenario_metadata(example: Dict):
-            example.update(scenario_metadata)
-            return example
-
-        dataset = dataset.map(_add_scenario_metadata)
-
         threshold = self.threshold
 
         def _label(example: Dict):
             add_label(example, threshold)
             return example
 
-        dataset = dataset.map(_label)
+        # dataset = dataset.map(_label)
 
         if self.use_gt_rope:
             dataset = dataset.map(use_gt_rope)
@@ -101,8 +92,8 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
     def anim_transition_rviz(self, example: Dict):
         anim = RvizAnimation(scenario=self.scenario,
                              n_time_steps=self.horizon,
-                             init_funcs=[init_viz_env, self.init_viz_action()],
-                             t_funcs=[self.classifier_transition_viz_t()])
+                             init_funcs=[self.init_viz_action()],
+                             t_funcs=[init_viz_env, self.classifier_transition_viz_t()])
         anim.play(example)
 
     def index_true_state_time(self, example: Dict, t: int):

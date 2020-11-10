@@ -6,7 +6,7 @@
   }
   collect_dynamics_data_2:
   {
-    dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604957966
+    dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604959263+smallenv
   }
   learn_dynamics:
   {
@@ -25,10 +25,6 @@
   }
   make_classifier_dataset:
   {
-    classifier_dataset_dir: classifier_data/baseline_gt_rope_1604691512
-  }
-  learn_classifier:
-  {
-    model_dir: cl_trials/baseline_gt_rope_1604696548/November_06_16-02-30_e2b6a14663
+    classifier_dataset_dir: classifier_data/baseline_gt_rope_1604961020
   }
 }

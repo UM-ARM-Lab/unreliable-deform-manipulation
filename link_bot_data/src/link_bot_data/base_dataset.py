@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import hjson
 import numpy as np
@@ -18,6 +18,7 @@ class BaseDatasetLoader:
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs
         self.hparams = {}
+        self.scenario_metadata = self.hparams.get('scenario_metadata', {})
         for dataset_dir in dataset_dirs:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
             if not dataset_hparams_filename.exists():
@@ -78,7 +79,7 @@ class BaseDatasetLoader:
                                   shard: Optional[int] = None,
                                   take: Optional[int] = None,
                                   shuffle_files: Optional[bool] = False,
-                                  **kwargs) -> tf.data.Dataset:
+                                  ) -> tf.data.Dataset:
         if shuffle_files:
             print("Shuffling records")
             shuffle_rng = np.random.RandomState(0)
@@ -98,7 +99,7 @@ class BaseDatasetLoader:
             dataset = dataset.shard(shard)
 
         if not do_not_process:
-            dataset = self.post_process(dataset, n_parallel_calls, **kwargs)
+            dataset = self.post_process(dataset, n_parallel_calls)
 
         return dataset
 
@@ -106,5 +107,12 @@ class BaseDatasetLoader:
         raise NotImplementedError()
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
-        # No-Op
+        scenario_metadata = self.scenario_metadata
+
+        def _add_scenario_metadata(example: Dict):
+            example.update(scenario_metadata)
+            return example
+
+        dataset = dataset.map(_add_scenario_metadata)
+
         return dataset
