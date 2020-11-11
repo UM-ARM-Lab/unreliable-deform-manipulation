@@ -5,6 +5,7 @@ radius = ENV['radius'].to_f
 gripper_radius = ENV['gripper_radius'].to_f
 link_length = length/n_links
 link_mass = mass/n_links
+omega = 0.0
 joint_damping = 0.01 %>
 <sdf version="1.6">
     <model name="rope_3d">
@@ -129,7 +130,7 @@ joint_damping = 0.01 %>
             <child>rope_link_<%=i%></child>
             <pose>0 0 <%=-link_length/2%> 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 <%=Math.sin((i-1)*omega)%> <%=Math.cos((i-1)*omega)%></xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
                     <friction>0.1</friction>
@@ -137,7 +138,7 @@ joint_damping = 0.01 %>
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 <%=Math.sin((i-1)*omega + Math::PI/2)%> <%=Math.cos((i-1)*omega + Math::PI/2)%></xyz>
                 <dynamics>
                     <damping><%=joint_damping%></damping>
                     <friction>0.1</friction>

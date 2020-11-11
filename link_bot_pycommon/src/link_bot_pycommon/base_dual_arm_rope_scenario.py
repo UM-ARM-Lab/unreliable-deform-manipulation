@@ -171,6 +171,10 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         tool_names = [self.robot.left_tool_name, self.robot.right_tool_name]
         grippers = [left_gripper_points, right_gripper_points]
         traj, result = self.robot.follow_jacobian_to_position("both_arms", tool_names, grippers)
+
+        rope_settling_time = action.get('settling_time', 1.0)
+        rospy.sleep(rope_settling_time)
+
         return traj, result
 
     def get_environment(self, params: Dict, **kwargs):

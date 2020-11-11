@@ -10,7 +10,6 @@ import tf2_sensor_msgs
 from arc_utilities.listener import Listener
 from arc_utilities.marker_utils import scale_marker_array
 from geometry_msgs.msg import Point
-from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
@@ -210,6 +209,8 @@ class FloatingRopeScenario(Base3DScenario):
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
+
+        from jsk_recognition_msgs.msg import BoundingBox
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"),

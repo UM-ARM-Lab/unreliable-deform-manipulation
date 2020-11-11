@@ -8,17 +8,17 @@
             <pose frame="">0.016 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -120,17 +120,17 @@
             <pose frame="">0.048 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -232,17 +232,17 @@
             <pose frame="">0.08 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -344,17 +344,17 @@
             <pose frame="">0.112 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -456,17 +456,17 @@
             <pose frame="">0.14400000000000002 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -568,17 +568,17 @@
             <pose frame="">0.176 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -680,17 +680,17 @@
             <pose frame="">0.20800000000000002 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -792,17 +792,17 @@
             <pose frame="">0.24 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -904,17 +904,17 @@
             <pose frame="">0.272 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1016,17 +1016,17 @@
             <pose frame="">0.30400000000000005 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1128,17 +1128,17 @@
             <pose frame="">0.336 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1240,17 +1240,17 @@
             <pose frame="">0.368 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1352,17 +1352,17 @@
             <pose frame="">0.4 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1464,17 +1464,17 @@
             <pose frame="">0.43200000000000005 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1576,17 +1576,17 @@
             <pose frame="">0.464 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1688,17 +1688,17 @@
             <pose frame="">0.496 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1800,17 +1800,17 @@
             <pose frame="">0.528 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -1912,17 +1912,17 @@
             <pose frame="">0.56 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2024,17 +2024,17 @@
             <pose frame="">0.5920000000000001 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2136,17 +2136,17 @@
             <pose frame="">0.624 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2248,17 +2248,17 @@
             <pose frame="">0.656 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2360,17 +2360,17 @@
             <pose frame="">0.6880000000000001 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2472,17 +2472,17 @@
             <pose frame="">0.72 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2584,17 +2584,17 @@
             <pose frame="">0.752 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2696,17 +2696,17 @@
             <pose frame="">0.784 0 0 3.14159 -1.57079 3.14159</pose>
             <inertial>
                 <pose frame="">0 0 0 0 0 0</pose>
-                <mass>0.004
+                <mass>0.008
                 </mass>
                 <inertia>
-                    <ixx>4.4133333333333326e-07
+                    <ixx>8.826666666666665e-07
                     </ixx>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
-                    <iyy>4.4133333333333326e-07
+                    <iyy>8.826666666666665e-07
                     </iyy>
                     <iyz>0</iyz>
-                    <izz>2.0000000000000002e-07
+                    <izz>4.0000000000000003e-07
                     </izz>
                 </inertia>
             </inertial>
@@ -2810,7 +2810,7 @@
             <child>rope_link_1</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2818,7 +2818,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2838,7 +2838,7 @@
             <child>rope_link_2</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2846,7 +2846,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2866,7 +2866,7 @@
             <child>rope_link_3</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2874,7 +2874,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2894,7 +2894,7 @@
             <child>rope_link_4</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2902,7 +2902,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2922,7 +2922,7 @@
             <child>rope_link_5</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2930,7 +2930,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2950,7 +2950,7 @@
             <child>rope_link_6</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2958,7 +2958,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2978,7 +2978,7 @@
             <child>rope_link_7</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -2986,7 +2986,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3006,7 +3006,7 @@
             <child>rope_link_8</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3014,7 +3014,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3034,7 +3034,7 @@
             <child>rope_link_9</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3042,7 +3042,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3062,7 +3062,7 @@
             <child>rope_link_10</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3070,7 +3070,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3090,7 +3090,7 @@
             <child>rope_link_11</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3098,7 +3098,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3118,7 +3118,7 @@
             <child>rope_link_12</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3126,7 +3126,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3146,7 +3146,7 @@
             <child>rope_link_13</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3154,7 +3154,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3174,7 +3174,7 @@
             <child>rope_link_14</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3182,7 +3182,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3202,7 +3202,7 @@
             <child>rope_link_15</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3210,7 +3210,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3230,7 +3230,7 @@
             <child>rope_link_16</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3238,7 +3238,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3258,7 +3258,7 @@
             <child>rope_link_17</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3266,7 +3266,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3286,7 +3286,7 @@
             <child>rope_link_18</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3294,7 +3294,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3314,7 +3314,7 @@
             <child>rope_link_19</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3322,7 +3322,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3342,7 +3342,7 @@
             <child>rope_link_20</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3350,7 +3350,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3370,7 +3370,7 @@
             <child>rope_link_21</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3378,7 +3378,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3398,7 +3398,7 @@
             <child>rope_link_22</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3406,7 +3406,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3426,7 +3426,7 @@
             <child>rope_link_23</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3434,7 +3434,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3454,7 +3454,7 @@
             <child>rope_link_24</child>
             <pose>0 0 -0.016 0 0 0</pose>
             <axis>
-                <xyz>0 0 1</xyz>
+                <xyz>0 0.0 1.0</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
@@ -3462,7 +3462,7 @@
                 <use_parent_model_frame>1</use_parent_model_frame>
             </axis>
             <axis2>
-                <xyz>0 1 0</xyz>
+                <xyz>0 1.0 6.123233995736766e-17</xyz>
                 <dynamics>
                     <damping>0.01</damping>
                     <friction>0.1</friction>
