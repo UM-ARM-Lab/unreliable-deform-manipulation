@@ -6,7 +6,6 @@ from matplotlib import cm
 import rospy
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
-from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.dataset_utils import NULL_PAD_VALUE
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -26,6 +25,7 @@ class Base3DScenario(ExperimentScenario):
         super().__init__()
         self.world_control_srv = rospy.ServiceProxy("/world_control", WorldControl)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
+        from jsk_recognition_msgs.msg import BoundingBox
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.obs_bbox_pub = rospy.Publisher('obs_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
