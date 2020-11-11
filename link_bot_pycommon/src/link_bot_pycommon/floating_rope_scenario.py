@@ -265,6 +265,8 @@ class FloatingRopeScenario(Base3DScenario):
         wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
         self.pos3d_wait_srv(wait_req)
 
+        rospy.sleep(0.5)
+
     def pos_set_req(self, position, speed_mps: float, link_name: str):
         req = Position3DActionRequest()
         req.speed_mps = speed_mps

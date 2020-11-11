@@ -172,7 +172,8 @@ class BaseDataCollector:
             print(f'traj {traj_idx}/{n_trajs} ({seed}), {perf_counter() - t0:.4f}s')
 
             # Save the data
-            self.write_example(full_output_directory, example, traj_idx)
+            full_filename = self.write_example(full_output_directory, example, traj_idx)
+            files_dataset.add(full_filename)
 
         self.scenario.on_after_data_collection(self.params)
 
@@ -199,7 +200,7 @@ class TfDataCollector(BaseDataCollector):
                          verbose=verbose)
 
     def write_example(self, full_output_directory, example, traj_idx):
-        tf_write_example(full_output_directory, example, traj_idx)
+        return tf_write_example(full_output_directory, example, traj_idx)
 
 
 class H5DataCollector(BaseDataCollector):

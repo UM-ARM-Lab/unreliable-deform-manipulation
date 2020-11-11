@@ -4,6 +4,7 @@ from typing import Callable, Optional, Dict
 
 import hjson
 import progressbar
+from colorama import Fore
 
 from arc_utilities import algorithms
 from link_bot_data.base_dataset import BaseDatasetLoader
@@ -38,16 +39,17 @@ def modify_dataset(dataset_dir: pathlib.Path,
 
     # tfrecords
     total_count = 0
-    bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength)
-    for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode)
-        full_output_directory = outdir / mode
-        full_output_directory.mkdir(parents=True, exist_ok=True)
+    with progressbar.ProgressBar(max_value=progressbar.UnknownLength) as bar:
+        for mode in ['train', 'test', 'val']:
+            tf_dataset = dataset.get_datasets(mode=mode)
+            full_output_directory = outdir / mode
+            full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        for i, example in enumerate(tf_dataset):
-            for out_example in process_example(dataset, example):
-                for k in dataset.scenario_metadata:
-                    out_example.pop(k)
-                tf_write_example(full_output_directory, out_example, total_count)
-                total_count += 1
-                bar.update(total_count)
+            for i, example in enumerate(tf_dataset):
+                for out_example in process_example(dataset, example):
+                    for k in dataset.scenario_metadata:
+                        out_example.pop(k)
+                    tf_write_example(full_output_directory, out_example, total_count)
+                    total_count += 1
+                    bar.update(total_count)
+    print(Fore.GREEN + f"Modified {total_count} examples")

@@ -349,3 +349,4 @@ def tf_write_example(full_output_directory: pathlib.Path,
     record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
     with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
         writer.write(example_str)
+    return full_filename

@@ -23,7 +23,12 @@ class RvizAnimationController:
         self.command_sub = rospy.Subscriber("/rviz_anim/control", AnimationControl, self.on_control)
         self.time_pub = rospy.Publisher("/rviz_anim/time", Int64, queue_size=10)
         self.max_time_pub = rospy.Publisher("/rviz_anim/max_time", Int64, queue_size=10)
-        self.get_state_srv = rospy.ServiceProxy("/rviz_anim/get_state", GetAnimControllerState)
+        get_srv_name = "/rviz_anim/get_state"
+        self.get_state_srv = rospy.ServiceProxy(get_srv_name, GetAnimControllerState)
+
+        rospy.logdebug(f"waiting for {get_srv_name}")
+        rospy.wait_for_service(get_srv_name)
+        rospy.logdebug(f"connected.")
 
         self.idx = 0
         self.max_idx = self.time_steps.shape[0]
