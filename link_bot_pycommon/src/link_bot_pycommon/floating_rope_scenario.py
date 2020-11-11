@@ -30,6 +30,11 @@ from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
+try:
+    from jsk_recognition_msgs.msg import BoundingBox
+except ImportError:
+    rospy.logwarn("ignoring failed import of BBox message")
+
 
 def gz_scope(*args):
     return "::".join(args)
@@ -210,7 +215,6 @@ class FloatingRopeScenario(Base3DScenario):
         self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
 
-        from jsk_recognition_msgs.msg import BoundingBox
         self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"),

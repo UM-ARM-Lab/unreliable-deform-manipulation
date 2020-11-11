@@ -19,13 +19,17 @@ from std_msgs.msg import Float32
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
+try:
+    from jsk_recognition_msgs.msg import BoundingBox
+except ImportError:
+    rospy.logwarn("ignoring failed import of BBox message")
+
 
 class Base3DScenario(ExperimentScenario):
     def __init__(self):
         super().__init__()
         self.world_control_srv = rospy.ServiceProxy("/world_control", WorldControl)
         self.env_viz_pub = rospy.Publisher('occupancy', OccupancyStamped, queue_size=10, latch=True)
-        from jsk_recognition_msgs.msg import BoundingBox
         self.env_bbox_pub = rospy.Publisher('env_bbox', BoundingBox, queue_size=10, latch=True)
         self.obs_bbox_pub = rospy.Publisher('obs_bbox', BoundingBox, queue_size=10, latch=True)
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
