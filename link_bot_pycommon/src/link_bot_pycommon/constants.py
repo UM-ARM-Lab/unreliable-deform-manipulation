@@ -1,0 +1,1 @@
+KINECT_MAX_DEPTH = 3

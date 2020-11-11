@@ -19,7 +19,8 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center
 from link_bot_pycommon.bbox_visualization import extent_array_to_bbox
 from link_bot_pycommon.pycommon import default_if_none
-from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
+from link_bot_pycommon.ros_pycommon import publish_color_image, publish_depth_image
+from link_bot_pycommon.constants import KINECT_MAX_DEPTH
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import *

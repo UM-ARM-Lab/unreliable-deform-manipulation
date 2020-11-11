@@ -113,9 +113,6 @@ def make_movable_object_services(object_name):
     }
 
 
-KINECT_MAX_DEPTH = 3
-
-
 def publish_color_image(pub: rospy.Publisher, x):
     color = x.astype(np.uint8)
     color_viz_msg = ros_numpy.msgify(Image, color, encoding="rgb8")

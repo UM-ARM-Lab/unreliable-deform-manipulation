@@ -6,7 +6,7 @@ from tensorflow.keras import layers
 from tensorflow.python.keras.models import Sequential
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH
+from link_bot_pycommon.constants import KINECT_MAX_DEPTH
 from moonshine.image_augmentation import augment, resize_image_sequence, flatten_batch_and_sequence, unflatten_batch_and_sequence
 from moonshine.loss_utils import loss_on_dicts
 from moonshine.moonshine_utils import vector_to_dict
