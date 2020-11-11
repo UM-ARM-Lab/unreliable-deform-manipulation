@@ -4,11 +4,8 @@ project(link_bot_pycommon)
 find_package(catkin REQUIRED COMPONENTS
         rospy
         roscpp
-        pybind11_catkin
         std_msgs)
-find_package(catkin COMPONENTS
-        pybind11_catkin
-        )
+find_package(catkin COMPONENTS pybind11_catkin)
 
 catkin_package(
         CATKIN_DEPENDS pybind11_catkin std_msgs roscpp

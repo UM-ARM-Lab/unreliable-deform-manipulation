@@ -12,7 +12,7 @@ with warnings.catch_warnings():
 
 import rospy
 from jsk_recognition_msgs.msg import BoundingBox
-from link_bot_pycommon.grid_utils import extent_to_bbox
+from link_bot_pycommon.bbox_visualization import extent_to_bbox
 from tf import transformations
 
 

@@ -20,7 +20,7 @@ from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.grid_utils import extent_to_bbox
+from link_bot_pycommon.bbox_visualization import extent_to_bbox
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 

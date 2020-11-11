@@ -10,7 +10,8 @@ from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_data.dataset_utils import NULL_PAD_VALUE
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, extent_to_bbox
+from link_bot_pycommon.grid_utils import environment_to_occupancy_msg
+from link_bot_pycommon.bbox_visualization import extent_to_bbox
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.msg import LabelStatus
