@@ -2,7 +2,7 @@
   nickname: baseline_gt_rope
   collect_dynamics_data_1:
   {
-    dynamics_dataset_dir: fwd_model_data/baseline_gt_rope_phase1_1605065519_3507367522_2048
+    dynamics_dataset_dir: fwd_model_data/no_victor_dual_no_obs_longer+rename+ropereversed
   }
   collect_dynamics_data_2:
   {

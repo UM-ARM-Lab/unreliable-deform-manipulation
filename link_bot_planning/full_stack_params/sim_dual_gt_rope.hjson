@@ -22,9 +22,9 @@
   learn_dynamics: {
     scenario: dual_floating
     epochs: 300
-    batch_size: 64
+    batch_size: 32
     forward_model_hparams: hparams/unconstrained_dynamics/no_victor_dual_no_obs.json
-    n_ensemble: 8
+    n_ensemble: 4
     evaluate: false
   }
   learn_full_dynamics: {

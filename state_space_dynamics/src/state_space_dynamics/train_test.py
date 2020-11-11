@@ -26,6 +26,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                use_gt_rope: bool,
                checkpoint: Optional[pathlib.Path] = None,
                ensemble_idx: Optional[int] = None,
+               take: Optional[int] = None,
                trials_directory=pathlib.Path,
                ):
     model_hparams = hjson.load(model_hparams.open('r'))
@@ -46,7 +47,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          batch_metadata=train_dataset.batch_metadata,
                          trial_path=trial_path)
 
-    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset)
+    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset, take)
 
     runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
@@ -78,9 +79,9 @@ def setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope):
     return hparams
 
 
-def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):
+def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset, take):
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train')
+    train_tf_dataset = train_dataset.get_datasets(mode='train', take=take)
     val_tf_dataset = val_dataset.get_datasets(mode='val')
 
     # mix up examples before batching

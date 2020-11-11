@@ -24,6 +24,7 @@ def train_main(args, seed: int):
                           ensemble_idx=args.ensemble_idx,
                           trials_directory=pathlib.Path('trials'),
                           use_gt_rope=args.use_gt_rope,
+                          take=args.take,
                           )
 
 
@@ -47,7 +48,7 @@ def main():
     train_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     train_parser.add_argument('model_hparams', type=pathlib.Path)
     train_parser.add_argument('--checkpoint', type=pathlib.Path)
-    train_parser.add_argument('--batch-size', type=int, default=16)
+    train_parser.add_argument('--batch-size', type=int, default=32)
     train_parser.add_argument('--take', type=int)
     train_parser.add_argument('--epochs', type=int, default=500)
     train_parser.add_argument('--ensemble-idx', type=int)
@@ -65,7 +66,7 @@ def main():
     eval_parser.add_argument('dataset_dirs', type=pathlib.Path, nargs='+')
     eval_parser.add_argument('checkpoint', type=pathlib.Path)
     eval_parser.add_argument('--mode', type=str, choices=['train', 'test', 'val'], default='test')
-    eval_parser.add_argument('--batch-size', type=int, default=16)
+    eval_parser.add_argument('--batch-size', type=int, default=32)
     eval_parser.add_argument('--verbose', '-v', action='count', default=0)
     eval_parser.add_argument('--seed', type=int, default=None)
     eval_parser.add_argument('--use-gt-rope', action='store_true')
