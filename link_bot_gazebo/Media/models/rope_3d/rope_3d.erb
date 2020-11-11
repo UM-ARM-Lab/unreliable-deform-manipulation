@@ -146,7 +146,7 @@ joint_damping = 0.01 %>
             </axis2>
             <physics>
                 <ode>
-                    <cfm>0.0004</cfm>
+                    <cfm>0.0005</cfm>
                     <implicit_spring_damper>1</implicit_spring_damper>
                 </ode>
             </physics>
@@ -310,8 +310,6 @@ joint_damping = 0.01 %>
         <plugin name='rope_plugin' filename='librope_plugin.so'>
             <num_links><%=n_links%></num_links>
             <overstretching_factor>1.25</overstretching_factor>
-        </plugin>
-        <plugin name='dual_gripper_plugin' filename='libdual_gripper_plugin.so'>
         </plugin>
     </model>
 </sdf>

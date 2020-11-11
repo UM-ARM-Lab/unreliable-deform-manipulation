@@ -40,7 +40,7 @@ void Position3dPlugin::Load(physics::WorldPtr world, sdf::ElementPtr sdf)
 
   CreateServices();
 
-  // FIXME: none of this code is threadsafe
+  // FIXME: none of this code is thread-safe
 }
 
 void Position3dPlugin::CreateServices()
@@ -100,6 +100,24 @@ void Position3dPlugin::CreateServices()
     };
     auto pos_set_so = create_service_options(peter_msgs::Position3DAction, "set", pos_set_bind);
     set_service_ = private_ros_node_->advertiseService(pos_set_so);
+  }
+
+  {
+    auto pos_wait_bind = [this](peter_msgs::Position3DWaitRequest &req, peter_msgs::Position3DWaitResponse &res)
+    {
+      return OnWait(req, res);
+    };
+    auto pos_wait_so = create_service_options(peter_msgs::Position3DWait, "wait", pos_wait_bind);
+    wait_service_ = private_ros_node_->advertiseService(pos_wait_so);
+  }
+
+  {
+    auto pos_move_bind = [this](peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
+    {
+      return OnMove(req, res);
+    };
+    auto pos_move_so = create_service_options(peter_msgs::Position3DAction, "move", pos_move_bind);
+    move_service_ = private_ros_node_->advertiseService(pos_move_so);
   }
 
   {
@@ -212,11 +230,73 @@ bool Position3dPlugin::OnSet(peter_msgs::Position3DActionRequest &req, peter_msg
   if (it != controllers_map_.cend())
   {
     it->second->OnEnable(true);
-    it->second->Set(req.position);
+    it->second->Set(req);
   } else
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
   }
+  return true;
+}
+
+bool Position3dPlugin::OnWait(peter_msgs::Position3DWaitRequest &req, peter_msgs::Position3DWaitResponse &res)
+{
+  (void) res;
+  for (auto const scoped_link_name  : req.scoped_link_names)
+  {
+    auto const it = controllers_map_.find(scoped_link_name);
+    if (it != controllers_map_.cend())
+    {
+      auto const &controller = it->second;
+
+      // Block, waiting until set point is reached or timeout occurs
+      auto const t0 = ros::Time::now();
+      while (true)
+      {
+        auto const dt = ros::Time::now() - t0;
+        auto const error = controller->setpoint_.Distance(*controller->Get());
+        ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME,
+                               "Controller " << controller->scoped_link_name_ << " error " << error << " dt " << dt);
+        if (dt.toSec() >= req.timeout_s or error < 1e-4)
+        {
+          break;
+        }
+        ros::Duration(0.01).sleep();
+      }
+    }
+  }
+
+  return true;
+}
+
+bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_msgs::Position3DActionResponse &res)
+{
+  (void) res;
+  auto const it = controllers_map_.find(req.scoped_link_name);
+  if (it != controllers_map_.cend())
+  {
+    auto const &controller = it->second;
+    controller->OnEnable(true);
+    controller->Set(req);
+
+    // Block, waiting until set point is reached or timeout occurs
+    auto const t0 = ros::Time::now();
+    while (true)
+    {
+      auto const dt = ros::Time::now() - t0;
+      auto const error = controller->setpoint_.Distance(*controller->Get());
+      ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME,
+                             "Controller " << controller->scoped_link_name_ << " error " << error << " dt " << dt);
+      if (dt.toSec() >= req.timeout_s or error < 1e-4)
+      {
+        break;
+      }
+      ros::Duration(0.01).sleep();
+    }
+  } else
+  {
+    ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
+  }
+
   return true;
 }
 

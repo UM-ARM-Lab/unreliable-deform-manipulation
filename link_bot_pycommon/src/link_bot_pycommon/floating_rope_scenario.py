@@ -1,4 +1,3 @@
-import warnings
 from typing import Dict, Optional
 
 import numpy as np
@@ -6,34 +5,33 @@ import tensorflow as tf
 from matplotlib import colors
 
 import ros_numpy
-from arc_utilities.marker_utils import scale_marker_array
-from arm_robots_msgs.msg import Points
-from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
-from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
-from rosgraph.names import ns_join
-from std_msgs.msg import Float32
-
 import rospy
 import tf2_sensor_msgs
 from arc_utilities.listener import Listener
-from arm_robots_msgs.srv import GrippersTrajectory, GrippersTrajectoryRequest
+from arc_utilities.marker_utils import scale_marker_array
 from geometry_msgs.msg import Point
 from jsk_recognition_msgs.msg import BoundingBox
+from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center, extent_array_to_bbox
 from link_bot_pycommon.pycommon import default_if_none
+from link_bot_pycommon.ros_pycommon import KINECT_MAX_DEPTH, publish_color_image, publish_depth_image
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
-from peter_msgs.srv import GetDualGripperPoints, SetRopeState, SetRopeStateRequest, GetRopeState, GetRopeStateRequest, \
-    GetDualGripperPointsRequest, GetDualGripperPointsResponse, GetOverstretchingResponse, GetOverstretchingRequest, \
-    GetOverstretching
+from peter_msgs.srv import *
+from rosgraph.names import ns_join
 from sensor_msgs.msg import Image, PointCloud2
+from std_msgs.msg import Float32
 from std_srvs.srv import Empty, EmptyRequest
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
+
+
+def gz_scope(*args):
+    return "::".join(args)
 
 
 def make_gripper_marker(position, id, r, g, b, a, label, type):
@@ -182,7 +180,7 @@ class FloatingRopeScenario(Base3DScenario):
         'max_y': 540,
         'max_x': 960,
     }
-    ROPE_NAMESPACE = 'kinematic_rope'
+    ROPE_NAMESPACE = 'rope_3d'
 
     # TODO: break out the different pieces of get_state to make them composable,
     #  since there are just a few shared amongst all the scenarios
@@ -195,11 +193,18 @@ class FloatingRopeScenario(Base3DScenario):
         self.state_color_viz_pub = rospy.Publisher("state_color_viz", Image, queue_size=10, latch=True)
         self.state_depth_viz_pub = rospy.Publisher("state_depth_viz", Image, queue_size=10, latch=True)
         self.last_action = None
-        self.action_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "execute_dual_gripper_action"),
-                                             GrippersTrajectory)
         self.get_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_dual_gripper_points"),
                                                           GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_rope_state"), GetRopeState)
+
+        self.register_controller_srv = rospy.ServiceProxy("/position_3d_plugin/register", RegisterPosition3DController)
+        self.pos3d_follow_srv = rospy.ServiceProxy("/position_3d_plugin/follow", Position3DFollow)
+        self.pos3d_enable_srv = rospy.ServiceProxy("/position_3d_plugin/enable", Position3DEnable)
+        self.pos3d_set_srv = rospy.ServiceProxy("/position_3d_plugin/set", Position3DAction)
+        self.pos3d_move_srv = rospy.ServiceProxy("/position_3d_plugin/move", Position3DAction)
+        self.pos3d_wait_srv = rospy.ServiceProxy("/position_3d_plugin/wait", Position3DWait)
+        self.pos3d_get_srv = rospy.ServiceProxy("/position_3d_plugin/get", GetPosition3D)
+
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
@@ -237,6 +242,8 @@ class FloatingRopeScenario(Base3DScenario):
         pass
 
     def on_before_data_collection(self, params: Dict):
+        self.register_fake_grasping()
+
         left_gripper_position = np.array([1.0, 0.2, 1.0])
         right_gripper_position = np.array([1.0, -0.2, 1.0])
         init_action = {
@@ -246,17 +253,32 @@ class FloatingRopeScenario(Base3DScenario):
         self.execute_action(init_action)
 
     def execute_action(self, action: Dict):
-        req = GrippersTrajectoryRequest()
-        left_gripper_point = ros_numpy.msgify(Point, action['left_gripper_position'])
-        left_gripper_points = Points()
-        left_gripper_points.points.append(left_gripper_point)
-        req.grippers.append(left_gripper_points)
+        speed_mps = action.get('speed', 0.1)
+        left_req = self.pos_set_req(action['left_gripper_position'], speed_mps, 'left_gripper')
+        right_req = self.pos_set_req(action['right_gripper_position'], speed_mps, 'right_gripper')
+        self.pos3d_move_srv(left_req)
+        self.pos3d_move_srv(right_req)
 
-        right_gripper_point = ros_numpy.msgify(Point, action['right_gripper_position'])
-        right_gripper_points = Points()
-        right_gripper_points.points.append(right_gripper_point)
-        req.grippers.append(right_gripper_points)
-        self.action_srv(req)
+        wait_req = Position3DWaitRequest()
+        wait_req.timeout_s = 10.0
+        wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
+        wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
+        self.pos3d_wait_srv(wait_req)
+
+    def pos_set_req(self, position, speed_mps: float, link_name: str):
+        req = Position3DActionRequest()
+        req.speed_mps = speed_mps
+        req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, link_name)
+        req.position = ros_numpy.msgify(Point, position)
+        return req
+
+    def pos_move_req(self, position, speed_mps: float, link_name: str):
+        req = Position3DActionRequest()
+        req.speed_mps = speed_mps
+        req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, link_name)
+        req.position = ros_numpy.msgify(Point, position)
+        req.timeout_s = 10.0
+        return req
 
     def reset_rope(self, action_params: Dict):
         reset = SetRopeStateRequest()
@@ -388,7 +410,7 @@ class FloatingRopeScenario(Base3DScenario):
     def robot_name():
         return "rope_3d"
 
-    def randomize_environment(self, env_rng, objects_params: Dict, action_params: Dict):
+    def randomize_environment(self, env_rng, params: Dict):
         pass
 
     @staticmethod
@@ -514,10 +536,12 @@ class FloatingRopeScenario(Base3DScenario):
     def get_rope_point_positions(self):
         # NOTE: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
         #  although that looses semantic meaning and means hard-coding indices a lot...
-        req = GetDualGripperPointsRequest()
-        res: GetDualGripperPointsResponse = self.get_rope_end_points_srv(req)
-        left_rope_point_position = ros_numpy.numpify(res.left_gripper)
-        right_rope_point_position = ros_numpy.numpify(res.right_gripper)
+        left_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
+        left_res: GetPosition3DResponse = self.pos3d_get_srv(left_req)
+        left_rope_point_position = ros_numpy.numpify(left_res.pos)
+        right_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
+        right_res: GetPosition3DResponse = self.pos3d_get_srv(right_req)
+        right_rope_point_position = ros_numpy.numpify(right_res.pos)
         return left_rope_point_position, right_rope_point_position
 
     def get_state(self):
@@ -1008,3 +1032,24 @@ class FloatingRopeScenario(Base3DScenario):
         msg.markers.append(rviz_arrow(s2, a2, r, g, b, a, idx=idx2, label=label, **kwargs))
 
         self.action_viz_pub.publish(msg)
+
+    def register_fake_grasping(self):
+        register_left_req = RegisterPosition3DControllerRequest()
+        register_left_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        register_left_req.controller_type = "kinematic"
+        self.register_controller_srv(register_left_req)
+        register_right_req = RegisterPosition3DControllerRequest()
+        register_right_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        register_right_req.controller_type = "kinematic"
+        self.register_controller_srv(register_right_req)
+
+    def make_rope_endpoints_follow_gripper(self):
+        left_follow_req = Position3DFollowRequest()
+        left_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
+        left_follow_req.frame_id = "left_tool"
+        self.pos3d_follow_srv(left_follow_req)
+
+        right_follow_req = Position3DFollowRequest()
+        right_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
+        right_follow_req.frame_id = "right_tool"
+        self.pos3d_follow_srv(right_follow_req)

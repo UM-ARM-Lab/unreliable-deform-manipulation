@@ -49,7 +49,7 @@ def main():
                 tf.random.set_seed(trial_idx)
                 env_rng = np.random.RandomState(trial_idx)
 
-                scenario.randomize_environment(env_rng, data_collection_params, data_collection_params)
+                scenario.randomize_environment(env_rng, data_collection_params)
 
                 links_states = link_states_listener.get()
 

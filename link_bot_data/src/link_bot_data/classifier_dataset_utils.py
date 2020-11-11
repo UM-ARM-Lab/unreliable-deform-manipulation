@@ -8,7 +8,7 @@ import tensorflow as tf
 import rospy
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
-    add_label, write_example
+    add_label, tf_write_example
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, gather_dict
@@ -116,7 +116,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
                         add_label(out_example_b, labeling_params['threshold'])
                         classifier_dataset_for_viz.anim_transition_rviz(out_example_b)
 
-                    write_example(full_output_directory, out_example_b, total_example_idx)
+                    tf_write_example(full_output_directory, out_example_b, total_example_idx)
                     rospy.loginfo_throttle(10, f"Examples: {total_example_idx:10d}, Time: {perf_counter() - t0:.3f}")
                     total_example_idx += 1
 

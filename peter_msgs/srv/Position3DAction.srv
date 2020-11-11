@@ -1,4 +1,5 @@
 string scoped_link_name
 geometry_msgs/Point position
-float32 timeout
+float32 timeout_s
+float32 speed_mps
 ---

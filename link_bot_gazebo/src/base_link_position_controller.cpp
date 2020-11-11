@@ -51,11 +51,13 @@ void BaseLinkPositionController::OnUpdate()
   }
 }
 
-void BaseLinkPositionController::Set(geometry_msgs::Point position)
+void BaseLinkPositionController::Set(peter_msgs::Position3DActionRequest action)
 {
   OnEnable(true);
   following_ = false;
-  setpoint_ = point_to_ign_vector_3d(position);
+  setpoint_ = point_to_ign_vector_3d(action.position);
+  timeout_s_ = action.timeout_s;
+  speed_mps_ = action.speed_mps;
 }
 
 

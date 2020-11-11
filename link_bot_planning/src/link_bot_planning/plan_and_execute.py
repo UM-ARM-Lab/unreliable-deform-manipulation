@@ -333,4 +333,4 @@ class PlanAndExecute:
         pass
 
     def randomize_environment(self):
-        self.scenario.randomize_environment(self.env_rng, self.planner_params, self.planner_params)
+        self.scenario.randomize_environment(self.env_rng, self.planner_params)

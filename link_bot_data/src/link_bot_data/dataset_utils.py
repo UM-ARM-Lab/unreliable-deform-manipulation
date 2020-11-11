@@ -58,13 +58,9 @@ def parse_dataset(dataset, feature_description, n_parallel_calls=None):
     return parsed_dataset
 
 
-def deserialize(parsed_dataset, n_parallel_calls=None):
+def deserialize(parsed_dataset: tf.data.Dataset, n_parallel_calls=None):
     # get shapes of everything
-    element = next(iter(parsed_dataset))
-    inferred_shapes = {}
-    for key, serialized_tensor in element.items():
-        deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
-        inferred_shapes[key] = deserialized_tensor.shape
+    inferred_shapes = infer_shapes(parsed_dataset)
 
     def _deserialize(serialized_dict):
         deserialized_dict = {}
@@ -76,6 +72,15 @@ def deserialize(parsed_dataset, n_parallel_calls=None):
 
     deserialized_dataset = parsed_dataset.map(_deserialize, num_parallel_calls=n_parallel_calls)
     return deserialized_dataset
+
+
+def infer_shapes(parsed_dataset: tf.data.Dataset):
+    element = next(iter(parsed_dataset))
+    inferred_shapes = {}
+    for key, serialized_tensor in element.items():
+        deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
+        inferred_shapes[key] = deserialized_tensor.shape
+    return inferred_shapes
 
 
 def dict_of_float_tensors_to_bytes_feature(d):
@@ -333,9 +338,9 @@ def index_time_with_metadata(metadata: Dict, example: Dict, keys, t: int):
     return e_t
 
 
-def write_example(full_output_directory: pathlib.Path,
-                  out_example: Dict,
-                  example_idx: int):
+def tf_write_example(full_output_directory: pathlib.Path,
+                     out_example: Dict,
+                     example_idx: int):
     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example.items()}
     example_proto = tf.train.Example(features=tf.train.Features(feature=features))
     example_str = example_proto.SerializeToString()

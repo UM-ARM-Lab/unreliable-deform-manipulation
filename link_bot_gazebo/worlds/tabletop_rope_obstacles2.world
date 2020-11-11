@@ -26,7 +26,6 @@
             </ode>
         </physics>
 
-
         <plugin name="stepping_plugin" filename="libstepping_plugin.so"/>
         <plugin name="gazebo_ros_tf_plugin" filename="libgazebo_ros_tf_plugin.so"/>
         <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>

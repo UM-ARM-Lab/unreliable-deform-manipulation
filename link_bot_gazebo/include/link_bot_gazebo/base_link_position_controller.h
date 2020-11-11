@@ -4,6 +4,7 @@
 
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <peter_msgs/Position3DActionRequest.h>
 
 #include <geometry_msgs/Point.h>
 #include <gazebo/physics/World.hh>
@@ -27,7 +28,7 @@ class BaseLinkPositionController
 
   void OnFollow(std::string const &frame_id);
 
-  void Set(geometry_msgs::Point position);
+  void Set(peter_msgs::Position3DActionRequest action);
 
   [[nodiscard]] virtual std::optional<ignition::math::Vector3d> Get() const;
 
@@ -41,8 +42,9 @@ class BaseLinkPositionController
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 
- private:
   ignition::math::Vector3d setpoint_;
+  double timeout_s_ = 0;
+  double speed_mps_ = 0;
 };
 
 }

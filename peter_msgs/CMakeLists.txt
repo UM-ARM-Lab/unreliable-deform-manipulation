@@ -38,6 +38,7 @@ add_service_files(
         Position3DAction.srv
         Position3DFollow.srv
         Position3DEnable.srv
+        Position3DWait.srv
         Position3DStop.srv
         Reconstruction.srv
         RegisterPosition3DController.srv

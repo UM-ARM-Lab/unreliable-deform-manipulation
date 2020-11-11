@@ -13,16 +13,12 @@
         <arg name="debug_moveit" value="false"/>
     </include>
 
-    <node name="shim" type="dual_gripper_action_forwarder_node.py" pkg="link_bot_gazebo_python">
-        <param name="rope_ns" value="kinematic_rope"/>
-    </node>
-
     <group ns="static_transform_publishers">
         <node pkg="tf2_ros" type="static_transform_publisher" name="left_tool"
-              args="0 0 0 0 0 0 gazebo/kinematic_rope/left_gripper left_tool">
+              args="0 0 0 0 0 0 gazebo/rope_3d/left_gripper left_tool">
         </node>
         <node pkg="tf2_ros" type="static_transform_publisher" name="right_tool"
-              args="0 0 0 0 0 0 gazebo/kinematic_rope/right_gripper right_tool">
+              args="0 0 0 0 0 0 gazebo/rope_3d/right_gripper right_tool">
         </node>
     </group>
 

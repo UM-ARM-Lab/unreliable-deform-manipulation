@@ -6,7 +6,6 @@ import colorama
 import numpy as np
 import tensorflow as tf
 
-import moonshine.viz_main
 import rospy
 from state_space_dynamics import train_test
 

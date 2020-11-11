@@ -191,6 +191,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
                 mode: str,
                 viz_func: Callable,
                 use_gt_rope: bool,
+                **kwargs,
                 ):
     test_dataset = DynamicsDatasetLoader(dataset_dirs, use_gt_rope=use_gt_rope)
 

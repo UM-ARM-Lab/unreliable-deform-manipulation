@@ -5,18 +5,17 @@ from typing import Dict, Optional
 
 import hjson
 import numpy as np
-import tensorflow as tf
 from colorama import Fore
 
 import rospy
+from link_bot_data.dataset_utils import data_directory, tf_write_example
 from link_bot_data.files_dataset import FilesDataset
-from link_bot_data.dataset_utils import data_directory, dict_of_float_tensors_to_bytes_feature
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.grid_utils import extent_to_env_shape
 
 
-class DataCollector:
+class BaseDataCollector:
 
     def __init__(self,
                  scenario_name: str,
@@ -66,7 +65,6 @@ class DataCollector:
         last_state = self.scenario.get_state()
         for time_idx in range(self.params['steps_per_traj']):
             # get current state and sample action
-            t0 = perf_counter()
             state = self.scenario.get_state()
 
             # DEBUG
@@ -149,7 +147,6 @@ class DataCollector:
         }
         with (full_output_directory / 'hparams.hjson').open('w') as dataset_hparams_file:
             hjson.dump(dataset_hparams, dataset_hparams_file, indent=2)
-        record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
         self.scenario.randomization_initialization()
         self.scenario.on_before_data_collection(self.params)
@@ -175,16 +172,50 @@ class DataCollector:
             print(f'traj {traj_idx}/{n_trajs} ({seed}), {perf_counter() - t0:.4f}s')
 
             # Save the data
-            features = dict_of_float_tensors_to_bytes_feature(example)
-            example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-            example_str = example_proto.SerializeToString()
-            full_filename = full_output_directory / f"example_{traj_idx:09d}.tfrecords"
-            files_dataset.add(full_filename)
-            with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                writer.write(example_str)
+            self.write_example(full_output_directory, example, traj_idx)
 
         self.scenario.on_after_data_collection(self.params)
 
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         return files_dataset
+
+    def write_example(self, full_output_directory, example, traj_idx):
+        raise NotImplementedError()
+
+
+class TfDataCollector(BaseDataCollector):
+
+    def __init__(self,
+                 scenario_name: str,
+                 service_provider: BaseServices,
+                 params: Dict,
+                 seed: Optional[int] = None,
+                 verbose: int = 0):
+        super().__init__(scenario_name=scenario_name,
+                         service_provider=service_provider,
+                         params=params,
+                         seed=seed,
+                         verbose=verbose)
+
+    def write_example(self, full_output_directory, example, traj_idx):
+        tf_write_example(full_output_directory, example, traj_idx)
+
+
+class H5DataCollector(BaseDataCollector):
+
+    def __init__(self,
+                 scenario_name: str,
+                 service_provider: BaseServices,
+                 params: Dict,
+                 seed: Optional[int] = None,
+                 verbose: int = 0):
+        super().__init__(scenario_name=scenario_name,
+                         service_provider=service_provider,
+                         params=params,
+                         seed=seed,
+                         verbose=verbose)
+
+    def write_example(self, full_output_directory, example, traj_idx):
+        # implement this --> h5_write_example(full_output_directory, example, traj_idx)
+        pass

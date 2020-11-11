@@ -18,7 +18,9 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
                  use_gt_rope: bool,
                  load_true_states=False,
                  no_balance=True,
-                 threshold: Optional[float] = None):
+                 threshold: Optional[float] = None,
+                 old_compat: Optional[bool] = False,
+                 ):
         super(ClassifierDatasetLoader, self).__init__(dataset_dirs)
         self.no_balance = no_balance
         self.load_true_states = load_true_states
@@ -30,10 +32,15 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
         self.scenario = get_scenario(self.hparams['scenario'])
 
         self.true_state_keys = self.hparams['true_state_keys']
-        # self.true_state_keys.append('error')
-        self.true_state_keys.append('is_close')
+        self.old_compat = old_compat
+        if self.old_compat:
+            self.true_state_keys.append('is_close')
+        else:
+            self.true_state_keys.append('error')
+
         self.predicted_state_keys = [add_predicted(k) for k in self.hparams['predicted_state_keys']]
         self.predicted_state_keys.append(add_predicted('stdev'))
+
         self.action_keys = self.hparams['action_keys']
 
         self.feature_names = [
@@ -82,7 +89,8 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
             add_label(example, threshold)
             return example
 
-        # dataset = dataset.map(_label)
+        if not self.old_compat:
+            dataset = dataset.map(_label)
 
         if self.use_gt_rope:
             dataset = dataset.map(use_gt_rope)
@@ -92,7 +100,7 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
     def anim_transition_rviz(self, example: Dict):
         anim = RvizAnimation(scenario=self.scenario,
                              n_time_steps=self.horizon,
-                             init_funcs=[self.init_viz_action()],
+                             init_funcs=[init_viz_env, self.init_viz_action()],
                              t_funcs=[init_viz_env, self.classifier_transition_viz_t()])
         anim.play(example)
 

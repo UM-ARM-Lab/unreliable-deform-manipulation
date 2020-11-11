@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--take', type=int)
     parser.add_argument('--use-gt-rope', action='store_true')
+    parser.add_argument('--old-compat', action='store_true')
     parser.add_argument('--only-negative', action='store_true')
     parser.add_argument('--only-positive', action='store_true')
     parser.add_argument('--only-in-collision', action='store_true')
@@ -49,15 +50,17 @@ def main():
 
     rospy.init_node("visualize_classifier_data")
 
-    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs, load_true_states=True, threshold=args.threshold,
-                                                 use_gt_rope=args.use_gt_rope)
+    classifier_dataset = ClassifierDatasetLoader(args.dataset_dirs,
+                                                 load_true_states=True,
+                                                 threshold=args.threshold,
+                                                 use_gt_rope=args.use_gt_rope,
+                                                 old_compat=args.old_compat)
 
     visualize_dataset(args, classifier_dataset)
 
 
 def visualize_dataset(args, classifier_dataset):
     tf_dataset = classifier_dataset.get_datasets(mode=args.mode, take=args.take)
-    scenario = classifier_dataset.scenario
 
     tf_dataset = tf_dataset.batch(1)
 

@@ -14,7 +14,7 @@ from colorama import Fore
 
 import rospy
 from link_bot_classifiers import train_test_classifier, train_test_recovery
-from link_bot_data.base_collect_dynamics_data import DataCollector
+from link_bot_data.base_collect_dynamics_data import TfDataCollector
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
 from link_bot_data.recovery_actions_utils import make_recovery_dataset_from_params_dict
 from link_bot_planning.planning_evaluation import planning_evaluation
@@ -52,11 +52,11 @@ class FullStackRunner:
         if self.launch:
             self.service_provider.launch(collect_dynamics_1, gui=self.gui, world=collect_dynamics_1['world'])
 
-        data_collector = DataCollector(scenario_name=scenario,
-                                       service_provider=self.service_provider,
-                                       params=collect_dynamics_data_params,
-                                       seed=seed,
-                                       verbose=0)
+        data_collector = TfDataCollector(scenario_name=scenario,
+                                         service_provider=self.service_provider,
+                                         params=collect_dynamics_data_params,
+                                         seed=seed,
+                                         verbose=0)
         dynamics_data_1_nickname = self.nickname + '_phase1'
         # this function will add a time stamp/git hash to the nickname
         files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_1['robot_namespace'],
@@ -84,11 +84,11 @@ class FullStackRunner:
         if self.launch:
             self.service_provider.launch(collect_dynamics_2, gui=self.gui, world=collect_dynamics_2['world'])
 
-        data_collector = DataCollector(scenario_name=scenario,
-                                       service_provider=self.service_provider,
-                                       params=collect_dynamics_data_params,
-                                       seed=seed,
-                                       verbose=0)
+        data_collector = TfDataCollector(scenario_name=scenario,
+                                         service_provider=self.service_provider,
+                                         params=collect_dynamics_data_params,
+                                         seed=seed,
+                                         verbose=0)
         dynamics_data_2_nickname = self.nickname + '_phase2'
         files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_2['robot_namespace'],
                                                     n_trajs=collect_dynamics_2['n_trajs'],
@@ -363,8 +363,6 @@ def main():
     tf.get_logger().setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-
-    parser = argparse.ArgumentParser(prog='PROG')
     parser.add_argument("full_stack_param", type=pathlib.Path)
     parser.add_argument("--gui", action='store_true')
     parser.add_argument("--launch", action='store_true')

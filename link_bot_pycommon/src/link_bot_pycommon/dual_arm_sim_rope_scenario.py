@@ -6,12 +6,9 @@ import rospy
 from link_bot_gazebo_python.gazebo_services import GazeboServices
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
 from link_bot_pycommon.dual_arm_rope_action import dual_arm_rope_execute_action
+from link_bot_pycommon.floating_rope_scenario import gz_scope
 from peter_msgs.srv import *
 from rosgraph.names import ns_join
-
-
-def gz_scope(*args):
-    return "::".join(args)
 
 
 class SimDualArmRopeScenario(BaseDualArmRopeScenario):
@@ -23,10 +20,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
         # register a new callback to stop when the rope is overstretched
         self.set_rope_end_points_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set"), Position3DAction)
-        self.register_controller_srv = rospy.ServiceProxy("/position_3d_plugin/register", RegisterPosition3DController)
-        self.pos3d_follow_srv = rospy.ServiceProxy("/position_3d_plugin/follow", Position3DFollow)
-        self.pos3d_enable_srv = rospy.ServiceProxy("/position_3d_plugin/enable", Position3DEnable)
-        self.pos3d_set_srv = rospy.ServiceProxy("/position_3d_plugin/set", Position3DAction)
 
     def execute_action(self, action: Dict):
         return dual_arm_rope_execute_action(self.robot, action)
@@ -47,16 +40,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
 
         # Grasp the rope again
         self.grasp_rope_endpoints()
-
-    def register_fake_grasping(self):
-        register_left_req = RegisterPosition3DControllerRequest()
-        register_left_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
-        register_left_req.controller_type = "kinematic"
-        self.register_controller_srv(register_left_req)
-        register_right_req = RegisterPosition3DControllerRequest()
-        register_right_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
-        register_right_req.controller_type = "kinematic"
-        self.register_controller_srv(register_right_req)
 
     def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
         # teleport movable objects out of the way
@@ -105,17 +88,6 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         set_req.position.y = -0.3
         set_req.position.z = 1.3
         self.pos3d_set_srv(set_req)
-
-    def make_rope_endpoints_follow_gripper(self):
-        left_follow_req = Position3DFollowRequest()
-        left_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
-        left_follow_req.frame_id = "left_tool"
-        self.pos3d_follow_srv(left_follow_req)
-
-        right_follow_req = Position3DFollowRequest()
-        right_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
-        right_follow_req.frame_id = "right_tool"
-        self.pos3d_follow_srv(right_follow_req)
 
     def detach_rope_from_gripper(self, rope_link_name: str):
         enable_req = Position3DEnableRequest()

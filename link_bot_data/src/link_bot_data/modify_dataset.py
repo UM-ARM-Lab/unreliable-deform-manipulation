@@ -7,7 +7,7 @@ import progressbar
 
 from arc_utilities import algorithms
 from link_bot_data.base_dataset import BaseDatasetLoader
-from link_bot_data.dataset_utils import write_example
+from link_bot_data.dataset_utils import tf_write_example
 
 
 def modify_hparams(in_dir: pathlib.Path, out_dir: pathlib.Path, update: Optional[Dict] = None):
@@ -48,6 +48,6 @@ def modify_dataset(dataset_dir: pathlib.Path,
             for out_example in process_example(dataset, example):
                 for k in dataset.scenario_metadata:
                     out_example.pop(k)
-                write_example(full_output_directory, out_example, total_count)
+                tf_write_example(full_output_directory, out_example, total_count)
                 total_count += 1
                 bar.update(total_count)

@@ -1,0 +1,7 @@
+{
+  nickname: baseline_gt_rope
+  collect_dynamics_data_2:
+  {
+    dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604959263+smallenv
+  }
+}
