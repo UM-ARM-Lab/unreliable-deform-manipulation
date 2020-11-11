@@ -6,6 +6,9 @@ find_package(catkin REQUIRED COMPONENTS
         roscpp
         pybind11_catkin
         std_msgs)
+find_package(catkin COMPONENTS
+        pybind11_catkin
+        )
 
 catkin_package(
         CATKIN_DEPENDS pybind11_catkin std_msgs roscpp
@@ -13,6 +16,8 @@ catkin_package(
 
 catkin_python_setup()
 
-pybind_add_module(roscpp_initializer src/link_bot_pycommon/roscpp_initializer.cpp)
-target_include_directories(roscpp_initializer SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
-target_link_libraries(roscpp_initializer PUBLIC ${catkin_LIBRARIES})
+if(pybind11_catkin_FOUND)
+    pybind_add_module(roscpp_initializer src/link_bot_pycommon/roscpp_initializer.cpp)
+    target_include_directories(roscpp_initializer SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
+    target_link_libraries(roscpp_initializer PUBLIC ${catkin_LIBRARIES})
+endif()
