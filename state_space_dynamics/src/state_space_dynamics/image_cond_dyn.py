@@ -5,7 +5,6 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers
 from tensorflow import keras
 
-from jsk_recognition_msgs.msg import BoundingBox
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.grid_utils import batch_idx_to_point_3d_in_env_tf, batch_point_to_idx_tf_3d_in_batched_envs
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
@@ -23,8 +22,11 @@ class ImageCondDynamics(MyKerasModel):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
 
-        self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
-        self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
+        # # BEGIN DEBUG
+        # from jsk_recognition_msgs.msg import BoundingBox
+        # self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
+        # self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
+        # # END DEBUG
 
         self.rope_image_k = self.hparams['rope_image_k']
         self.local_env_h_rows = self.hparams['local_env_h_rows']
