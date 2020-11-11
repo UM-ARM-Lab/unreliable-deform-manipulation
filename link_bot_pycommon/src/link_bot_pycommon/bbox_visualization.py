@@ -1,4 +1,9 @@
-from jsk_recognition_msgs.msg import BoundingBox
+import rospy
+
+try:
+    from jsk_recognition_msgs.msg import BoundingBox
+except ImportError:
+    rospy.logwarn("ignoring failed import of BBox message")
 
 
 def grid_to_bbox(rows: int,
