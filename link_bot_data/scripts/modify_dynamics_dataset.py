@@ -9,7 +9,6 @@ import rospy
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.modify_dataset import modify_dataset
 from link_bot_pycommon.args import my_formatter
-from moonshine.moonshine_utils import numpify
 
 
 def main():
@@ -26,10 +25,7 @@ def main():
     outdir = args.dataset_dir.parent / f"{args.dataset_dir.name}+{args.suffix}"
 
     def _process_example(dataset: DynamicsDatasetLoader, example: Dict):
-        rope_vec = numpify(example.pop('rope'))
-        rope_points = rope_vec.reshape([10, 25, 3])
-        rope_points_rev = rope_points[:, ::-1]
-        example['rope'] = rope_points_rev.reshape([10, -1])
+        example['gt_rope'] = example.pop('rope')
         yield example
 
     hparams_update = {}
