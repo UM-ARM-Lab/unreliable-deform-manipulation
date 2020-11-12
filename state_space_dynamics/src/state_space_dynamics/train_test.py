@@ -5,11 +5,12 @@ from typing import List, Optional, Callable
 import hjson
 import numpy as np
 import tensorflow as tf
+from colorama import Fore
 
 import rospy
 import state_space_dynamics
-from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_data.dataset_utils import batch_tf_dataset
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import remove_batch
 from shape_completion_training.model import filepath_tools
@@ -29,6 +30,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
                take: Optional[int] = None,
                trials_directory=pathlib.Path,
                ):
+    print(Fore.CYAN + f"Using seed {seed}")
+
     model_hparams = hjson.load(model_hparams.open('r'))
     model_class = state_space_dynamics.get_model(model_hparams['model_class'])
 

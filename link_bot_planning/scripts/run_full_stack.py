@@ -113,6 +113,8 @@ class FullStackRunner:
 
         trial_paths = []
         for ensemble_idx in range(n_ensemble):
+            ensemble_seed = seed + ensemble_idx
+            print(ensemble_seed)
             trial_path = train_test.train_main(dataset_dirs=[dynamics_dataset_dir],
                                                model_hparams=forward_model_hparams,
                                                trials_directory=pathlib.Path('dy_trials'),
@@ -120,7 +122,7 @@ class FullStackRunner:
                                                log=self.unique_nickname,
                                                batch_size=batch_size,
                                                epochs=epochs,
-                                               seed=seed,
+                                               seed=ensemble_seed,
                                                ensemble_idx=ensemble_idx,
                                                use_gt_rope=self.use_gt_rope,
                                                )
