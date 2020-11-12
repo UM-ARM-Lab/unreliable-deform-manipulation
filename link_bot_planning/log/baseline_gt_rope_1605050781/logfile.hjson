@@ -4,4 +4,8 @@
   {
     dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604959263+smallenv
   }
+  collect_dynamics_data_1:
+  {
+    dynamics_dataset_dir: fwd_model_data/baseline_gt_rope_phase1_1605128108_3efa190905_2048
+  }
 }
