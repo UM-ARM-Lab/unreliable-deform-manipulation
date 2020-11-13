@@ -6,7 +6,7 @@ from typing import Dict
 import colorama
 
 import rospy
-from link_bot_data.modify_dataset import sort_dataset
+from link_bot_data.sort_dataset import sort_dataset
 from link_bot_data.recovery_dataset import RecoveryDatasetLoader
 from link_bot_pycommon.args import my_formatter
 
@@ -24,9 +24,9 @@ def main():
     dataset = RecoveryDatasetLoader([args.dataset_dir])
 
     def _get_value(dataset: RecoveryDatasetLoader, example: Dict):
-        return example['recovery_probability'][1]
+        return float(example['recovery_probability'][1].numpy())
 
-    sort_dataset(args.dataset_dir, dataset, _get_value)
+    sort_dataset(args.dataset_dir, dataset, _get_value, reverse=True)
 
 
 if __name__ == '__main__':

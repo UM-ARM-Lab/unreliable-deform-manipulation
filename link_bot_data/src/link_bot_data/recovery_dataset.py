@@ -4,9 +4,7 @@ from typing import List
 import tensorflow as tf
 
 from link_bot_data.base_dataset import BaseDatasetLoader
-from link_bot_data.dataset_utils import filter_and_cache
-from link_bot_data.visualization import init_viz_env, init_viz_action, \
-    recovery_transition_viz_t
+from link_bot_data.visualization import init_viz_env, init_viz_action, recovery_transition_viz_t
 from link_bot_pycommon.get_scenario import get_scenario
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
 
@@ -15,6 +13,7 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         super(RecoveryDatasetLoader, self).__init__(dataset_dirs)
+        self.sorted = sorted
         self.scenario = get_scenario(self.hparams['scenario'])
 
         self.state_keys = self.hparams['state_keys']
@@ -67,7 +66,7 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
 
         dataset = dataset.map(_add_recovery_probabilities)
         # TODO: do we actually want filter_and_cache?
-        dataset = filter_and_cache(dataset, RecoveryDatasetLoader.is_stuck)
+        # dataset = filter_and_cache(dataset, RecoveryDatasetLoader.is_stuck)
         return dataset
 
     def anim_rviz(self, example):

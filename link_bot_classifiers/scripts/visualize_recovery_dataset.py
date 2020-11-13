@@ -1,20 +1,16 @@
 #!/usr/bin/env python
 import argparse
 import pathlib
-from time import sleep
 
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from matplotlib import cm
 from progressbar import progressbar
 
 import rospy
+from link_bot_data import base_dataset
 from link_bot_data.recovery_dataset import RecoveryDatasetLoader
-from link_bot_pycommon.get_scenario import get_scenario
-from link_bot_pycommon.pycommon import log_scale_0_to_1
-from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -35,12 +31,16 @@ def main():
     rospy.init_node('vis_recovery_dataset')
 
     dataset = RecoveryDatasetLoader(args.dataset_dirs)
-    if args.type == 'best_to_worst':
-        visualize_best_to_worst(args, dataset)
-    elif args.type == 'in_order':
-        visualize_in_order(args, dataset)
-    elif args.type == 'stats':
+    if args.type == 'stats':
         stats(args, dataset)
+    else:
+        if args.type == 'best_to_worst':
+            tf_dataset = dataset.get_datasets(mode=args.mode, sort=True)
+        else:
+            tf_dataset = dataset.get_datasets(mode=args.mode)
+
+        for example in progressbar(tf_dataset, widgets=base_dataset.widgets):
+            dataset.anim_rviz(example)
 
 
 def stats(args, dataset):
@@ -61,40 +61,6 @@ def stats(args, dataset):
         loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=pred, from_logits=False)
         losses.append(loss)
     print(f"loss to beat {tf.reduce_mean(losses)}")
-
-
-def visualize_best_to_worst(args, dataset: RecoveryDatasetLoader):
-    tf_dataset = dataset.get_datasets(mode=args.mode)
-
-    # sort the dataset
-    examples_to_sort = []
-    for example in progressbar(tf_dataset):
-        recovery_probability_1 = example['recovery_probability'][1]
-        # if recovery_probability_1 > 0.0:
-        examples_to_sort.append(example)
-
-    examples_to_sort = sorted(examples_to_sort, key=lambda e: e['recovery_probability'][1], reverse=True)
-
-    scenario = get_scenario(dataset.hparams['scenario'])
-
-    # print("BEST")
-    rstepper = RvizSimpleStepper()
-    for i, example in enumerate(examples_to_sort):
-        visualize_example(scenario, example, dataset.state_keys, dataset.action_keys)
-        print(i)
-        rstepper.step()
-
-    # print("WORST")
-    # for example in examples_to_sort[:10]:
-    #     visualize_example(dataset, example)
-
-
-def visualize_in_order(args, dataset: RecoveryDatasetLoader):
-    scenario = get_scenario(dataset.hparams['scenario'])
-    tf_dataset = dataset.get_datasets(mode=args.mode)
-
-    for example in tf_dataset:
-        dataset.anim_rviz(example)
 
 
 if __name__ == '__main__':

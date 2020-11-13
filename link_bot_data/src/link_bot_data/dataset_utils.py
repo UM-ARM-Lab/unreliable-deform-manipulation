@@ -11,7 +11,6 @@ from colorama import Fore
 
 from link_bot_pycommon import pycommon
 from arc_utilities.filesystem_utils import mkdir_and_ask
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000
@@ -350,3 +349,5 @@ def tf_write_example(full_output_directory: pathlib.Path,
     with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
         writer.write(example_str)
     return full_filename
+
+

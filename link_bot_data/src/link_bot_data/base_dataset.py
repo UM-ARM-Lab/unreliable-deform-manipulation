@@ -1,9 +1,11 @@
 #!/usr/bin/env python
+import csv
 import pathlib
 from typing import List, Optional, Dict
 
 import hjson
 import numpy as np
+import progressbar
 import tensorflow as tf
 from colorama import Fore
 
@@ -11,6 +13,28 @@ from link_bot_data.dataset_utils import parse_and_deserialize
 
 DEFAULT_VAL_SPLIT = 0.125
 DEFAULT_TEST_SPLIT = 0.125
+
+SORT_FILE_NAME = 'sort_order.csv'
+
+widgets = [
+    progressbar.Percentage(), ' ',
+    progressbar.Bar(),
+    ' (', progressbar.AdaptiveETA(), ') ',
+]
+
+
+class SizedTFDataset:
+
+    def __init__(self, dataset: tf.data.Dataset, records: List):
+        self.dataset = dataset
+        self.records = records
+        self.size = len(self.records)
+
+    def __len__(self):
+        return self.size
+
+    def __iter__(self):
+        return self.dataset.__iter__()
 
 
 class BaseDatasetLoader:
@@ -42,18 +66,18 @@ class BaseDatasetLoader:
                      shard: Optional[int] = None,
                      take: Optional[int] = None,
                      shuffle_files: Optional[bool] = False,
-                     **kwargs) -> tf.data.Dataset:
-        all_filenames = self.get_record_filenames(mode)
-        # TODO: here we now know many examples there will be: len(all_filenames)
-        #  so we should use that info, show it to the user in progressbars, etc
+                     sort: Optional[bool] = False,
+                     **kwargs):
+        all_filenames = self.get_record_filenames(mode, sort=sort)
         return self.get_datasets_from_records(all_filenames,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,
                                               shard=shard,
+                                              shuffle_files=shuffle_files,
                                               take=take,
                                               **kwargs)
 
-    def get_record_filenames(self, mode: str) -> List[str]:
+    def get_record_filenames(self, mode: str, sort: Optional[bool] = False):
         if mode == 'all':
             train_filenames = []
             test_filenames = []
@@ -71,7 +95,25 @@ class BaseDatasetLoader:
             for dataset_dir in self.dataset_dirs:
                 all_filenames.extend(str(filename) for filename in (dataset_dir / mode).glob("*.tfrecords"))
 
+        # Initially sort lexicographically, which is intended to make things read in the order they were written
         all_filenames = sorted(all_filenames)
+
+        # Sorting
+        if len(self.dataset_dirs) > 1 and sort:
+            raise NotImplementedError("Don't know how to make a sorted multi-dataset")
+
+        if sort:
+            sorted_filename = self.dataset_dirs[0] / SORT_FILE_NAME
+            with open(sorted_filename, "r") as sorted_file:
+                reader = csv.reader(sorted_file)
+                sort_info_filenames = [row[0] for row in reader]
+
+                # sort all_filenames based on the order of sort_info
+                def _sort_key(filename):
+                    return sort_info_filenames.index(filename)
+
+                all_filenames = sorted(all_filenames, key=_sort_key)
+
         return all_filenames
 
     def get_datasets_from_records(self,
@@ -81,7 +123,8 @@ class BaseDatasetLoader:
                                   shard: Optional[int] = None,
                                   take: Optional[int] = None,
                                   shuffle_files: Optional[bool] = False,
-                                  ) -> tf.data.Dataset:
+                                  **kwargs,
+                                  ):
         if shuffle_files:
             print("Shuffling records")
             shuffle_rng = np.random.RandomState(0)
@@ -103,7 +146,8 @@ class BaseDatasetLoader:
         if not do_not_process:
             dataset = self.post_process(dataset, n_parallel_calls)
 
-        return dataset
+        sized_tf_dataset = SizedTFDataset(dataset, records)
+        return sized_tf_dataset
 
     def make_features_description(self):
         raise NotImplementedError()
