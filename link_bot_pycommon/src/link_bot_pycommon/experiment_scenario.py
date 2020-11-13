@@ -14,6 +14,8 @@ class ExperimentScenario:
     def __init__(self):
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
+        self.recovery_prob_viz_pub = rospy.Publisher("recovery_probability_viz", Float32, queue_size=10, latch=True)
+
         self.tf = TF2Wrapper()
 
     def __eq__(self, other):
@@ -103,6 +105,22 @@ class ExperimentScenario:
 
     def plot_is_close(self, label_t):
         raise NotImplementedError()
+
+    def plot_traj_idx_rviz(self, traj_idx):
+        msg = Float32()
+        msg.data = traj_idx
+        self.traj_idx_viz_pub.publish(msg)
+
+    def plot_time_idx_rviz(self, time_idx):
+        msg = Int64()
+        msg.data = time_idx
+        self.time_viz_pub.publish(msg)
+
+    def plot_recovery_probability_t(self, example: Dict, t: int):
+        recovery_probability = example['recovery_probability'][t]
+        msg = Float32()
+        msg.data = recovery_probability
+        self.recovery_prob_viz_pub.publish(msg)
 
     def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
         raise NotImplementedError()
@@ -217,7 +235,7 @@ class ExperimentScenario:
     def call_move(movable_object_services, object_name, position, timeout):
         move_action_req = Position3DActionRequest()
         move_action_req.position = position
-        move_action_req.timeout = timeout
+        move_action_req.timeout_s = timeout
         movable_object_services['move'](move_action_req)
 
     @staticmethod
@@ -232,16 +250,6 @@ class ExperimentScenario:
 
     def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
         raise NotImplementedError()
-
-    def plot_traj_idx_rviz(self, traj_idx):
-        msg = Float32()
-        msg.data = traj_idx
-        self.traj_idx_viz_pub.publish(msg)
-
-    def plot_time_idx_rviz(self, time_idx):
-        msg = Int64()
-        msg.data = time_idx
-        self.time_viz_pub.publish(msg)
 
     def dynamics_dataset_metadata(self):
         return {}

@@ -8,9 +8,9 @@ from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.srv import SetModelState, SetModelStateRequest
 from link_bot_data.dataset_utils import NULL_PAD_VALUE
 from link_bot_pycommon import grid_utils
+from link_bot_pycommon.bbox_visualization import extent_to_bbox
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.grid_utils import environment_to_occupancy_msg
-from link_bot_pycommon.bbox_visualization import extent_to_bbox
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.msg import LabelStatus
@@ -39,8 +39,6 @@ class Base3DScenario(ExperimentScenario):
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("label_viz", LabelStatus, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
-        self.recovery_probability_viz_pub = rospy.Publisher(
-            "recovery_probability_viz", Float32, queue_size=10, latch=True)
 
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
