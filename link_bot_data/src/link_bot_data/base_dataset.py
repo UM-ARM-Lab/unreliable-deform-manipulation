@@ -44,6 +44,8 @@ class BaseDatasetLoader:
                      shuffle_files: Optional[bool] = False,
                      **kwargs) -> tf.data.Dataset:
         all_filenames = self.get_record_filenames(mode)
+        # TODO: here we now know many examples there will be: len(all_filenames)
+        #  so we should use that info, show it to the user in progressbars, etc
         return self.get_datasets_from_records(all_filenames,
                                               n_parallel_calls=n_parallel_calls,
                                               do_not_process=do_not_process,

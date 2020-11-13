@@ -10,7 +10,7 @@ import tensorflow as tf
 
 import rospy
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
-from link_bot_data.modify_dataset import modify_dynamics_dataset
+from link_bot_data.modify_dataset import modify_dataset
 from link_bot_pycommon.args import my_formatter
 from moonshine.gpu_config import limit_gpu_mem
 
@@ -43,7 +43,13 @@ def main():
             'steps_per_traj': args.desired_sequence_length
         }
     }
-    modify_dynamics_dataset(args.dataset_dir, outdir, _process_example, hparams_update=hparams_update)
+
+    dataset = DynamicsDatasetLoader([args.dataset_dir])
+    modify_dataset(dataset_dir=args.dataset_dir,
+                   dataset=dataset,
+                   outdir=outdir,
+                   process_example=_process_example,
+                   hparams_update=hparams_update)
 
 
 if __name__ == '__main__':
