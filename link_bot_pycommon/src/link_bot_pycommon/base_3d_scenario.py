@@ -134,11 +134,6 @@ class Base3DScenario(ExperimentScenario):
             msg.status = LabelStatus.Reject
         self.label_viz_pub.publish(msg)
 
-    def plot_recovery_probability(self, recovery_probability_t):
-        msg = Float32()
-        msg.data = recovery_probability_t
-        self.recovery_probability_viz_pub.publish(msg)
-
     def plot_accept_probability(self, accept_probability_t):
         msg = Float32()
         msg.data = accept_probability_t
@@ -203,6 +198,8 @@ class Base3DScenario(ExperimentScenario):
 
         while not anim.done:
             t = anim.t()
+            # FIXME: this assumes lists of states and actions, but in most places we have dicts?
+            #  we might be able to deduplicate this code
             s_t = actual_states[t]
             s_t_pred = predicted_states[t]
             self.plot_state_rviz(s_t, label='actual', color='#ff0000aa')

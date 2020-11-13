@@ -8,7 +8,7 @@ import tensorflow as tf
 from colorama import Fore
 import colorama
 
-from link_bot_data.recovery_actions_utils import make_recovery_dataset
+from link_bot_data.recovery_dataset_utils import make_recovery_dataset
 from link_bot_pycommon.args import my_formatter
 from arc_utilities.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem

@@ -15,7 +15,7 @@ from link_bot_data.visualization import init_viz_env, stdev_viz_t
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
-from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_sequences
+from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_sequences
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model.utils import reduce_mean_dict
@@ -94,7 +94,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
     return trial_path
 
 
-def test_main(dataset_dirs: List[pathlib.Path],
+def eval_main(dataset_dirs: List[pathlib.Path],
               mode: str,
               batch_size: int,
               use_gt_rope: bool,
@@ -136,13 +136,13 @@ def test_main(dataset_dirs: List[pathlib.Path],
         print(f"{metric_name:30s}: {metric_value}")
 
 
-def eval_main(dataset_dirs: List[pathlib.Path],
-              checkpoint: pathlib.Path,
-              mode: str,
-              batch_size: int,
-              only_errors: bool,
-              use_gt_rope: bool,
-              **kwargs):
+def viz_main(dataset_dirs: List[pathlib.Path],
+             checkpoint: pathlib.Path,
+             mode: str,
+             batch_size: int,
+             only_errors: bool,
+             use_gt_rope: bool,
+             **kwargs):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
     traj_idx_pub_ = rospy.Publisher("traj_idx_viz", Float32, queue_size=10)
@@ -205,7 +205,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
         decisions = probabilities > 0.5
         classifier_is_correct = tf.squeeze(tf.equal(decisions, tf.cast(labels, tf.bool)), axis=-1)
         for b in range(batch_size):
-            example = index_dict_of_batched_vectors_tf(test_batch, b)
+            example = index_dict_of_batched_tensors_tf(test_batch, b)
 
             # if the classifier is correct at all time steps, ignore
             if only_errors and tf.reduce_all(classifier_is_correct[b]):
@@ -279,13 +279,13 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     plt.show()
 
 
-def eval_ensemble_main(dataset_dir: pathlib.Path,
-                       checkpoints: List[pathlib.Path],
-                       mode: str,
-                       batch_size: int,
-                       only_errors: bool,
-                       use_gt_rope: bool,
-                       **kwargs):
+def viz_ensemble_main(dataset_dir: pathlib.Path,
+                      checkpoints: List[pathlib.Path],
+                      mode: str,
+                      batch_size: int,
+                      only_errors: bool,
+                      use_gt_rope: bool,
+                      **kwargs):
     dynamics_stdev_pub_ = rospy.Publisher("dynamics_stdev", Float32, queue_size=10)
     classifier_stdev_pub_ = rospy.Publisher("classifier_stdev", Float32, queue_size=10)
     accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
@@ -334,7 +334,7 @@ def eval_ensemble_main(dataset_dir: pathlib.Path,
         decisions = mean_probabilities > 0.5
         classifier_is_correct = tf.squeeze(tf.equal(decisions, tf.cast(labels, tf.bool)), axis=-1)
         for b in range(batch_size):
-            example = index_dict_of_batched_vectors_tf(test_batch, b)
+            example = index_dict_of_batched_tensors_tf(test_batch, b)
 
             classifier_ensemble_stdev = stdev_probabilities[b].numpy().squeeze()
             classifier_ensemble_stdevs.append(classifier_ensemble_stdev)

@@ -8,12 +8,12 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_classifiers import classifier_utils
+from link_bot_classifiers.nn_classifier import NNClassifier
 from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from link_bot_pycommon.serialization import my_dump
-from moonshine.moonshine_utils import (index_dict_of_batched_vectors_tf, sequence_of_dicts_to_dict_of_tensors)
+from moonshine.moonshine_utils import (index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_tensors)
 from state_space_dynamics import model_utils
 
 
@@ -73,7 +73,7 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
     recovery_dataset_hparams['action_keys'] = fwd_model.action_keys
     recovery_dataset_hparams['start-at'] = start_at
     recovery_dataset_hparams['stop-at'] = stop_at
-    my_dump(recovery_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+    hjson.dump(recovery_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -101,7 +101,7 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
                                                       stop_at):
             # FIXME: is there an extra time/batch dimension?
             for batch_idx in range(out_example['traj_idx'].shape[0]):
-                out_example_b = index_dict_of_batched_vectors_tf(out_example, batch_idx)
+                out_example_b = index_dict_of_batched_tensors_tf(out_example, batch_idx)
 
                 # # BEGIN DEBUG
                 # anim = RvizAnimationController(np.arange(labeling_params['action_sequence_horizon']))
@@ -186,7 +186,6 @@ def batch_stateless_sample_action(scenario: ExperimentScenario,
                                   batch_size: int,
                                   n_action_samples: int,
                                   n_actions: int,
-                                  data_collection_params: Dict,
                                   action_params: Dict,
                                   action_rng: np.random.RandomState):
     # TODO: make the lowest level sample_action operate on batched state dictionaries
@@ -198,10 +197,10 @@ def batch_stateless_sample_action(scenario: ExperimentScenario,
                                                         action_rng=action_rng)
     action_sequences = [sequence_of_dicts_to_dict_of_tensors(a) for a in action_sequences]
     action_sequences = sequence_of_dicts_to_dict_of_tensors(action_sequences)
-    return {k: tf.tile(v, [batch_size, 1, 1, 1]) for k, v in action_sequences}
+    return {k: tf.tile(v, [batch_size, 1, 1]) for k, v in action_sequences.items()}
 
 
-def generate_recovery_actions_examples(fwd_model, classifier_model, data, constants, action_rng):
+def generate_recovery_actions_examples(fwd_model, classifier_model: NNClassifier, data, constants, action_rng):
     example, actual_actions, actual_states, labeling_params, data_collection_params = data
     actual_batch_size, action_sequence_horizon, classifier_horizon, batch_size, start_t, end_t = constants
     scenario = fwd_model.scenario
@@ -224,7 +223,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         # Sample actions
         n_action_samples = labeling_params['n_action_samples']
         n_actions = classifier_horizon - 1
-        actual_states_t = index_dict_of_batched_vectors_tf(actual_states, t, batch_axis=1)
+        actual_states_t = index_dict_of_batched_tensors_tf(actual_states, t, batch_axis=1)
         # TODO: check we're sampling action sequences correctly here
         #  I think it should be that for we sample a number of action sequences independently, but
         #  that across the batch dimension the actions can be the same.
@@ -234,7 +233,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                                                             batch_size=actual_batch_size,
                                                             n_action_samples=n_action_samples,
                                                             n_actions=n_actions,
-                                                            data_collection_params=data_collection_params,
                                                             action_params=data_collection_params,
                                                             action_rng=action_rng)
         batch_sample = actual_batch_size * n_action_samples
@@ -247,7 +245,7 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
                                   for k, v in _actual_states.items()}
 
             # Predict
-            mean_dynamics_predictions, _ = fwd_model.propagate_differentiable_batched(environment=None,
+            mean_dynamics_predictions, _ = fwd_model.propagate_differentiable_batched(environment=environment,
                                                                                       state=start_states_tiled,
                                                                                       actions=_random_actions_dict)
 
@@ -323,7 +321,9 @@ def generate_recovery_actions_examples(fwd_model, classifier_model, data, consta
         'traj_idx': example['traj_idx'],
         'start_t': tf.stack([start_t] * batch_size),
         'end_t': tf.stack([end_t] * batch_size),
-        'accept_probabilities': all_accept_probabilities
+        'accept_probabilities': all_accept_probabilities,
+        'true_state_keys': classifier_model.true_state_keys,
+        'predicted_state_keys': classifier_model.pred_state_keys,
     }
     # add true start states
     out_examples.update(actual_states)

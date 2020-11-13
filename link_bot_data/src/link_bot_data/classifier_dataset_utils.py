@@ -11,7 +11,7 @@ from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, float_t
     add_label, tf_write_example
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
-from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, gather_dict
+from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, gather_dict
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
@@ -107,7 +107,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
             for out_examples_for_start_t in out_examples:
                 actual_batch_size = out_examples_for_start_t['traj_idx'].shape[0]
                 for batch_idx in range(actual_batch_size):
-                    out_example_b = index_dict_of_batched_vectors_tf(out_examples_for_start_t, batch_idx)
+                    out_example_b = index_dict_of_batched_tensors_tf(out_examples_for_start_t, batch_idx)
 
                     if out_example_b['time_idx'].ndim == 0:
                         continue

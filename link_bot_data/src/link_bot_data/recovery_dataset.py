@@ -3,8 +3,12 @@ from typing import List
 
 import tensorflow as tf
 
+import rospy
 from link_bot_data.base_dataset import BaseDatasetLoader
 from link_bot_data.dataset_utils import filter_and_cache
+from link_bot_data.visualization import init_viz_env, recovery_probability_viz_t, init_viz_action
+from merrrt_visualization.rviz_animation_controller import RvizAnimation
+from std_msgs.msg import Float32
 
 
 class RecoveryDatasetLoader(BaseDatasetLoader):
@@ -30,6 +34,9 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
 
         self.horizon = self.hparams["labeling_params"]["action_sequence_horizon"]
         self.n_action_samples = self.hparams["labeling_params"]["n_action_samples"]
+
+        self.predicted_state_keys = self.hparams['predicted_state_keys']
+        self.true_state_keys = self.hparams['true_state_keys']
 
         for k in self.state_keys:
             self.feature_names.append(k)
@@ -62,3 +69,28 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
         dataset = dataset.map(_add_recovery_probabilities)
         dataset = filter_and_cache(dataset, RecoveryDatasetLoader.is_stuck)
         return dataset
+
+    def anim_rviz(self, example):
+        recovery_probability_pub = rospy.Publisher("stdev", Float32, queue_size=10)
+        anim = RvizAnimation(scenario=self.scenario,
+                             n_time_steps=self.horizon,
+                             init_funcs=[init_viz_env,
+                                         self.init_viz_action(),
+                                         recovery_probability_viz_t(recovery_probability_pub),
+                                         ],
+                             t_funcs=[init_viz_env, self.classifier_transition_viz_t()])
+        anim.play(example)
+
+        # recovery_probability = example['recovery_probability'][1]
+        # color_factor = log_scale_0_to_1(recovery_probability, k=10)
+        # s_0 = {k: example[k][0] for k in state_keys}
+        # s_1 = {k: example[k][1] for k in state_keys}
+        # a = {k: example[k][0] for k in action_keys}
+        #
+        #     scenario.plot_action_rviz(s_0, a, label='observed')
+        #     scenario.plot_state_rviz(s_0, label='observed', idx=1, color='w')
+        #     scenario.plot_state_rviz(s_1, label='observed', idx=2, color=cm.Reds(color_factor))
+        #     sleep(0.01)
+
+    def init_viz_action(self):
+        return init_viz_action(self.scenario_metadata, self.action_keys, self.predicted_state_keys)

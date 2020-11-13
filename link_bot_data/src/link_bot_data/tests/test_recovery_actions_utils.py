@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import tensorflow as tf
 
-from link_bot_data.recovery_actions_utils import recovering_mask
+from link_bot_data.recovery_dataset_utils import recovering_mask
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(0.1)

@@ -1,14 +1,14 @@
 {
   "model_class": "nn",
-  "scenario": "dual_arm",
+  "scenario": "dual_arm_rope_sim_victor",
   "state_keys": [
-    "link_bot",
-    "gripper1",
-    "gripper2"
+    "rope",
+    "left_gripper",
+    "right_gripper"
   ],
   "action_keys": [
-    "gripper1_position",
-    "gripper2_position"
+    "left_gripper_position",
+    "right_gripper_position"
   ],
   "rope_image_k": 2000,
   "fc_layer_sizes": [

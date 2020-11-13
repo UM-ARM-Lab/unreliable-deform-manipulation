@@ -228,12 +228,12 @@ def add_batch_single(x, batch_axis=0):
         return np.array([x])
 
 
-def index_dict_of_batched_vectors_np(in_dict: Dict, index: int, batch_axis: int = 0):
-    out_dict_tf = index_dict_of_batched_vectors_tf(in_dict=in_dict, index=index, batch_axis=batch_axis)
+def index_dict_of_batched_tensors_np(in_dict: Dict, index: int, batch_axis: int = 0):
+    out_dict_tf = index_dict_of_batched_tensors_tf(in_dict=in_dict, index=index, batch_axis=batch_axis)
     return {k: v.numpy() for k, v in out_dict_tf.items()}
 
 
-def index_dict_of_batched_vectors_tf(in_dict: Dict, index: int, batch_axis: int = 0):
+def index_dict_of_batched_tensors_tf(in_dict: Dict, index: int, batch_axis: int = 0):
     out_dict = {}
     for k, v in in_dict.items():
         out_dict[k] = tf.gather(v, index, axis=batch_axis)

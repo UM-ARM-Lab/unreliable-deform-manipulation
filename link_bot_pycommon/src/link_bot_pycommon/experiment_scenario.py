@@ -5,6 +5,7 @@ import numpy as np
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
+from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -75,10 +76,10 @@ class ExperimentScenario:
                             batch_size: int,
                             action_rng: np.random.RandomState):
         action_sequence = []
-        for __ in range(batch_size):
+        for i in range(batch_size):
             action = self.sample_action(action_rng=action_rng,
                                         environment=environment,
-                                        state=state,
+                                        state=index_dict_of_batched_tensors_tf(state, i),
                                         action_params=action_params,
                                         stateless=True)
             action_sequence.append(action)

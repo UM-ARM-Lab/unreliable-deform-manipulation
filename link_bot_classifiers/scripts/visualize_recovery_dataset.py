@@ -94,24 +94,7 @@ def visualize_in_order(args, dataset: RecoveryDatasetLoader):
     tf_dataset = dataset.get_datasets(mode=args.mode)
 
     for example in tf_dataset:
-        visualize_example(dataset, example)
-
-
-def visualize_example(scenario, example, state_keys, action_keys):
-    scenario.plot_environment_rviz(example)
-
-    recovery_probability = example['recovery_probability'][1]
-    color_factor = log_scale_0_to_1(recovery_probability, k=10)
-    scenario.plot_recovery_probability(recovery_probability)
-    s_0 = {k: example[k][0] for k in state_keys}
-    s_1 = {k: example[k][1] for k in state_keys}
-    a = {k: example[k][0] for k in action_keys}
-
-    for i in range(5):
-        scenario.plot_action_rviz(s_0, a, label='observed')
-        scenario.plot_state_rviz(s_0, label='observed', idx=1, color='w')
-        scenario.plot_state_rviz(s_1, label='observed', idx=2, color=cm.Reds(color_factor))
-        sleep(0.01)
+        dataset.anim_rviz(example)
 
 
 if __name__ == '__main__':

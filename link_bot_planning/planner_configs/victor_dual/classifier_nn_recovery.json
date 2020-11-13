@@ -1,6 +1,6 @@
 {
   "scene": "tabletop",
-  "scenario": "dual_arm",
+  "scenario": "dual_arm_rope_sim_victor",
   "objects": [
     "box1",
     "box2",

@@ -149,10 +149,18 @@ def init_viz_env(scenario: ExperimentScenario, example: Dict, t: Optional[int] =
 
 
 def stdev_viz_t(pub: rospy.Publisher):
-    def _stdev_viz_t(scenario: ExperimentScenario, example: Dict, t: int):
-        stdev_t = example[add_predicted('stdev')][t, 0]
-        stdev_msg = Float32()
-        stdev_msg.data = stdev_t
-        pub.publish(stdev_msg)
+    return float32_viz_t(pub, 'stdev')
 
-    return _stdev_viz_t
+
+def recovery_probability_viz_t(pub: rospy.Publisher):
+    return float32_viz_t(pub, 'recovery_probability')
+
+
+def float32_viz_t(pub: rospy.Publisher, key: str):
+    def _data_viz_t(scenario: ExperimentScenario, example: Dict, t: int):
+        data_t = example[add_predicted(key)][t, 0]
+        data_msg = Float32()
+        data_msg.data = data_t
+        pub.publish(data_msg)
+
+    return _data_viz_t
