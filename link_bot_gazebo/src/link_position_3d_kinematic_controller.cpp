@@ -28,7 +28,7 @@ void LinkPosition3dKinematicController::Update(ignition::math::Vector3d const &s
   // update the output position, this is what makes "speed" mean something
   auto const dt = link_->GetWorld()->Physics()->GetMaxStepSize();
   // step_size is a decimal, from 0 to 1. take a step from current to setpoint
-  auto const max_step_size_m = 0.002;
+  auto const max_step_size_m = 0.005;
   auto const delta_distance = std::fmin(speed_mps_ * dt, max_step_size_m);
   auto const distance = current_position->Distance(setpoint);
   auto const step_size = std::fmin(delta_distance / distance, 1);
