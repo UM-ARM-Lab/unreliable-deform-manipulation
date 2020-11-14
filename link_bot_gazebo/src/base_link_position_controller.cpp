@@ -24,6 +24,7 @@ void BaseLinkPositionController::OnFollow(std::string const &frame_id)
   OnEnable(true);
   following_ = true;
   following_frame_id_ = frame_id;
+  speed_mps_ = std::numeric_limits<typeof(speed_mps_)>::max();
 }
 
 void BaseLinkPositionController::OnUpdate()
@@ -43,7 +44,7 @@ void BaseLinkPositionController::OnUpdate()
     }
     catch (tf2::TransformException &ex)
     {
-      ROS_WARN("%s", ex.what());
+      ROS_WARN_STREAM_NAMED(plugin_name_, ex.what());
     }
   } else
   {

@@ -62,7 +62,7 @@ void LinkPosition3dKinematicController::Update(ignition::math::Vector3d const &s
   link_->SetLinearVel(ignition::math::Vector3d::Zero);
   auto const current_pose = link_->WorldPose();
   ignition::math::Pose3d pose{output_position, current_pose.Rot()};
-  ROS_DEBUG_STREAM_THROTTLE_NAMED(1.0, plugin_name_, "Setting pose " << pose);
+  ROS_DEBUG_STREAM_THROTTLE_NAMED(1.0, plugin_name_, "Setting pose of " << scoped_link_name_ << " to " << pose);
   link_->SetWorldPose(pose);
 }
 
