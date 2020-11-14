@@ -3,14 +3,14 @@ import argparse
 import logging
 import pathlib
 
-import rospy
+import colorama
 import tensorflow as tf
 from colorama import Fore
-import colorama
 
+import rospy
+from arc_utilities.filesystem_utils import mkdir_and_ask
 from link_bot_data.recovery_dataset_utils import make_recovery_dataset
 from link_bot_pycommon.args import my_formatter
-from arc_utilities.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(7.5)
@@ -49,5 +49,6 @@ def main():
                           start_at=args.start_at,
                           stop_at=args.stop_at)
 
-    if __name__ == '__main__':
-        main()
+
+if __name__ == '__main__':
+    main()

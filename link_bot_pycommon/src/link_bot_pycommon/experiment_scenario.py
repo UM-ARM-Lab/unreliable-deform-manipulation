@@ -172,6 +172,10 @@ class ExperimentScenario:
         raise NotImplementedError()
 
     @staticmethod
+    def put_state_robot_frame(state: Dict):
+        raise NotImplementedError()
+
+    @staticmethod
     def random_object_position(w: float, h: float, c: float, padding: float, rng: np.random.RandomState):
         xyz_range = {
             'x': [-w / 2 + padding, w / 2 - padding],

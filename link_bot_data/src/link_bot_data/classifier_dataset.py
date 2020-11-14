@@ -76,6 +76,8 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
         return features_description
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+        dataset = super().post_process(dataset, n_parallel_calls)
+
         def _add_time(example: Dict):
             # this function is called before batching occurs, so the first dimension should be time
             example['time'] = tf.cast(self.horizon, tf.int64)

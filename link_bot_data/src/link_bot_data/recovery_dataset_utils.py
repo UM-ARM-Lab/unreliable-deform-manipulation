@@ -8,16 +8,17 @@ import tensorflow as tf
 from colorama import Fore
 
 from link_bot_classifiers import classifier_utils
-from link_bot_classifiers.nn_classifier import NNClassifier
-from link_bot_data.dataset_utils import float_tensor_to_bytes_feature
+from link_bot_classifiers.nn_classifier import NNClassifierWrapper
+from link_bot_data.dataset_utils import tf_write_example
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
+from link_bot_pycommon.serialization import my_hdump
 from moonshine.moonshine_utils import (index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_tensors)
 from state_space_dynamics import model_utils
 
 
-def make_recovery_dataset(dataset_dir,
+def make_recovery_dataset(dataset_dir: pathlib.Path,
                           fwd_model_dir,
                           classifier_model_dir: pathlib.Path,
                           labeling_params: pathlib.Path,
@@ -27,11 +28,17 @@ def make_recovery_dataset(dataset_dir,
                           stop_at: Optional[int] = None):
     labeling_params = hjson.load(labeling_params.open("r"))
 
-    make_recovery_dataset_from_params_dict(dataset_dir, fwd_model_dir, classifier_model_dir, labeling_params, outdir,
-                                           batch_size, start_at, stop_at)
+    make_recovery_dataset_from_params_dict(dataset_dir,
+                                           fwd_model_dir,
+                                           classifier_model_dir,
+                                           labeling_params,
+                                           outdir,
+                                           batch_size,
+                                           start_at,
+                                           stop_at)
 
 
-def make_recovery_dataset_from_params_dict(dataset_dir,
+def make_recovery_dataset_from_params_dict(dataset_dir: pathlib.Path,
                                            fwd_model_dir,
                                            classifier_model_dir: pathlib.Path,
                                            labeling_params: Dict,
@@ -50,8 +57,6 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
 
     dynamics_hparams = hjson.load((dataset_dir / 'hparams.hjson').open('r'))
     fwd_model, _ = model_utils.load_generic_model(fwd_model_dir)
-
-    record_options = tf.io.TFRecordOptions(compression_type='ZLIB')
 
     dataset = DynamicsDatasetLoader([dataset_dir])
 
@@ -73,24 +78,21 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
     recovery_dataset_hparams['action_keys'] = fwd_model.action_keys
     recovery_dataset_hparams['start-at'] = start_at
     recovery_dataset_hparams['stop-at'] = stop_at
-    hjson.dump(recovery_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+    my_hdump(recovery_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     outdir.mkdir(parents=True, exist_ok=True)
 
-    for mode in ['train', 'val', 'test']:
+    for mode in ['val', 'test']:
         tf_dataset_for_mode = dataset.get_datasets(mode=mode)
 
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        record_idx = 0
-        while True:
-            record_filename = "example_{:09d}.tfrecords".format(record_idx)
-            full_filename = full_output_directory / record_filename
-            if not full_filename.exists():
-                break
-            record_idx += 1
+        # figure out that record_idx to start at
+        record_idx = count_up_to_next_record_idx(full_output_directory)
 
+        # FIXME: start_at is not implemented correctly in the sense that it shouldn't be the same
+        #  across train/val/test
         for out_example in generate_recovery_examples(tf_dataset_for_mode,
                                                       fwd_model,
                                                       classifier_model,
@@ -116,20 +118,21 @@ def make_recovery_dataset_from_params_dict(dataset_dir,
                 #     anim.step()
                 # # END DEBUG
 
-                features = {}
-                for k, v in out_example_b.items():
-                    features[k] = float_tensor_to_bytes_feature(v)
-
-                example_proto = tf.train.Example(features=tf.train.Features(feature=features))
-                example = example_proto.SerializeToString()
-                record_filename = "example_{:09d}.tfrecords".format(record_idx)
-                full_filename = full_output_directory / record_filename
-                print(f"writing {full_filename}")
-                with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
-                    writer.write(example)
+                tf_write_example(full_output_directory, out_example_b, record_idx)
                 record_idx += 1
 
     return outdir
+
+
+def count_up_to_next_record_idx(full_output_directory):
+    record_idx = 0
+    while True:
+        record_filename = "example_{:09d}.tfrecords".format(record_idx)
+        full_filename = full_output_directory / record_filename
+        if not full_filename.exists():
+            break
+        record_idx += 1
+    return record_idx
 
 
 def generate_recovery_examples(tf_dataset: tf.data.Dataset,
@@ -200,7 +203,7 @@ def batch_stateless_sample_action(scenario: ExperimentScenario,
     return {k: tf.tile(v, [batch_size, 1, 1]) for k, v in action_sequences.items()}
 
 
-def generate_recovery_actions_examples(fwd_model, classifier_model: NNClassifier, data, constants, action_rng):
+def generate_recovery_actions_examples(fwd_model, classifier_model: NNClassifierWrapper, data, constants, action_rng):
     example, actual_actions, actual_states, labeling_params, data_collection_params = data
     actual_batch_size, action_sequence_horizon, classifier_horizon, batch_size, start_t, end_t = constants
     scenario = fwd_model.scenario
@@ -322,8 +325,6 @@ def generate_recovery_actions_examples(fwd_model, classifier_model: NNClassifier
         'start_t': tf.stack([start_t] * batch_size),
         'end_t': tf.stack([end_t] * batch_size),
         'accept_probabilities': all_accept_probabilities,
-        'true_state_keys': classifier_model.true_state_keys,
-        'predicted_state_keys': classifier_model.pred_state_keys,
     }
     # add true start states
     out_examples.update(actual_states)

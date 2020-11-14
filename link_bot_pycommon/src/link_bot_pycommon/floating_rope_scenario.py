@@ -225,7 +225,7 @@ class FloatingRopeScenario(Base3DScenario):
         self.stdev_pub = rospy.Publisher("stdev", Float32, queue_size=10)
         self.error_pub = rospy.Publisher("error", Float32, queue_size=10)
 
-        self.max_action_attempts = 500
+        self.max_action_attempts = 100
 
         self.robot_reset_rng = np.random.RandomState(0)
 
@@ -351,7 +351,8 @@ class FloatingRopeScenario(Base3DScenario):
                                                                     action_params)
 
         max_gripper_d = default_if_none(action_params['max_distance_between_grippers'], 1000)
-        too_far = np.linalg.norm(action['left_gripper_position'] - action['right_gripper_position']) > max_gripper_d
+        gripper_d = np.linalg.norm(action['left_gripper_position'] - action['right_gripper_position'])
+        too_far = gripper_d > max_gripper_d
 
         return not out_of_bounds and not too_far
 
@@ -427,7 +428,7 @@ class FloatingRopeScenario(Base3DScenario):
         pass
 
     @staticmethod
-    def put_state_in_robot_frame(state: Dict):
+    def put_state_robot_frame(state: Dict):
         rope = state['rope']
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)

@@ -52,8 +52,16 @@ def my_dump(data, fp, indent=None):
     return json.dump(data, fp, cls=MyEncoder, indent=indent)
 
 
+def my_hdump(data, fp, indent=None):
+    return hjson.dump(data, fp, cls=MyHjsonEncoder)
+
+
 def my_dumps(data):
     return json.dumps(data, cls=MyEncoder)
+
+
+def my_hdumps(data):
+    return hjson.dumps(data, cls=MyHjsonEncoder)
 
 
 def dummy_proof_write(data, filename):

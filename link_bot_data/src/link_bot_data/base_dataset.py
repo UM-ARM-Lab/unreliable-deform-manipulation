@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import csv
 import pathlib
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Callable, Any
 
 import hjson
 import numpy as np
@@ -25,10 +25,13 @@ widgets = [
 
 class SizedTFDataset:
 
-    def __init__(self, dataset: tf.data.Dataset, records: List):
+    def __init__(self, dataset: tf.data.Dataset, records: List, size: Optional[int] = None):
         self.dataset = dataset
         self.records = records
-        self.size = len(self.records)
+        if size is None:
+            self.size = len(self.records)
+        else:
+            self.size = size
 
     def __len__(self):
         return self.size
@@ -36,13 +39,40 @@ class SizedTFDataset:
     def __iter__(self):
         return self.dataset.__iter__()
 
+    def batch(self, batch_size: int, *args, **kwargs):
+        dataset_batched = self.dataset.batch(*args, batch_size=batch_size, **kwargs)
+        return SizedTFDataset(dataset_batched, self.records, size=int(self.size / batch_size))
+
+    def map(self, function: Callable):
+        dataset_mapped = self.dataset.map(function)
+        return SizedTFDataset(dataset_mapped, self.records)
+
+    def filter(self, function: Callable):
+        dataset_filter = self.dataset.filter(function)
+        return SizedTFDataset(dataset_filter, self.records, size=None)
+
+    def repeat(self, count: Optional[int] = None):
+        dataset = self.dataset.repeat(count)
+        return SizedTFDataset(dataset, self.records, size=None)
+
+    def shuffle(self, buffer_size: int, seed: Optional[int] = None, reshuffle_each_iteration: bool = False):
+        dataset = self.dataset.shuffle(buffer_size, seed, reshuffle_each_iteration)
+        return SizedTFDataset(dataset, self.records)
+
+    def prefetch(self, buffer_size: Any = tf.data.experimental.AUTOTUNE):
+        dataset = self.dataset.prefetch(buffer_size)
+        return SizedTFDataset(dataset, self.records)
+
+    def take(self, count: int):
+        dataset = self.dataset.take(count)
+        return SizedTFDataset(dataset, self.records, size=count)
+
 
 class BaseDatasetLoader:
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
         self.dataset_dirs = dataset_dirs
         self.hparams = {}
-        self.scenario_metadata = self.hparams.get('scenario_metadata', {})
         for dataset_dir in dataset_dirs:
             dataset_hparams_filename = dataset_dir / 'hparams.json'
             if not dataset_hparams_filename.exists():
@@ -58,6 +88,8 @@ class BaseDatasetLoader:
                 else:
                     msg = "Datasets have differing values for the hparam {}, using value {}".format(k, self.hparams[k])
                     print(Fore.RED + msg + Fore.RESET)
+
+        self.scenario_metadata = self.hparams.get('scenario_metadata', {})
 
     def get_datasets(self,
                      mode: str,
@@ -128,7 +160,7 @@ class BaseDatasetLoader:
         if shuffle_files:
             print("Shuffling records")
             shuffle_rng = np.random.RandomState(0)
-            records = shuffle_rng.shuffle(records)
+            shuffle_rng.shuffle(records)
 
         dataset = tf.data.TFRecordDataset(records, buffer_size=1 * 1024 * 1024, compression_type='ZLIB')
 

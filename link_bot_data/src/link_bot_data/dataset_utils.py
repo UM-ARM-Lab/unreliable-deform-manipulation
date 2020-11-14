@@ -9,8 +9,8 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-from link_bot_pycommon import pycommon
 from arc_utilities.filesystem_utils import mkdir_and_ask
+from link_bot_pycommon import pycommon
 from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000
@@ -107,11 +107,6 @@ def float_feature(values):
     return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 
-def flatten_concat_pairs(ex_pos, ex_neg):
-    flat_pair = tf.data.Dataset.from_tensors(ex_pos).concatenate(tf.data.Dataset.from_tensors(ex_neg))
-    return flat_pair
-
-
 def batch_tf_dataset(dataset: tf.data.Dataset, batch_size: int, drop_remainder: bool = True):
     def _add_batch(example: Dict):
         for v in example.values():
@@ -128,27 +123,6 @@ def filter_and_cache(dataset, filter_func):
     dataset = dataset.filter(filter_func)
     dataset = dataset.cache(cachename())
     return dataset
-
-
-def balance(dataset, labeling_params: Dict, cache_negative: bool = True):
-    def _label_is(label_is):
-        def __filter(transition):
-            result = tf.squeeze(tf.equal(transition['label'], label_is))
-            return result
-
-        return __filter
-
-    positive_examples = dataset.filter(_label_is(1))
-    negative_examples = dataset.filter(_label_is(0))
-    if cache_negative:
-        negative_examples = negative_examples.cache(cachename())
-
-    # Combine and flatten
-    # zip will balance by dropping examples from whichever is larger
-    balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
-    balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
-
-    return balanced_dataset
 
 
 def cachename(mode: Optional[str] = None):
@@ -274,32 +248,6 @@ def filter_no_reconverging(example):
     return tf.logical_not(remove_batch(is_reconverging(add_batch(is_close))))
 
 
-def label_is(label_is, key='is_close'):
-    def __filter(example):
-        result = tf.squeeze(tf.equal(example[key][1], label_is))
-        return result
-
-    return __filter
-
-
-def flatten_concat_pairs(ex_pos, ex_neg):
-    flat_pair = tf.data.Dataset.from_tensors(ex_pos).concatenate(tf.data.Dataset.from_tensors(ex_neg))
-    return flat_pair
-
-
-def balance(dataset):
-    # FIXME: redo this when I redo my dataset code
-    positive_examples = dataset.filter(label_is(1))
-    negative_examples = dataset.filter(label_is(0))
-    negative_examples = negative_examples.repeat()
-    # print("UP-SAMPLING POSITIVE EXAMPLES!!!")
-    # positive_examples = positive_examples.repeat()
-    balanced_dataset = tf.data.Dataset.zip((positive_examples, negative_examples))
-    balanced_dataset = balanced_dataset.flat_map(flatten_concat_pairs)
-
-    return balanced_dataset
-
-
 def get_maybe_predicted(e: Dict, k: str):
     if k in e and add_predicted(k) in e:
         raise ValueError(f"ambiguous, dict has both {k} and {add_predicted(k)}")
@@ -349,5 +297,3 @@ def tf_write_example(full_output_directory: pathlib.Path,
     with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
         writer.write(example_str)
     return full_filename
-
-

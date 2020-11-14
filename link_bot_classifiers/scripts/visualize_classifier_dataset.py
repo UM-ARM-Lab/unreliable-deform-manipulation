@@ -7,9 +7,11 @@ import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from progressbar import progressbar
 from scipy import stats
 
 import rospy
+from link_bot_data import base_dataset
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted
 from link_bot_pycommon.pycommon import print_dict
@@ -77,7 +79,7 @@ def visualize_dataset(args, classifier_dataset):
     stdevs_for_negative = []
     stdevs_for_positive = []
 
-    for i, example in enumerate(tf_dataset):
+    for i, example in enumerate(progressbar(tf_dataset, widgets=base_dataset.widgets)):
         example = remove_batch(example)
 
         is_close = example['is_close'].numpy().squeeze()
@@ -98,7 +100,7 @@ def visualize_dataset(args, classifier_dataset):
         if args.only_positive and not np.any(is_close[1:]):
             continue
 
-        print(f"Example {i}, Trajectory #{int(example['traj_idx'])}")
+        # print(f"Example {i}, Trajectory #{int(example['traj_idx'])}")
 
         if count == 0:
             print_dict(example)

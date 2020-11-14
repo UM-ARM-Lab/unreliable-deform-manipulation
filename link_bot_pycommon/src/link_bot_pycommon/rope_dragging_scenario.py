@@ -433,7 +433,7 @@ class RopeDraggingScenario(Base3DScenario):
         return dynamics_points_metrics_function(dataset_element, predictions)
 
     @staticmethod
-    def put_state_in_robot_frame(state: Dict):
+    def put_state_robot_frame(state: Dict):
         return state
 
     @staticmethod

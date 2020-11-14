@@ -80,6 +80,8 @@ class DynamicsDatasetLoader(BaseDatasetLoader):
             yield out_example
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int, **kwargs):
+        dataset = super().post_process(dataset, n_parallel_calls)
+
         if self.use_gt_rope:
             print(Fore.GREEN + "Using ground-truth rope state")
             dataset = dataset.map(use_gt_rope)

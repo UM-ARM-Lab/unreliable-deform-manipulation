@@ -17,7 +17,7 @@
       dy_trials/baseline_gt_rope_1605187229_2/November_12_10-47-35_2573993984
       dy_trials/baseline_gt_rope_1605187229_3/November_12_12-02-19_2573993984
     ]
-    classifier_threshold: 0.02
+    classifier_threshold: 0.025
   }
   make_classifier_dataset:
   {
@@ -25,6 +25,10 @@
   }
   learn_classifier:
   {
-    model_dir: cl_trials/baseline_gt_rope_1605273452/November_13_08-17-32_b32ae9c6f2
+    model_dir: cl_trials/baseline_gt_rope_1605291994/November_13_13-26-36_03fbc0bfa8
+  }
+  make_recovery_dataset:
+  {
+    recovery_dataset_dir: recovery_data/baseline_gt_rope_1605296686/
   }
 }

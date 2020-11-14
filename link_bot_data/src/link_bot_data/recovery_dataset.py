@@ -9,6 +9,11 @@ from link_bot_pycommon.get_scenario import get_scenario
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
 
 
+def is_stuck(example):
+    stuck = example['recovery_probability'][0] <= 0
+    return stuck
+
+
 class RecoveryDatasetLoader(BaseDatasetLoader):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
@@ -53,12 +58,9 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
 
         return features_description
 
-    @staticmethod
-    def is_stuck(example):
-        stuck = example['recovery_probability'][0] <= 0
-        return stuck
-
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
+        dataset = super().post_process(dataset, n_parallel_calls)
+
         def _add_recovery_probabilities(example):
             n_accepts = tf.math.count_nonzero(example['accept_probabilities'] > 0.5, axis=1)
             example['recovery_probability'] = tf.cast(n_accepts / self.n_action_samples, tf.float32)
@@ -66,7 +68,8 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
 
         dataset = dataset.map(_add_recovery_probabilities)
         # TODO: do we actually want filter_and_cache?
-        # dataset = filter_and_cache(dataset, RecoveryDatasetLoader.is_stuck)
+        # dataset = filter_and_cache(dataset, is_stuck)
+        dataset = dataset.filter(is_stuck)
         return dataset
 
     def anim_rviz(self, example):

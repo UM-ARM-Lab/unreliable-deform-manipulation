@@ -7,10 +7,10 @@ import tensorflow as tf
 
 import rospy
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
-from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, float_tensor_to_bytes_feature, \
-    add_label, tf_write_example
+from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, add_label, tf_write_example
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.serialization import my_hdump
 from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, gather_dict
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
@@ -88,7 +88,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
     classifier_dataset_hparams['scenario_metadata'] = dataset.hparams['scenario_metadata']
     classifier_dataset_hparams['start-at'] = start_at
     classifier_dataset_hparams['stop-at'] = stop_at
-    hjson.dump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
+    my_hdump(classifier_dataset_hparams, new_hparams_filename.open("w"), indent=2)
 
     # because we're currently making this dataset, we can't call "get_dataset" but we can still use it to visualize
     classifier_dataset_for_viz = ClassifierDatasetLoader([outdir], use_gt_rope=use_gt_rope)

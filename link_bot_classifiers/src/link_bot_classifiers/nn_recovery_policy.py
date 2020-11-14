@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import json
 import pathlib
 from typing import Dict
 
@@ -20,7 +19,6 @@ from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as ge
 from moonshine.moonshine_utils import add_batch
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
-from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
 
@@ -195,7 +193,7 @@ class NNRecoveryModel(MyKerasModel):
         y_true = dataset_element['recovery_probability'][:, 1:2]  # 1:2 instead of just 1 to preserve the shape
         y_pred = outputs['logits']
         loss = tf.keras.losses.binary_crossentropy(y_true=y_true, y_pred=y_pred, from_logits=True)
-        # larget recovery_probability examples are weighted higher because there are so few of them
+        # target recovery_probability examples are weighted higher because there are so few of them
         # when y_true is 1 this term goes to infinity (high weighting), when y_true is 0 it equals 1 (normal weighting)
         l = tf.math.divide_no_nan(-1.0, y_true - 1)
         loss = loss * l
@@ -230,10 +228,22 @@ class NNRecoveryModel(MyKerasModel):
         conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size)
 
         state = {k: input_dict[k][:, 0] for k in self.state_keys}
-        state_local = self.scenario.put_state_local_frame(state)
+        state_in_local_frame = self.scenario.put_state_local_frame(state)
+        state_lf_list = list(state_in_local_frame.values())
         action = {k: input_dict[k][:, 0] for k in self.action_keys}
         action = self.scenario.put_action_local_frame(state, action)
-        concat_args = [conv_output] + list(state_local.values()) + list(action.values())
+        action_list = list(action.values())
+        state_in_robot_frame = self.scenario.put_state_robot_frame(state)
+        state_rf_list = list(state_in_robot_frame.values())
+
+        if 'with_robot_frame' not in self.hparams:
+            print("no hparam 'with_robot_frame'. This must be an old model!")
+            concat_args = [conv_output] + state_lf_list + action_list
+        elif self.hparams['with_robot_frame']:
+            concat_args = [conv_output] + state_rf_list + state_lf_list + action_list
+        else:
+            concat_args = [conv_output] + state_lf_list + action_list
+
         concat_output = tf.concat(concat_args, axis=1)
 
         if self.hparams['batch_norm']:

@@ -241,7 +241,7 @@ class NNClassifier(MyKerasModel):
             print("no hparam 'with_robot_frame'. This must be an old model!")
             concat_args = [conv_output] + list(states_in_local_frame.values()) + padded_actions
         elif self.hparams['with_robot_frame']:
-            states_in_robot_frame = self.scenario.put_state_in_robot_frame(states)
+            states_in_robot_frame = self.scenario.put_state_robot_frame(states)
             concat_args = ([conv_output] + list(states_in_robot_frame.values()) +
                            list(states_in_local_frame.values()) + padded_actions)
         else:
@@ -310,8 +310,11 @@ class NNClassifierWrapper(BaseConstraintChecker):
 
             self.state_keys = net.state_keys
             self.action_keys = net.action_keys
+            self.true_state_keys = net.true_state_keys
+            self.pred_state_keys = net.pred_state_keys
 
     def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
+        # TODO: make the classifier faster
         predictions = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_predictions = {k: tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}

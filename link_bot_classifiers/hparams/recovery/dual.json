@@ -52,5 +52,6 @@
   "local_env_w_cols": 40,
   "local_env_c_channels": 40,
   "learning_rate": 0.001,
-  "stdev": true
+  "stdev": true,
+  "with_robot_frame": true
 }
