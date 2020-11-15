@@ -7,8 +7,7 @@ import colorama
 import hjson
 import numpy as np
 
-import moveit_commander
-import rospy
+from arc_utilities import ros_init
 from link_bot_data.base_collect_dynamics_data import TfDataCollector, H5DataCollector
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_service_provider import get_service_provider
@@ -45,8 +44,7 @@ def main():
 
     args = parser.parse_args()
 
-    moveit_commander.roscpp_initialize(args=[])
-    rospy.init_node('collect_dynamics_data')
+    ros_init.rospy_and_cpp_init("collect_dynamics_data")
 
     with args.collect_dynamics_params.open("r") as f:
         collect_dynamics_params = hjson.load(f)
@@ -62,6 +60,8 @@ def main():
     files_dataset = data_collector.collect_data(n_trajs=args.n_trajs, nickname=args.nickname,
                                                 robot_namespace=args.robot_namespace)
     files_dataset.split()
+
+    ros_init.shutdown()
 
 
 if __name__ == '__main__':

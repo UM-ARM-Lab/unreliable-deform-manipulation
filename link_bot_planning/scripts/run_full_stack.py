@@ -13,6 +13,7 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
+from arc_utilities import ros_init
 from link_bot_classifiers import train_test_classifier, train_test_recovery
 from link_bot_data.base_collect_dynamics_data import TfDataCollector
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
@@ -376,7 +377,7 @@ def main():
 
     args = parser.parse_args()
 
-    rospy.init_node("run_full_stack")
+    ros_init.rospy_and_cpp_init("run_full_stack")
 
     if args.nickname is None:
         with args.logfile.open("r") as logfile:
@@ -474,6 +475,8 @@ def main():
         with logfile_name.open("w") as logfile:
             hjson.dump(runlog, logfile, cls=MyHjsonEncoder)
         rospy.loginfo(Fore.GREEN + logfile_name.as_posix())
+
+    ros_init.shutdown()
 
 
 if __name__ == '__main__':
