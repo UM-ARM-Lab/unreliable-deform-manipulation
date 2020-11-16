@@ -183,18 +183,23 @@ class NNClassifier(MyKerasModel):
             # stepper.step()
             # # END DEBUG
 
-            conv_z = local_voxel_grid_t
-            for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
-                conv_h = conv_layer(conv_z)
-                conv_z = pool_layer(conv_h)
-            out_conv_z = conv_z
-            out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
-            out_conv_z = tf.reshape(out_conv_z, [batch_size, out_conv_z_dim])
+            out_conv_z = self.fwd_conv(batch_size, local_voxel_grid_t)
 
             conv_outputs_array = conv_outputs_array.write(t, out_conv_z)
 
         conv_outputs = conv_outputs_array.stack()
         return tf.transpose(conv_outputs, [1, 0, 2])
+
+    @tf.function
+    def fwd_conv(self, batch_size, local_voxel_grid_t):
+        conv_z = local_voxel_grid_t
+        for conv_layer, pool_layer in zip(self.conv_layers, self.pool_layers):
+            conv_h = conv_layer(conv_z)
+            conv_z = pool_layer(conv_h)
+        out_conv_z = conv_z
+        out_conv_z_dim = out_conv_z.shape[1] * out_conv_z.shape[2] * out_conv_z.shape[3] * out_conv_z.shape[4]
+        out_conv_z = tf.reshape(out_conv_z, [batch_size, out_conv_z_dim])
+        return out_conv_z
 
     def compute_loss(self, dataset_element, outputs):
         # the labels are based on whether the predicted & observed rope states are close after the action, so t>=1

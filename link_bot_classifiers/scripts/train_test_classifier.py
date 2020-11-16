@@ -61,6 +61,7 @@ def main():
                               help='report validation every this many epochs', default=1)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.add_argument('--use-gt-rope', action='store_true')
+    train_parser.add_argument('--threshold', type=float, default=None)
     train_parser.set_defaults(func=train_main)
 
     eval_parser = subparsers.add_parser('eval')

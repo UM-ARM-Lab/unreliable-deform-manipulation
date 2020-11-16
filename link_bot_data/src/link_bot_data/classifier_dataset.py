@@ -69,7 +69,7 @@ class ClassifierDatasetLoader(BaseDatasetLoader):
             self.feature_names.append(k)
 
     def make_features_description(self):
-        features_description = {}
+        features_description = super().make_features_description()
         for feature_name in self.feature_names:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 

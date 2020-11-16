@@ -50,8 +50,8 @@ def main():
                 print("{:30s}: {},".format(*items))
             if len(to_print) > 2 * args.print_limit:
                 print("...")
-            for items in to_print[-args.print_limit:]:
-                print("{:30s}: {},".format(*items))
+                for items in to_print[-args.print_limit:]:
+                    print("{:30s}: {},".format(*items))
 
         key = input(Fore.CYAN + "press enter to see an example from the next record file... (q to quit) " + Fore.RESET)
         if key == 'q':

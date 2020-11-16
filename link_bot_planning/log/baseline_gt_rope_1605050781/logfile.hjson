@@ -2,7 +2,7 @@
   nickname: baseline_gt_rope
   collect_dynamics_data_2:
   {
-    dynamics_dataset_dir: fwd_model_data/sim_victor_phase2_1604959263+smallenv
+    dynamics_dataset_dir: fwd_model_data/baseline_gt_rope_phase2
   }
   collect_dynamics_data_1:
   {
@@ -17,18 +17,22 @@
       dy_trials/baseline_gt_rope_1605187229_2/November_12_10-47-35_2573993984
       dy_trials/baseline_gt_rope_1605187229_3/November_12_12-02-19_2573993984
     ]
-    classifier_threshold: 0.025
+    classifier_threshold: 0.02
   }
   make_classifier_dataset:
   {
-    classifier_dataset_dir: classifier_data/baseline_gt_rope_1605187229
+    classifier_dataset_dir: classifier_data/baseline_gt_rope_1605474688
   }
   learn_classifier:
   {
-    model_dir: cl_trials/baseline_gt_rope_1605291994/November_13_13-26-36_03fbc0bfa8
+    model_dir: cl_trials/baseline_gt_rope_1605474688/November_15_16-32-19_c9a3fcf266
   }
   make_recovery_dataset:
   {
-    recovery_dataset_dir: recovery_data/baseline_gt_rope_1605296686/
+    recovery_dataset_dir: recovery_data/baseline_gt_rope_1605474688
+  }
+  learn_recovery:
+  {
+    model_dir: /home/peter/catkin_ws/src/link_bot/link_bot_planning/recovery_trials/baseline_gt_rope_1605498881/November_15_22-54-42_c9a3fcf266
   }
 }

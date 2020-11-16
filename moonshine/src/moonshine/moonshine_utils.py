@@ -49,6 +49,8 @@ def numpify(x, dtype=np.float32):
         return x
     elif isinstance(x, np.int64):
         return x
+    elif isinstance(x, np.bytes_):
+        return x
     else:
         raise NotImplementedError(type(x))
 

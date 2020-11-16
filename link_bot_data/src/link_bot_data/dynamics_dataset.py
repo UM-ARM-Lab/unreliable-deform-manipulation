@@ -49,7 +49,7 @@ class DynamicsDatasetLoader(BaseDatasetLoader):
         }
 
     def make_features_description(self):
-        features_description = {}
+        features_description = super().make_features_description()
         for feature_name in self.constant_feature_names:
             features_description[feature_name] = tf.io.FixedLenFeature([], tf.string)
 

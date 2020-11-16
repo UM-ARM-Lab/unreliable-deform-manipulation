@@ -9,9 +9,9 @@ import tensorflow as tf
 import link_bot_classifiers
 import rospy
 from link_bot_classifiers.classifier_utils import load_generic_model
+from link_bot_data.balance import balance
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset
-from link_bot_data.balance import balance
 from link_bot_data.visualization import init_viz_env, stdev_viz_t
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
@@ -62,6 +62,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                seed: int,
                use_gt_rope: bool,
                checkpoint: Optional[pathlib.Path] = None,
+               threshold: Optional[float] = None,
                ensemble_idx: Optional[int] = None,
                trials_directory: Optional[pathlib.Path] = None,
                **kwargs):
@@ -69,8 +70,14 @@ def train_main(dataset_dirs: List[pathlib.Path],
     model_class = link_bot_classifiers.get_model(model_hparams['model_class'])
 
     # set load_true_states=True when debugging
-    train_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    val_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    train_dataset = ClassifierDatasetLoader(dataset_dirs=dataset_dirs,
+                                            load_true_states=True,
+                                            use_gt_rope=use_gt_rope,
+                                            threshold=threshold)
+    val_dataset = ClassifierDatasetLoader(dataset_dirs=dataset_dirs,
+                                          load_true_states=True,
+                                          use_gt_rope=use_gt_rope,
+                                          threshold=threshold)
 
     model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
     model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
@@ -221,6 +228,7 @@ def viz_main(dataset_dirs: List[pathlib.Path],
                                                          inflate_radius_m=0)[0].numpy())
             label = bool(example['is_close'][1].numpy())
             accept = decisions[b, 0, 0].numpy()
+
             # if not (in_collision and accept):
             #     continue
 

@@ -41,7 +41,7 @@ def modify_dataset(dataset_dir: pathlib.Path,
     # tfrecords
     total_count = 0
     for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode)
+        tf_dataset = dataset.get_datasets(mode=mode, shuffle_files=False)
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 

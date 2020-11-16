@@ -18,6 +18,7 @@ SORT_FILE_NAME = 'sort_order.csv'
 
 widgets = [
     progressbar.Percentage(), ' ',
+    progressbar.Counter(), ' ',
     progressbar.Bar(),
     ' (', progressbar.AdaptiveETA(), ') ',
 ]
@@ -166,8 +167,7 @@ class BaseDatasetLoader:
 
         # Given the member lists of states, actions, and constants set in the constructor, create a dict for parsing a feature
         features_description = self.make_features_description()
-        dataset = parse_and_deserialize(dataset, feature_description=features_description,
-                                        n_parallel_calls=n_parallel_calls)
+        dataset = parse_and_deserialize(dataset, features_description, n_parallel_calls)
 
         if take is not None:
             dataset = dataset.take(take)
@@ -182,7 +182,10 @@ class BaseDatasetLoader:
         return sized_tf_dataset
 
     def make_features_description(self):
-        raise NotImplementedError()
+        if self.hparams['has_tfrecord_path']:
+            return {'tfrecord_path': tf.io.FixedLenFeature([], tf.string)}
+        else:
+            return {}
 
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         scenario_metadata = self.scenario_metadata
@@ -192,5 +195,4 @@ class BaseDatasetLoader:
             return example
 
         dataset = dataset.map(_add_scenario_metadata)
-
         return dataset

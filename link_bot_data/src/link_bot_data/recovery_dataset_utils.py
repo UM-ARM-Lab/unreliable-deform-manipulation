@@ -82,7 +82,7 @@ def make_recovery_dataset_from_params_dict(dataset_dir: pathlib.Path,
 
     outdir.mkdir(parents=True, exist_ok=True)
 
-    for mode in ['val', 'test']:
+    for mode in ['train']:
         tf_dataset_for_mode = dataset.get_datasets(mode=mode)
 
         full_output_directory = outdir / mode

@@ -15,6 +15,10 @@ from moonshine.moonshine_utils import remove_batch, add_batch
 
 NULL_PAD_VALUE = -10000
 
+STRING_KEYS = [
+    'tfrecord_path'
+]
+
 
 def state_dict_is_null(state: Dict):
     for v in state.values():
@@ -64,8 +68,11 @@ def deserialize(parsed_dataset: tf.data.Dataset, n_parallel_calls=None):
     def _deserialize(serialized_dict):
         deserialized_dict = {}
         for _key, _serialized_tensor in serialized_dict.items():
-            _deserialized_tensor = tf.io.parse_tensor(_serialized_tensor, tf.float32)
-            _deserialized_tensor = tf.ensure_shape(_deserialized_tensor, inferred_shapes[_key])
+            if _key in STRING_KEYS:
+                _deserialized_tensor = tf.io.parse_tensor(_serialized_tensor, tf.string)
+            else:
+                _deserialized_tensor = tf.io.parse_tensor(_serialized_tensor, tf.float32)
+                _deserialized_tensor = tf.ensure_shape(_deserialized_tensor, inferred_shapes[_key])
             deserialized_dict[_key] = _deserialized_tensor
         return deserialized_dict
 
@@ -77,8 +84,11 @@ def infer_shapes(parsed_dataset: tf.data.Dataset):
     element = next(iter(parsed_dataset))
     inferred_shapes = {}
     for key, serialized_tensor in element.items():
-        deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
-        inferred_shapes[key] = deserialized_tensor.shape
+        if key in STRING_KEYS:
+            inferred_shapes[key] = ()
+        else:
+            deserialized_tensor = tf.io.parse_tensor(serialized_tensor, tf.float32)
+            inferred_shapes[key] = deserialized_tensor.shape
     return inferred_shapes
 
 
@@ -289,6 +299,10 @@ def tf_write_example(full_output_directory: pathlib.Path,
                      out_example: Dict,
                      example_idx: int):
     features = {k: float_tensor_to_bytes_feature(v) for k, v in out_example.items()}
+    return tf_write_features(example_idx, features, full_output_directory)
+
+
+def tf_write_features(example_idx, features, full_output_directory):
     example_proto = tf.train.Example(features=tf.train.Features(feature=features))
     example_str = example_proto.SerializeToString()
     record_filename = "example_{:09d}.tfrecords".format(example_idx)
