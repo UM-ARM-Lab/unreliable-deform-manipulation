@@ -318,3 +318,14 @@ def tf_write_features(example_idx, features, full_output_directory):
     with tf.io.TFRecordWriter(str(full_filename), record_options) as writer:
         writer.write(example_str)
     return full_filename
+
+
+def count_up_to_next_record_idx(full_output_directory):
+    record_idx = 0
+    while True:
+        record_filename = "example_{:09d}.tfrecords".format(record_idx)
+        full_filename = full_output_directory / record_filename
+        if not full_filename.exists():
+            break
+        record_idx += 1
+    return record_idx

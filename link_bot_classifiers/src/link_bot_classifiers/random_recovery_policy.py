@@ -12,4 +12,5 @@ class RandomRecoveryPolicy(BaseRecoveryPolicy):
         super().__init__(hparams, model_dir, scenario, rng)
 
     def __call__(self, environment: Dict, state: Dict):
-        return self.scenario.sample_action(action_rng=self.rng, environment=environment, state=state, action_params=self.hparams)
+        return self.scenario.sample_action(action_rng=self.rng, environment=environment, state=state,
+                                           action_params=self.hparams, validate=True)

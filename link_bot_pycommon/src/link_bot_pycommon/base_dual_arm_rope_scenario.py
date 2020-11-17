@@ -53,6 +53,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
                                   environment=environment,
                                   state=state,
                                   action_params=action_params,
+                                  validate=True,
                                   stateless=stateless)
 
     def add_boxes_around_tools(self):

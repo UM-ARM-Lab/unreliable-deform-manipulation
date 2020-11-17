@@ -237,7 +237,8 @@ class RopeDraggingScenario(Base3DScenario):
         }
         return actions
 
-    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict = False):
+    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict,
+                      validate=False):
         action = None
         for _ in range(self.max_action_attempts):
             # sample the previous action with 80% probability, this improves exploration

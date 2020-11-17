@@ -14,12 +14,12 @@ from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted,
 from link_bot_data.visualization import rviz_arrow
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
-from link_bot_pycommon.collision_checking import inflate_tf_3d
-from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center
 from link_bot_pycommon.bbox_visualization import extent_array_to_bbox
+from link_bot_pycommon.collision_checking import inflate_tf_3d
+from link_bot_pycommon.constants import KINECT_MAX_DEPTH
+from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center
 from link_bot_pycommon.pycommon import default_if_none
 from link_bot_pycommon.ros_pycommon import publish_color_image, publish_depth_image
-from link_bot_pycommon.constants import KINECT_MAX_DEPTH
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
 from moonshine.moonshine_utils import numpify, remove_batch
 from peter_msgs.srv import *
@@ -216,8 +216,10 @@ class FloatingRopeScenario(Base3DScenario):
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
 
         try:
-            self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
-            self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10, latch=True)
+            self.left_gripper_bbox_pub = rospy.Publisher('/left_gripper_bbox_pub', BoundingBox, queue_size=10,
+                                                         latch=True)
+            self.right_gripper_bbox_pub = rospy.Publisher('/right_gripper_bbox_pub', BoundingBox, queue_size=10,
+                                                          latch=True)
         except NameError:
             pass
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"),
@@ -311,6 +313,7 @@ class FloatingRopeScenario(Base3DScenario):
                       environment: Dict,
                       state: Dict,
                       action_params: Dict,
+                      validate: bool,
                       stateless: Optional[bool] = False):
         self.viz_action_sample_bbox(self.left_gripper_bbox_pub, self.get_action_sample_extent(action_params, 'left'))
         self.viz_action_sample_bbox(self.right_gripper_bbox_pub, self.get_action_sample_extent(action_params, 'right'))
@@ -338,7 +341,7 @@ class FloatingRopeScenario(Base3DScenario):
                 'right_gripper_delta_position': right_gripper_delta_position,
             }
 
-            if self.is_action_valid(action, action_params):
+            if not validate or self.is_action_valid(action, action_params):
                 self.last_action = action
                 return action
 

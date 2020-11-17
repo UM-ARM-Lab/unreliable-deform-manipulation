@@ -41,6 +41,7 @@ class ExperimentScenario:
                                   environment=environment,
                                   state=state,
                                   action_params=action_params,
+                                  validate=True,
                                   stateless=stateless)
 
     def is_action_valid(self, action: Dict, action_params: Dict):
@@ -51,7 +52,7 @@ class ExperimentScenario:
                       environment: Dict,
                       state: Dict,
                       action_params: Dict,
-                      stateless: Optional[bool] = False):
+                      validate, stateless: Optional[bool] = False):
         raise NotImplementedError()
 
     def sample_action_sequences(self,
@@ -60,6 +61,7 @@ class ExperimentScenario:
                                 action_params: Dict,
                                 n_action_sequences: int,
                                 action_sequence_length: int,
+                                validate: bool,
                                 action_rng: np.random.RandomState):
         action_sequences = []
 
@@ -68,6 +70,7 @@ class ExperimentScenario:
                                                        state=state,
                                                        action_params=action_params,
                                                        batch_size=action_sequence_length,
+                                                       validate=validate,
                                                        action_rng=action_rng)
             action_sequences.append(action_sequence)
         return action_sequences
@@ -77,6 +80,7 @@ class ExperimentScenario:
                             state: Dict,
                             action_params: Dict,
                             batch_size: int,
+                            validate: bool,
                             action_rng: np.random.RandomState):
         action_sequence = []
         for i in range(batch_size):
@@ -84,6 +88,7 @@ class ExperimentScenario:
                                         environment=environment,
                                         state=index_dict_of_batched_tensors_tf(state, i),
                                         action_params=action_params,
+                                        validate=validate,
                                         stateless=True)
             action_sequence.append(action)
         return action_sequence

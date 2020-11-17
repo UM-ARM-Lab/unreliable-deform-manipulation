@@ -43,6 +43,7 @@ class ShootingMethod(MyPlanner):
                                                                action_params=self.action_params,
                                                                n_action_sequences=self.n_samples,
                                                                action_sequence_length=1,
+                                                               validate=True,
                                                                action_rng=action_rng)
         random_actions = [sequence_of_dicts_to_dict_of_tensors(a) for a in random_actions]
         random_actions = sequence_of_dicts_to_dict_of_tensors(random_actions)

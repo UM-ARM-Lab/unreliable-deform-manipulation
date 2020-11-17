@@ -79,7 +79,8 @@ class BaseDataCollector:
             action = self.scenario.sample_action(action_rng=action_rng,
                                                  environment=environment,
                                                  state=state,
-                                                 action_params=self.params)
+                                                 action_params=self.params,
+                                                 validate=True)
 
             # Visualization
             self.scenario.plot_environment_rviz(environment)
@@ -126,10 +127,8 @@ class BaseDataCollector:
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         s_for_size = self.scenario.get_state()
-        a_for_size = self.scenario.sample_action(action_rng=np.random.RandomState(0),
-                                                 environment={},
-                                                 state=s_for_size,
-                                                 action_params=self.params)
+        a_for_size = self.scenario.sample_action(action_rng=np.random.RandomState(0), environment={}, state=s_for_size,
+                                                 action_params=self.params, validate=True)
         state_description = {k: v.shape[0] for k, v in s_for_size.items()}
         action_description = {k: v.shape[0] for k, v in a_for_size.items()}
 
