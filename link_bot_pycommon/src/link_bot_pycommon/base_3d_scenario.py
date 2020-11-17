@@ -38,7 +38,6 @@ class Base3DScenario(ExperimentScenario):
         self.state_viz_pub = rospy.Publisher("state_viz", MarkerArray, queue_size=10, latch=True)
         self.action_viz_pub = rospy.Publisher("action_viz", MarkerArray, queue_size=10, latch=True)
         self.label_viz_pub = rospy.Publisher("label_viz", LabelStatus, queue_size=10, latch=True)
-        self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
 
         self.sampled_goal_marker_idx = 0
         self.tree_state_idx = 0
@@ -131,11 +130,6 @@ class Base3DScenario(ExperimentScenario):
         else:
             msg.status = LabelStatus.Reject
         self.label_viz_pub.publish(msg)
-
-    def plot_accept_probability(self, accept_probability_t):
-        msg = Float32()
-        msg.data = accept_probability_t
-        self.accept_probability_viz_pub.publish(msg)
 
     def animate_evaluation_results(self,
                                    environment: Dict,

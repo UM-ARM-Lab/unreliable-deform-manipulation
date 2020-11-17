@@ -10,7 +10,7 @@ from progressbar import progressbar
 
 import rospy
 from link_bot_data import base_dataset
-from link_bot_data.recovery_dataset import RecoveryDatasetLoader, is_stuck
+from link_bot_data.recovery_dataset import RecoveryDatasetLoader
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(1)
@@ -42,10 +42,10 @@ def main():
         for example in progressbar(tf_dataset, widgets=base_dataset.widgets):
             n_accepts = tf.math.count_nonzero(example['accept_probabilities'] > 0.5, axis=1)
             print(n_accepts)
-            if not is_stuck(example):
-                print("found a not-stuck example")
-                dataset.anim_rviz(example)
-
+            # if not is_stuck(example):
+            #     print("found a not-stuck example")
+            #     dataset.anim_rviz(example)
+            dataset.anim_rviz(example)
 
 
 def stats(args, dataset):

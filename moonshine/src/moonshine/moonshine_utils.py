@@ -235,10 +235,13 @@ def index_dict_of_batched_tensors_np(in_dict: Dict, index: int, batch_axis: int 
     return {k: v.numpy() for k, v in out_dict_tf.items()}
 
 
-def index_dict_of_batched_tensors_tf(in_dict: Dict, index: int, batch_axis: int = 0):
+def index_dict_of_batched_tensors_tf(in_dict: Dict, index: int, batch_axis: int = 0, keep_dims=False):
     out_dict = {}
     for k, v in in_dict.items():
-        out_dict[k] = tf.gather(v, index, axis=batch_axis)
+        v_i = tf.gather(v, index, axis=batch_axis)
+        if keep_dims:
+            v_i = tf.expand_dims(v_i, axis=batch_axis)
+        out_dict[k] = v_i
     return out_dict
 
 

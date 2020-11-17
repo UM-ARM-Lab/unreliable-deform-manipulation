@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Dict, List, Callable
+from typing import List, Callable, Any
 
 import numpy as np
 
@@ -162,7 +162,7 @@ class RvizAnimation:
         self.t_funcs = t_funcs
         self.n_time_steps = n_time_steps
 
-    def play(self, example: Dict):
+    def play(self, example: Any):
         example = numpify(example)
         for init_func in self.init_funcs:
             init_func(self.scenario, example)

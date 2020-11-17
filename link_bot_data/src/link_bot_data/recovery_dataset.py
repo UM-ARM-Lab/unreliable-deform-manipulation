@@ -14,6 +14,11 @@ def is_stuck(example):
     return stuck
 
 
+def compute_recovery_probabilities(accept_probabilities, n_action_samples: int):
+    n_accepts = tf.math.count_nonzero(accept_probabilities > 0.5, axis=1)
+    return tf.cast(n_accepts / n_action_samples, tf.float32)
+
+
 class RecoveryDatasetLoader(BaseDatasetLoader):
 
     def __init__(self, dataset_dirs: List[pathlib.Path]):
@@ -61,16 +66,14 @@ class RecoveryDatasetLoader(BaseDatasetLoader):
     def post_process(self, dataset: tf.data.TFRecordDataset, n_parallel_calls: int):
         dataset = super().post_process(dataset, n_parallel_calls)
 
-        def _add_recovery_probabilities(example):
-            n_accepts = tf.math.count_nonzero(example['accept_probabilities'] > 0.5, axis=1)
-            example['recovery_probability'] = tf.cast(n_accepts / self.n_action_samples, tf.float32)
-            return example
-
-        dataset = dataset.map(_add_recovery_probabilities)
-        # TODO: do we actually want filter_and_cache?
-        # dataset = filter_and_cache(dataset, is_stuck)
+        dataset = dataset.map(self.add_recovery_probabilities)
         dataset = dataset.filter(is_stuck)
         return dataset
+
+    def add_recovery_probabilities(self, example):
+        example['recovery_probability'] = compute_recovery_probabilities(example['accept_probabilities'],
+                                                                         self.n_action_samples)
+        return example
 
     def anim_rviz(self, example):
         anim = RvizAnimation(scenario=self.scenario,

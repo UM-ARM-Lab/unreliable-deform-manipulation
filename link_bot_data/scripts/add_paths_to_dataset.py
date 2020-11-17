@@ -45,13 +45,11 @@ def main():
 
     total_count = 0
     for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode, shuffle_files=False)
+        tf_dataset = dataset.get_datasets(mode=mode, shuffle_files=False, do_not_process=True)
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
         for example, tfrecord_path in zip(progressbar(tf_dataset, widgets=base_dataset.widgets), tf_dataset.records):
-            for k in dataset.scenario_metadata:
-                example.pop(k)
             features = {k: float_tensor_to_bytes_feature(v) for k, v in example.items()}
             features['tfrecord_path'] = bytes_feature(
                 tf.io.serialize_tensor(tf.convert_to_tensor(tfrecord_path, dtype=tf.string)).numpy())

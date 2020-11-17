@@ -15,6 +15,7 @@ class ExperimentScenario:
         self.time_viz_pub = rospy.Publisher("rviz_anim/time", Int64, queue_size=10, latch=True)
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.recovery_prob_viz_pub = rospy.Publisher("recovery_probability_viz", Float32, queue_size=10, latch=True)
+        self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
 
         self.tf = TF2Wrapper()
 
@@ -116,11 +117,18 @@ class ExperimentScenario:
         msg.data = time_idx
         self.time_viz_pub.publish(msg)
 
-    def plot_recovery_probability_t(self, example: Dict, t: int):
-        recovery_probability = example['recovery_probability'][t]
+    def plot_recovery_probability(self, recovery_probability: float):
         msg = Float32()
         msg.data = recovery_probability
         self.recovery_prob_viz_pub.publish(msg)
+
+    def plot_recovery_probability_t(self, example: Dict, t: int):
+        self.plot_recovery_probability(example['recovery_probability'][t])
+
+    def plot_accept_probability(self, accept_probability_t: float):
+        msg = Float32()
+        msg.data = accept_probability_t
+        self.accept_probability_viz_pub.publish(msg)
 
     def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
         raise NotImplementedError()

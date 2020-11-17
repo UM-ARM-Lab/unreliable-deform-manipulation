@@ -233,6 +233,7 @@ class FullStackRunner:
                                                                       fwd_model_dir=udnn_model_dirs,
                                                                       classifier_model_dir=classifier_model_dir,
                                                                       batch_size=batch_size,
+                                                                      use_gt_rope=self.use_gt_rope,
                                                                       labeling_params=labeling_params,
                                                                       outdir=outdir)
         rospy.loginfo(Fore.GREEN + recovery_dataset_dir.as_posix())

@@ -41,14 +41,12 @@ def modify_dataset(dataset_dir: pathlib.Path,
     # tfrecords
     total_count = 0
     for mode in ['train', 'test', 'val']:
-        tf_dataset = dataset.get_datasets(mode=mode, shuffle_files=False)
+        tf_dataset = dataset.get_datasets(mode=mode, shuffle_files=False, do_not_process=True)
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
         for i, example in enumerate(progressbar(tf_dataset, widgets=base_dataset.widgets)):
             for out_example in process_example(dataset, example):
-                for k in dataset.scenario_metadata:
-                    out_example.pop(k)
                 tf_write_example(full_output_directory, out_example, total_count)
                 total_count += 1
     print(Fore.GREEN + f"Modified {total_count} examples")

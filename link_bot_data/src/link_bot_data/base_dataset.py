@@ -182,7 +182,7 @@ class BaseDatasetLoader:
         return sized_tf_dataset
 
     def make_features_description(self):
-        if self.hparams['has_tfrecord_path']:
+        if 'has_tfrecord_path' in self.hparams and self.hparams['has_tfrecord_path']:
             return {'tfrecord_path': tf.io.FixedLenFeature([], tf.string)}
         else:
             return {}

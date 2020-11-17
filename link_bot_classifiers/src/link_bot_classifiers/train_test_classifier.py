@@ -13,8 +13,8 @@ from link_bot_data.balance import balance
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_data.visualization import init_viz_env, stdev_viz_t
+from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
 from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_sequences
 from shape_completion_training.metric import AccuracyMetric
@@ -152,7 +152,6 @@ def viz_main(dataset_dirs: List[pathlib.Path],
              use_gt_rope: bool,
              **kwargs):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
-    accept_probability_pub_ = rospy.Publisher("accept_probability_viz", Float32, queue_size=10)
     traj_idx_pub_ = rospy.Publisher("traj_idx_viz", Float32, queue_size=10)
 
     ###############
@@ -234,14 +233,12 @@ def viz_main(dataset_dirs: List[pathlib.Path],
 
             # if label and only_positive
 
-            def _custom_viz_t(scenario: ExperimentScenario, e: Dict, t: int):
+            def _custom_viz_t(scenario: Base3DScenario, e: Dict, t: int):
                 if t > 0:
                     accept_probability_t = predictions['probabilities'][b, t - 1, 0].numpy()
                 else:
                     accept_probability_t = -999
-                accept_probability_msg = Float32()
-                accept_probability_msg.data = accept_probability_t
-                accept_probability_pub_.publish(accept_probability_msg)
+                scenario.plot_accept_probability(accept_probability_t)
 
                 traj_idx_msg = Float32()
                 traj_idx_msg.data = batch_idx * batch_size + b
