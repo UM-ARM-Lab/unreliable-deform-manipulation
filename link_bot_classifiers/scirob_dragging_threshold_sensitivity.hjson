@@ -18,9 +18,10 @@
     classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.105
   ]
   trial_dirs:
-  [
-    threshold=0.025/November_17_21-56-19_57a51da430
-    threshold=0.065/November_18_00-09-50_57a51da430
-    threshold=0.105/November_18_02-55-50_57a51da430
-  ]
+  {
+    0.025:
+    {
+      0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.025_0/November_18_12-17-42_043498acda
+    }
+  }
 }

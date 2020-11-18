@@ -34,10 +34,10 @@ def setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope):
     return hparams
 
 
-def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset):
+def setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset, take):
     # Dataset preprocessing
-    train_tf_dataset = train_dataset.get_datasets(mode='train', shuffle_files=True)
-    val_tf_dataset = val_dataset.get_datasets(mode='val', shuffle_files=True)
+    train_tf_dataset = train_dataset.get_datasets(mode='train', shuffle_files=True, take=take)
+    val_tf_dataset = val_dataset.get_datasets(mode='val', shuffle_files=True, take=take)
 
     train_tf_dataset = train_tf_dataset.shuffle(model_hparams['shuffle_buffer_size'], reshuffle_each_iteration=True)
 
@@ -64,6 +64,8 @@ def train_main(dataset_dirs: List[pathlib.Path],
                checkpoint: Optional[pathlib.Path] = None,
                threshold: Optional[float] = None,
                ensemble_idx: Optional[int] = None,
+               take: Optional[int] = None,
+               validate: bool = True,
                trials_directory: Optional[pathlib.Path] = None,
                **kwargs):
     model_hparams = hjson.load(model_hparams.open('r'))
@@ -84,18 +86,29 @@ def train_main(dataset_dirs: List[pathlib.Path],
 
     checkpoint_name, trial_path = setup_training_paths(checkpoint, ensemble_idx, log, model_hparams, trials_directory)
 
+    if validate:
+        mid_epoch_val_batches = 100
+        val_every_n_batches = 100
+        save_every_n_minutes = 20
+        validate_first = True
+    else:
+        mid_epoch_val_batches = None
+        val_every_n_batches = None
+        save_every_n_minutes = None
+        validate_first = False
+
     runner = ModelRunner(model=model,
                          training=True,
                          params=model_hparams,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
                          checkpoint=checkpoint,
-                         mid_epoch_val_batches=100,
-                         val_every_n_batches=100,
-                         save_every_n_minutes=20,
-                         validate_first=True,
+                         mid_epoch_val_batches=mid_epoch_val_batches,
+                         val_every_n_batches=val_every_n_batches,
+                         save_every_n_minutes=save_every_n_minutes,
+                         validate_first=validate_first,
                          batch_metadata=train_dataset.batch_metadata)
-    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset)
+    train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset, take)
 
     final_val_metrics = runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
@@ -106,6 +119,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               mode: str,
               batch_size: int,
               use_gt_rope: bool,
+              take: Optional[int] = None,
               checkpoint: Optional[pathlib.Path] = None,
               trials_directory=pathlib.Path,
               **kwargs):
@@ -119,8 +133,8 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    tf_dataset = test_dataset.get_datasets(mode=mode)
+    dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    tf_dataset = dataset.get_datasets(mode=mode, take=take)
     tf_dataset = balance(tf_dataset)
 
     ###############
@@ -128,7 +142,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=True)
 
-    net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
+    net = model(hparams=params, batch_size=batch_size, scenario=dataset.scenario)
     # This call to model runner restores the model
     runner = ModelRunner(model=net,
                          training=False,
@@ -136,7 +150,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
                          checkpoint=checkpoint,
                          trial_path=trial_path,
                          key_metric=AccuracyMetric,
-                         batch_metadata=test_dataset.batch_metadata)
+                         batch_metadata=dataset.batch_metadata)
 
     metrics = runner.val_epoch(tf_dataset)
     for metric_name, metric_value in metrics.items():
