@@ -174,6 +174,9 @@ def make_box_marker_from_extents(extent):
     return m
 
 
+rope_key_name = 'rope'
+
+
 class FloatingRopeScenario(Base3DScenario):
     IMAGE_H = 90
     IMAGE_W = 160
@@ -744,12 +747,13 @@ class FloatingRopeScenario(Base3DScenario):
         return distance
 
     def classifier_distance(self, s1: Dict, s2: Dict):
-        labeling_states = s1['rope']
-        labeling_predicted_states = s2['rope']
-        points_shape = labeling_states.shape.as_list()[:2] + [-1, 3]
-        labeling_points = tf.reshape(labeling_states, points_shape)
-        labeling_predicted_points = tf.reshape(labeling_predicted_states, points_shape)
-        model_error = tf.reduce_mean(tf.linalg.norm(labeling_points - labeling_predicted_points, axis=-1), axis=-1)
+        model_error = np.linalg.norm(s1[rope_key_name] - s2[rope_key_name], axis=-1)
+        # labeling_states = s1['rope']
+        # labeling_predicted_states = s2['rope']
+        # points_shape = labeling_states.shape.as_list()[:2] + [-1, 3]
+        # labeling_points = tf.reshape(labeling_states, points_shape)
+        # labeling_predicted_points = tf.reshape(labeling_predicted_states, points_shape)
+        # model_error = tf.reduce_mean(tf.linalg.norm(labeling_points - labeling_predicted_points, axis=-1), axis=-1)
         return model_error
 
     def compute_label(self, actual: Dict, predicted: Dict, labeling_params: Dict):

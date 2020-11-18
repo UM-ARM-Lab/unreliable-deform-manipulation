@@ -1,0 +1,25 @@
+{
+  nickname: scirob_dragging
+  collect_dynamics_data_1:
+  {
+    dynamics_dataset_dir: fwd_model_data/scirob_dragging_phase1
+  }
+  collect_dynamics_data_2:
+  {
+    dynamics_dataset_dir: fwd_model_data/scirob_dragging_phase2
+  }
+  learn_dynamics:
+  {
+    model_dirs:
+    [
+      dy_trials/scirob_dragging_0
+      dy_trials/scirob_dragging_1
+      dy_trials/scirob_dragging_2
+      dy_trials/scirob_dragging_3
+      dy_trials/scirob_dragging_4
+      dy_trials/scirob_dragging_5
+      dy_trials/scirob_dragging_6
+      dy_trials/scirob_dragging_7
+    ]
+  }
+}

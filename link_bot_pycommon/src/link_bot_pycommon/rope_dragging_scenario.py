@@ -30,6 +30,7 @@ from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, 
 from std_srvs.srv import EmptyRequest, Empty
 from visualization_msgs.msg import MarkerArray, Marker
 
+rope_key_name = 'link_bot'
 
 class RopeDraggingScenario(Base3DScenario):
     n_links = 10
@@ -60,7 +61,7 @@ class RopeDraggingScenario(Base3DScenario):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)
 
-        rope_points = np.reshape(state['rope'], [-1, 3])
+        rope_points = np.reshape(state[rope_key_name], [-1, 3])
 
         msg = MarkerArray()
         lines = Marker()
@@ -321,7 +322,7 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': ros_numpy.numpify(grippers_res.gripper1),
-            'rope': np.array(rope_state_vector, np.float32),
+            rope_key_name: np.array(rope_state_vector, np.float32),
         }
 
     def get_state(self):
@@ -342,14 +343,14 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': ros_numpy.numpify(gripper_res.pos),
-            'rope': np.array(rope_state_vector, np.float32),
+            rope_key_name: np.array(rope_state_vector, np.float32),
         }
 
     @staticmethod
     def states_description() -> Dict:
         return {
             'gripper': 3,
-            'rope': RopeDraggingScenario.n_links * 3,
+            rope_key_name: RopeDraggingScenario.n_links * 3,
         }
 
     @staticmethod
@@ -370,32 +371,33 @@ class RopeDraggingScenario(Base3DScenario):
         :param goal: Assumed to be a point in 3D
         :return:
         """
-        rope_points = np.reshape(state['rope'], [-1, 3])
+        rope_points = np.reshape(state[rope_key_name], [-1, 3])
         tail_point = rope_points[0]
         distance = np.linalg.norm(tail_point - goal['tail'])
         return distance
 
     @staticmethod
     def distance_to_goal_differentiable(state, goal):
-        rope_points = tf.reshape(state['rope'], [-1, 3])
+        rope_points = tf.reshape(state[rope_key_name], [-1, 3])
         tail_point = rope_points[0]
         distance = tf.linalg.norm(tail_point - goal)
         return distance
 
     def classifier_distance(self, s1: Dict, s2: Dict):
-        return np.linalg.norm(s1['rope'] - s2['rope'], axis=1)
+        model_error = np.linalg.norm(s1[rope_key_name] - s2[rope_key_name], axis=-1)
+        return model_error
 
     @staticmethod
     def distance_differentiable(s1, s2):
-        rope_points1 = tf.reshape(s1['rope'], [-1, 3])
+        rope_points1 = tf.reshape(s1[rope_key_name], [-1, 3])
         tail_point1 = rope_points1[0]
-        rope_points2 = tf.reshape(s2['rope'], [-1, 3])
+        rope_points2 = tf.reshape(s2[rope_key_name], [-1, 3])
         tail_point2 = rope_points2[0]
         return tf.linalg.norm(tail_point1 - tail_point2)
 
     @staticmethod
     def state_to_points_for_cc(state: Dict):
-        return state['rope'].reshape(-1, 3)
+        return state[rope_key_name].reshape(-1, 3)
 
     def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         # add more inflating to reduce the number of truly unacheivable gols
@@ -439,7 +441,7 @@ class RopeDraggingScenario(Base3DScenario):
 
     @staticmethod
     def put_state_local_frame(state):
-        rope = state['rope']
+        rope = state[rope_key_name]
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         points = tf.reshape(rope, rope_points_shape)
         center = state['gripper']
@@ -454,7 +456,7 @@ class RopeDraggingScenario(Base3DScenario):
 
         return {
             'gripper': gripper_local,
-            'rope': rope_local,
+            rope_key_name: rope_local,
         }
 
     @staticmethod
@@ -583,7 +585,7 @@ class RopeDraggingScenario(Base3DScenario):
         for i in range(3):
             state_out[0][i] = np.float64(state_np['gripper'][i])
         for i in range(RopeDraggingScenario.n_links * 3):
-            state_out[1][i] = np.float64(state_np['rope'][i])
+            state_out[1][i] = np.float64(state_np[rope_key_name][i])
         state_out[2][0] = np.float64(state_np['stdev'][0])
         state_out[3][0] = np.float64(state_np['num_diverged'][0])
 
@@ -598,7 +600,7 @@ class RopeDraggingScenario(Base3DScenario):
         rope = np.array(rope)
         return {
             'gripper': gripper,
-            'rope': rope,
+            rope_key_name: rope,
             'stdev': np.array([ompl_state[2][0]]),
             'num_diverged': np.array([ompl_state[3][0]]),
         }
@@ -807,7 +809,7 @@ class RopeDraggingStateSampler(ob.RealVectorStateSampler):
         random_point_rope = np.concatenate([random_point] * RopeDraggingScenario.n_links)
         state_np = {
             'gripper': random_point,
-            'rope': random_point_rope,
+            rope_key_name: random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }
@@ -857,7 +859,7 @@ class RopeDraggingGoalRegion(ob.GoalSampleableRegion):
 
         goal_state_np = {
             'gripper': self.goal['tail'],
-            'rope': rope,
+            rope_key_name: rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
             'stdev': np.zeros(1, dtype=np.float64),
         }

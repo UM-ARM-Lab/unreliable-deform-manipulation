@@ -42,30 +42,23 @@ def make_classifier_dataset(dataset_dir: pathlib.Path,
                             outdir: pathlib.Path,
                             use_gt_rope: bool,
                             visualize: bool,
+                            batch_size,
                             start_at: Optional[int] = None,
                             stop_at: Optional[int] = None,
                             ):
     labeling_params = hjson.load(labeling_params.open("r"))
-    make_classifier_dataset_from_params_dict(dataset_dir=dataset_dir,
-                                             fwd_model_dir=fwd_model_dir,
-                                             labeling_params=labeling_params,
-                                             outdir=outdir,
-                                             use_gt_rope=use_gt_rope,
-                                             visualize=visualize,
-                                             stop_at=stop_at,
-                                             start_at=start_at,
-                                             )
+    make_classifier_dataset_from_params_dict(dataset_dir=dataset_dir, fwd_model_dir=fwd_model_dir,
+                                             labeling_params=labeling_params, outdir=outdir, use_gt_rope=use_gt_rope,
+                                             visualize=visualize, take=None, batch_size=batch_size,
+                                             start_at=start_at, stop_at=stop_at)
 
 
-def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
-                                             fwd_model_dir: List[pathlib.Path],
-                                             labeling_params: Dict,
-                                             outdir: pathlib.Path,
-                                             use_gt_rope: bool,
+def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path, fwd_model_dir: List[pathlib.Path],
+                                             labeling_params: Dict, outdir: pathlib.Path, use_gt_rope: bool,
                                              visualize: bool,
-                                             start_at: Optional[int] = None,
-                                             stop_at: Optional[int] = None,
-                                             ):
+                                             take: Optional[int] = None,
+                                             batch_size: Optional[int] = None,
+                                             start_at: Optional[int] = None, stop_at: Optional[int] = None):
     # append "best_checkpoint" before loading
     if not isinstance(fwd_model_dir, List):
         fwd_model_dir = [fwd_model_dir]
@@ -96,12 +89,11 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path,
     t0 = perf_counter()
     total_example_idx = 0
     for mode in ['train', 'val', 'test']:
-        tf_dataset = dataset.get_datasets(mode=mode)
+        tf_dataset = dataset.get_datasets(mode=mode, take=take)
 
         full_output_directory = outdir / mode
         full_output_directory.mkdir(parents=True, exist_ok=True)
 
-        batch_size = 8
         out_examples_gen = generate_classifier_examples(fwd_models, tf_dataset, dataset, labeling_params, batch_size)
         for out_examples in out_examples_gen:
             for out_examples_for_start_t in out_examples:
@@ -184,14 +176,14 @@ def generate_classifier_examples_from_batch(scenario: ExperimentScenario, predic
         classifier_end_t_batched = tf.cast(
             tf.stack([classifier_end_t] * prediction_actual.batch_size, axis=0), tf.float32)
         out_example = {
-            'env': prediction_actual.dataset_element['env'],
-            'origin': prediction_actual.dataset_element['origin'],
-            'extent': prediction_actual.dataset_element['extent'],
-            'res': prediction_actual.dataset_element['res'],
-            'traj_idx': prediction_actual.dataset_element['traj_idx'],
+            'env':                prediction_actual.dataset_element['env'],
+            'origin':             prediction_actual.dataset_element['origin'],
+            'extent':             prediction_actual.dataset_element['extent'],
+            'res':                prediction_actual.dataset_element['res'],
+            'traj_idx':           prediction_actual.dataset_element['traj_idx'],
             'prediction_start_t': prediction_start_t_batched,
             'classifier_start_t': classifier_start_t_batched,
-            'classifier_end_t': classifier_end_t_batched,
+            'classifier_end_t':   classifier_end_t_batched,
         }
 
         # this slice gives arrays of fixed length (ex, 5) which must be null padded from out_example_end_idx onwards

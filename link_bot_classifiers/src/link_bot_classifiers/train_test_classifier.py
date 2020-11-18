@@ -97,9 +97,9 @@ def train_main(dataset_dirs: List[pathlib.Path],
                          batch_metadata=train_dataset.batch_metadata)
     train_tf_dataset, val_tf_dataset = setup_datasets(model_hparams, batch_size, seed, train_dataset, val_dataset)
 
-    runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
+    final_val_metrics = runner.train(train_tf_dataset, val_tf_dataset, num_epochs=epochs)
 
-    return trial_path
+    return trial_path, final_val_metrics
 
 
 def eval_main(dataset_dirs: List[pathlib.Path],
@@ -120,14 +120,13 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     # Dataset
     ###############
     test_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    test_tf_dataset = test_dataset.get_datasets(mode=mode)
-    test_tf_dataset = balance(test_tf_dataset)
-    scenario = test_dataset.scenario
+    tf_dataset = test_dataset.get_datasets(mode=mode)
+    tf_dataset = balance(tf_dataset)
 
     ###############
     # Evaluate
     ###############
-    test_tf_dataset = batch_tf_dataset(test_tf_dataset, batch_size, drop_remainder=True)
+    tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=True)
 
     net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
     # This call to model runner restores the model
@@ -139,9 +138,10 @@ def eval_main(dataset_dirs: List[pathlib.Path],
                          key_metric=AccuracyMetric,
                          batch_metadata=test_dataset.batch_metadata)
 
-    metrics = runner.val_epoch(test_tf_dataset)
+    metrics = runner.val_epoch(tf_dataset)
     for metric_name, metric_value in metrics.items():
         print(f"{metric_name:30s}: {metric_value}")
+    return metrics
 
 
 def viz_main(dataset_dirs: List[pathlib.Path],

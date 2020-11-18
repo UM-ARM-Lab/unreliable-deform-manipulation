@@ -8,9 +8,9 @@ import tensorflow as tf
 from colorama import Fore
 
 import rospy
+from arc_utilities.filesystem_utils import mkdir_and_ask
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset
 from link_bot_pycommon.args import my_formatter
-from arc_utilities.filesystem_utils import mkdir_and_ask
 from moonshine.gpu_config import limit_gpu_mem
 
 limit_gpu_mem(6)
@@ -26,8 +26,9 @@ def main():
     parser.add_argument('labeling_params', type=pathlib.Path)
     parser.add_argument('fwd_model_dir', type=pathlib.Path, help='forward model', nargs="+")
     parser.add_argument('--total-take', type=int, help="will be split up between train/test/val")
-    parser.add_argument('--start-at', type=int, help='start at this example in the input dynamic dataset')
-    parser.add_argument('--stop-at', type=int, help='start at this example in the input dynamic dataset')
+    parser.add_argument('--start-at', type=str, help='mode:batch_index, ex train:10')
+    parser.add_argument('--stop-at', type=str, help='mode:batch_index, ex train:10')
+    parser.add_argument('--batch-size', type=int, help='batch size', default=8)
     parser.add_argument('--yes', '-y', action='store_true')
     parser.add_argument('--use-gt-rope', action='store_true')
     parser.add_argument('--visualize', action='store_true')
@@ -47,10 +48,10 @@ def main():
                             labeling_params=args.labeling_params,
                             outdir=outdir,
                             use_gt_rope=args.use_gt_rope,
-                            start_at=args.start_at,
                             visualize=args.visualize,
+                            batch_size=args.batch_size,
+                            start_at=args.start_at,
                             stop_at=args.stop_at)
 
-
-if __name__ == '__main__':
-    main()
+    if __name__ == '__main__':
+        main()
