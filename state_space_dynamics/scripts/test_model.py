@@ -49,10 +49,7 @@ def main():
     service_provider = GazeboServices()
     service_provider.setup_env(verbose=0, real_time_rate=0,
                                max_step_size=fwd_model.data_collection_params['max_step_size'])
-    environment = get_environment_for_extents_3d(extent=fwd_model.data_collection_params['extent'],
-                                                 res=fwd_model.data_collection_params['res'],
-                                                 service_provider=service_provider,
-                                                 robot_name=fwd_model.scenario.robot_name())
+    environment = fwd_model.scenario.get_environment(params=fwd_model.data_collection_params)
     start_state = fwd_model.scenario.get_state()
     start_state = make_dict_tf_float32(start_state)
     start_states = [start_state]

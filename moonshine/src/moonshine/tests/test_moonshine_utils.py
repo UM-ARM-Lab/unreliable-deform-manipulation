@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from moonshine.moonshine_utils import dict_of_sequences_to_sequence_of_dicts, dict_of_sequences_to_sequence_of_dicts_tf, \
-    flatten_batch_and_time, gather_dict, index_dict_of_batched_tensors_tf
+    flatten_batch_and_time, gather_dict, index_dict_of_batched_tensors_tf, repeat, add_time_dim
 from moonshine.tests import testing_utils
 
 
@@ -95,4 +95,53 @@ class Test(TestCase):
             'b': tf.constant([[0], [3], [6]], dtype=tf.float32),
         }
         out_dict = index_dict_of_batched_tensors_tf(input_dict, index=0, batch_axis=1, keep_dims=True)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
+
+    def test_repeat(self):
+        input_dict = {
+            'a': tf.constant([[2], [5], [8]], dtype=tf.float32),
+            'b': tf.constant([0, 1], dtype=tf.float32),
+        }
+
+        ########################################################################
+        expected_dict = {
+            'a': tf.constant([[[2], [5], [8]], [[2], [5], [8]]], dtype=tf.float32),
+            'b': tf.constant([[0, 1], [0, 1]], dtype=tf.float32),
+        }
+        out_dict = repeat(input_dict, repetitions=2, axis=0, new_axis=True)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
+
+        ########################################################################
+        expected_dict = {
+            'a': tf.constant([[2], [5], [8], [2], [5], [8]], dtype=tf.float32),
+            'b': tf.constant([0, 1, 0, 1], dtype=tf.float32),
+        }
+        out_dict = repeat(input_dict, repetitions=2, axis=0, new_axis=False)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
+
+        ########################################################################
+        expected_dict = {
+            'a': tf.constant([[[2], [2]], [[5], [5]], [[8], [8]]], dtype=tf.float32),
+            'b': tf.constant([[0, 0], [1, 1]], dtype=tf.float32),
+        }
+        out_dict = repeat(input_dict, repetitions=2, axis=1, new_axis=True)
+        testing_utils.assert_dicts_close_tf(out_dict, expected_dict)
+
+        ########################################################################
+        with self.assertRaises(IndexError):
+            # you can't ask for an axis that doesn't exist without new_axis=True
+            out_dict = repeat(input_dict, repetitions=2, axis=1, new_axis=False)
+
+    def test_add_time_dim(self):
+        input_dict = {
+            'a': tf.constant([[2], [5], [8]], dtype=tf.float32),
+            'b': tf.constant([0, 1], dtype=tf.float32),
+        }
+
+        ########################################################################
+        expected_dict = {
+            'a': tf.constant([[[2]], [[5]], [[8]]], dtype=tf.float32),
+            'b': tf.constant([[0], [1]], dtype=tf.float32),
+        }
+        out_dict = add_time_dim(input_dict)
         testing_utils.assert_dicts_close_tf(out_dict, expected_dict)

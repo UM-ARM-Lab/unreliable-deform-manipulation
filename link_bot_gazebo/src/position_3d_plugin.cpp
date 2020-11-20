@@ -152,10 +152,10 @@ bool Position3dPlugin::OnRegister(peter_msgs::RegisterPosition3DControllerReques
     controllers_map_.emplace(req.scoped_link_name,
                              std::make_unique<LinkPosition3dPIDController>(PLUGIN_NAME,
                                                                            link,
-                                                                           1.0,
-                                                                           1.0,
-                                                                           1.0,
-                                                                           1.0,
+                                                                           req.kp_pos,
+                                                                           req.kp_vel,
+                                                                           req.max_force,
+                                                                           req.max_vel,
                                                                            true));
     ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME, "registered PID controller for link " << req.scoped_link_name);
   } else if (req.controller_type == "kinematic")

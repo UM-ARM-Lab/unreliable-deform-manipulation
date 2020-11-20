@@ -197,7 +197,6 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
         if s_t_pred is not None:
             scenario.plot_state_rviz(s_t_pred, label='predicted', color=c)
             is_close = scenario.compute_label(s_t, s_t_pred, labeling_params)
-            # print(s_t['gripper1'])
             scenario.plot_is_close(is_close)
         else:
             scenario.plot_is_close(None)

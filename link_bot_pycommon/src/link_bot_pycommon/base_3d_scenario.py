@@ -15,7 +15,6 @@ from merrrt_visualization.rviz_animation_controller import RvizAnimationControll
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from peter_msgs.msg import LabelStatus
 from peter_msgs.srv import WorldControl, WorldControlRequest
-from std_msgs.msg import Float32
 from tf import transformations
 from visualization_msgs.msg import MarkerArray, Marker
 
@@ -242,9 +241,9 @@ class Base3DScenario(ExperimentScenario):
             example = example[0]
 
         return {
-            'env': example['env'],
+            'env':    example['env'],
             'origin': example['origin'],
-            'res': example['res'],
+            'res':    example['res'],
             'extent': example['extent'],
         }
 
@@ -288,6 +287,3 @@ class Base3DScenario(ExperimentScenario):
             res = self.get_model_state_srv(get_req)
             poses[object_name] = res
         return poses
-
-    def compute_label(self, s_: Dict, s_t_pred: Dict, labeling_params: Dict):
-        raise NotImplementedError()

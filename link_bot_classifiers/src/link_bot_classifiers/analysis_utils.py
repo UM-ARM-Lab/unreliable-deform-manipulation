@@ -1,6 +1,5 @@
 from typing import Dict, List
 
-import numpy as np
 import tensorflow as tf
 
 import rospy
@@ -11,13 +10,13 @@ from link_bot_planning.plan_and_execute import execute_actions
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
-from link_bot_pycommon.ros_pycommon import (get_environment_for_extents_3d,
-                                            make_movable_object_services)
+from link_bot_pycommon.ros_pycommon import (make_movable_object_services)
 from moonshine.ensemble import Ensemble
 from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
+from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
-def predict(fwd_model: Ensemble,
+def predict(fwd_model: BaseDynamicsFunction,
             environment: Dict,
             start_states: List[Dict],
             actions: List[List[List[Dict]]],
@@ -33,8 +32,9 @@ def predict(fwd_model: Ensemble,
     start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
 
     # Actually do the predictions
-    predictions_dict = fwd_model.propagate_differentiable_batched(
-        start_states=start_states_tiled, actions=actions_batched)
+    predictions_dict, _ = fwd_model.propagate_differentiable_batched(environment=environment,
+                                                                     state=start_states_tiled,
+                                                                     actions=actions_batched)
 
     # break out the num actions and num start states
     n_states = n_actions + 1
@@ -85,8 +85,8 @@ def predict_and_classify(fwd_model: Ensemble,
     start_states_tiled = {k: tf.concat([v] * n_actions_sampled, axis=0) for k, v in start_states.items()}
 
     # Actually do the predictions
-    predictions_dict = fwd_model.propagate_differentiable_batched(
-        start_states=start_states_tiled, actions=actions_batched)
+    predictions_dict = fwd_model.propagate_differentiable_batched(start_states=start_states_tiled,
+                                                                  actions=actions_batched)
 
     # Run classifier
     accept_probabilities = classifier.check_constraint_batched_tf(environment=environment_batched,
@@ -154,10 +154,7 @@ def setup(service_provider: BaseServices, fwd_model: Ensemble, test_params: Dict
     movable_object_services = {k: make_movable_object_services(k) for k in test_params['object_positions'].keys()}
     fwd_model.scenario.move_objects_to_positions(movable_object_services, test_params['object_positions'])
 
-    environment = get_environment_for_extents_3d(extent=test_params['extent'],
-                                                 res=fwd_model.data_collection_params['res'],
-                                                 service_provider=service_provider,
-                                                 robot_name=fwd_model.scenario.robot_name())
+    environment = fwd_model.scenario.get_environment(params=fwd_model.data_collection_params)
     return environment
 
 

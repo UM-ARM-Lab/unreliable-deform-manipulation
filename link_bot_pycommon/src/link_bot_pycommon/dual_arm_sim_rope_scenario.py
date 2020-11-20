@@ -80,20 +80,20 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         set_req.position.x = 1.3
         set_req.position.y = 0.3
         set_req.position.z = 1.3
-        self.pos3d_set_srv(set_req)
+        self.pos3d.set(set_req)
 
         set_req = Position3DActionRequest()
         set_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
         set_req.position.x = 1.3
         set_req.position.y = -0.3
         set_req.position.z = 1.3
-        self.pos3d_set_srv(set_req)
+        self.pos3d.set(set_req)
 
     def detach_rope_from_gripper(self, rope_link_name: str):
         enable_req = Position3DEnableRequest()
         enable_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, rope_link_name)
         enable_req.enable = False
-        self.pos3d_enable_srv(enable_req)
+        self.pos3d.enable(enable_req)
 
     def detach_rope_from_grippers(self):
         self.detach_rope_from_gripper('left_gripper')

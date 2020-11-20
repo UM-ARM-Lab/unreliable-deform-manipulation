@@ -153,11 +153,13 @@ class ExperimentScenario:
         """ this is not the distance metric used in planning """
         raise NotImplementedError()
 
-    def __repr__(self):
-        raise NotImplementedError()
+    def compute_label(self, actual: Dict, predicted: Dict, labeling_params: Dict):
+        model_error = self.classifier_distance(actual, predicted)
+        threshold = labeling_params['threshold']
+        is_close = model_error < threshold
+        return is_close
 
-    @staticmethod
-    def robot_name():
+    def __repr__(self):
         raise NotImplementedError()
 
     @staticmethod
@@ -273,6 +275,12 @@ class ExperimentScenario:
 
     def get_environment(self, params: Dict, **kwargs):
         raise NotImplementedError()
+
+    def on_before_action(self):
+        pass
+
+    def on_before_get_state_or_execute_action(self):
+        pass
 
     def on_before_data_collection(self, params: Dict):
         pass

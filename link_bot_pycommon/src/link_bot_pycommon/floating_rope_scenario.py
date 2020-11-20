@@ -12,12 +12,14 @@ from arc_utilities.marker_utils import scale_marker_array
 from geometry_msgs.msg import Point
 from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_data.visualization import rviz_arrow
+from link_bot_gazebo_python.position_3d import Position3D
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
+from link_bot_pycommon.bbox_marker_utils import make_box_marker_from_extents
 from link_bot_pycommon.bbox_visualization import extent_array_to_bbox
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.constants import KINECT_MAX_DEPTH
-from link_bot_pycommon.grid_utils import extent_to_env_size, extent_to_center
+from link_bot_pycommon.make_rope_markers import make_gripper_marker, make_rope_marker
 from link_bot_pycommon.pycommon import default_if_none
 from link_bot_pycommon.ros_pycommon import publish_color_image, publish_depth_image
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -38,140 +40,6 @@ except ImportError:
 
 def gz_scope(*args):
     return "::".join(args)
-
-
-def make_gripper_marker(position, id, r, g, b, a, label, type):
-    gripper_marker = Marker()
-    gripper_marker.action = Marker.ADD  # create or modify
-    gripper_marker.type = type
-    gripper_marker.header.frame_id = "world"
-    gripper_marker.header.stamp = rospy.Time.now()
-    gripper_marker.ns = label
-    gripper_marker.id = id
-    gripper_marker.scale.x = 0.02
-    gripper_marker.scale.y = 0.02
-    gripper_marker.scale.z = 0.02
-    gripper_marker.pose.position.x = position[0]
-    gripper_marker.pose.position.y = position[1]
-    gripper_marker.pose.position.z = position[2]
-    gripper_marker.pose.orientation.w = 1
-    gripper_marker.color.r = r
-    gripper_marker.color.g = g
-    gripper_marker.color.b = b
-    gripper_marker.color.a = a
-    return gripper_marker
-
-
-def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marker_type=Marker.SPHERE_LIST):
-    lines = Marker()
-    lines.action = Marker.ADD  # create or modify
-    lines.type = Marker.LINE_STRIP
-    lines.header.frame_id = frame_id
-    lines.header.stamp = rospy.Time.now()
-    lines.ns = label
-    lines.id = 6 * idx + 0
-    lines.pose.position.x = 0
-    lines.pose.position.y = 0
-    lines.pose.position.z = 0
-    lines.pose.orientation.x = 0
-    lines.pose.orientation.y = 0
-    lines.pose.orientation.z = 0
-    lines.pose.orientation.w = 1
-    lines.scale.x = 0.005
-    lines.scale.y = 0.005
-    lines.scale.z = 0.005
-    lines.color.r = r
-    lines.color.g = g
-    lines.color.b = b
-    lines.color.a = a
-    points_marker = Marker()
-    points_marker.action = Marker.ADD  # create or modify
-    points_marker.type = points_marker_type
-    points_marker.header.frame_id = frame_id
-    points_marker.header.stamp = rospy.Time.now()
-    points_marker.ns = label
-    points_marker.id = 6 * idx + 1
-    points_marker.scale.x = 0.01
-    points_marker.scale.y = 0.01
-    points_marker.scale.z = 0.01
-    points_marker.pose.position.x = 0
-    points_marker.pose.position.y = 0
-    points_marker.pose.position.z = 0
-    points_marker.pose.orientation.x = 0
-    points_marker.pose.orientation.y = 0
-    points_marker.pose.orientation.z = 0
-    points_marker.pose.orientation.w = 1
-    points_marker.color.r = r
-    points_marker.color.g = g
-    points_marker.color.b = b
-    points_marker.color.a = a
-    for i, (x, y, z) in enumerate(rope_points):
-        point = Point()
-        point.x = x
-        point.y = y
-        point.z = z
-
-        points_marker.points.append(point)
-        lines.points.append(point)
-    midpoint_sphere = Marker()
-    midpoint_sphere.action = Marker.ADD  # create or modify
-    midpoint_sphere.type = Marker.SPHERE
-    midpoint_sphere.header.frame_id = frame_id
-    midpoint_sphere.header.stamp = rospy.Time.now()
-    midpoint_sphere.ns = label
-    midpoint_sphere.id = 6 * idx + 5
-    midpoint_sphere.scale.x = 0.012
-    midpoint_sphere.scale.y = 0.012
-    midpoint_sphere.scale.z = 0.012
-    rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
-    midpoint_sphere.pose.position.x = rope_midpoint[0]
-    midpoint_sphere.pose.position.y = rope_midpoint[1]
-    midpoint_sphere.pose.position.z = rope_midpoint[2]
-    midpoint_sphere.pose.orientation.x = 0
-    midpoint_sphere.pose.orientation.y = 0
-    midpoint_sphere.pose.orientation.z = 0
-    midpoint_sphere.pose.orientation.w = 1
-    midpoint_sphere.color.r = r * 0.8
-    midpoint_sphere.color.g = g * 0.8
-    midpoint_sphere.color.b = b * 0.8
-    midpoint_sphere.color.a = a
-    first_point_text = Marker()
-    first_point_text.action = Marker.ADD  # create or modify
-    first_point_text.type = Marker.TEXT_VIEW_FACING
-    first_point_text.header.frame_id = frame_id
-    first_point_text.header.stamp = rospy.Time.now()
-    first_point_text.ns = label
-    first_point_text.id = 6 * idx + 4
-    first_point_text.text = "0"
-    first_point_text.scale.z = 0.015
-    first_point_text.pose.position.x = rope_points[0, 0]
-    first_point_text.pose.position.y = rope_points[0, 1]
-    first_point_text.pose.position.z = rope_points[0, 2] + 0.015
-    first_point_text.pose.orientation.x = 0
-    first_point_text.pose.orientation.y = 0
-    first_point_text.pose.orientation.z = 0
-    first_point_text.pose.orientation.w = 1
-    first_point_text.color.r = 1.0
-    first_point_text.color.g = 1.0
-    first_point_text.color.b = 1.0
-    first_point_text.color.a = 1.0
-    return [points_marker, lines, midpoint_sphere, first_point_text]
-
-
-def make_box_marker_from_extents(extent):
-    m = Marker()
-    ysize, xsize, zsize = extent_to_env_size(extent)
-    xcenter, ycenter, zcenter = extent_to_center(extent)
-    m.scale.x = xsize
-    m.scale.y = ysize
-    m.scale.z = zsize
-    m.action = Marker.ADD
-    m.type = Marker.CUBE
-    m.pose.position.x = xcenter
-    m.pose.position.y = ycenter
-    m.pose.position.z = zcenter
-    m.pose.orientation.w = 1
-    return m
 
 
 rope_key_name = 'rope'
@@ -206,14 +74,7 @@ class FloatingRopeScenario(Base3DScenario):
                                                           GetDualGripperPoints)
         self.get_rope_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_rope_state"), GetRopeState)
 
-        self.register_controller_srv = rospy.ServiceProxy("/position_3d_plugin/register", RegisterPosition3DController)
-        self.pos3d_follow_srv = rospy.ServiceProxy("/position_3d_plugin/follow", Position3DFollow)
-        self.pos3d_enable_srv = rospy.ServiceProxy("/position_3d_plugin/enable", Position3DEnable)
-        self.pos3d_set_srv = rospy.ServiceProxy("/position_3d_plugin/set", Position3DAction)
-        self.pos3d_move_srv = rospy.ServiceProxy("/position_3d_plugin/move", Position3DAction)
-        self.pos3d_wait_srv = rospy.ServiceProxy("/position_3d_plugin/wait", Position3DWait)
-        self.pos3d_get_srv = rospy.ServiceProxy("/position_3d_plugin/get", GetPosition3D)
-
+        self.pos3d = Position3D()
         self.cdcpd_listener = Listener("cdcpd/output", PointCloud2)
         self.set_rope_state_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "set_rope_state"), SetRopeState)
         self.reset_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
@@ -256,13 +117,16 @@ class FloatingRopeScenario(Base3DScenario):
     def randomization_initialization(self):
         pass
 
-    def on_before_data_collection(self, params: Dict):
+    def on_before_action(self):
         self.register_fake_grasping()
+
+    def on_before_data_collection(self, params: Dict):
+        self.on_before_action()
 
         left_gripper_position = np.array([1.0, 0.2, 1.0])
         right_gripper_position = np.array([1.0, -0.2, 1.0])
         init_action = {
-            'left_gripper_position': left_gripper_position,
+            'left_gripper_position':  left_gripper_position,
             'right_gripper_position': right_gripper_position,
         }
         self.execute_action(init_action)
@@ -271,14 +135,15 @@ class FloatingRopeScenario(Base3DScenario):
         speed_mps = action.get('speed', 0.1)
         left_req = self.pos_set_req(action['left_gripper_position'], speed_mps, 'left_gripper')
         right_req = self.pos_set_req(action['right_gripper_position'], speed_mps, 'right_gripper')
-        self.pos3d_move_srv(left_req)
-        self.pos3d_move_srv(right_req)
+        self.pos3d.move(left_req)
+        self.pos3d.move(right_req)
 
+        # FIXME: get ride of this wait and set timeout above, I think "move" waits?
         wait_req = Position3DWaitRequest()
         wait_req.timeout_s = 10.0
         wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
         wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
-        self.pos3d_wait_srv(wait_req)
+        self.pos3d.wait(wait_req)
 
         rope_settling_time = action.get('settling_time', 1.0)
         rospy.sleep(rope_settling_time)
@@ -338,9 +203,9 @@ class FloatingRopeScenario(Base3DScenario):
             right_gripper_position = state['right_gripper'] + right_gripper_delta_position
 
             action = {
-                'left_gripper_position': left_gripper_position,
-                'right_gripper_position': right_gripper_position,
-                'left_gripper_delta_position': left_gripper_delta_position,
+                'left_gripper_position':        left_gripper_position,
+                'right_gripper_position':       right_gripper_position,
+                'left_gripper_delta_position':  left_gripper_delta_position,
                 'right_gripper_delta_position': right_gripper_delta_position,
             }
 
@@ -419,7 +284,7 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper_i = left_gripper_start + left_gripper_delta * t
             right_gripper_i = right_gripper_start + right_gripper_delta * t
             action = {
-                'left_gripper_position': left_gripper_i,
+                'left_gripper_position':  left_gripper_i,
                 'right_gripper_position': right_gripper_i,
             }
             interpolated_actions.append(action)
@@ -448,9 +313,9 @@ class FloatingRopeScenario(Base3DScenario):
         rope_robot = tf.reshape(rope_points_robot, rope.shape)
 
         return {
-            'left_gripper': left_gripper_robot,
+            'left_gripper':  left_gripper_robot,
             'right_gripper': right_gripper_robot,
-            'rope': rope_robot,
+            'rope':          rope_robot,
         }
 
     @staticmethod
@@ -468,9 +333,9 @@ class FloatingRopeScenario(Base3DScenario):
         rope_local = tf.reshape(rope_points_local, rope.shape)
 
         return {
-            'left_gripper': left_gripper_local,
+            'left_gripper':  left_gripper_local,
             'right_gripper': right_gripper_local,
-            'rope': rope_local,
+            'rope':          rope_local,
         }
 
     @staticmethod
@@ -483,7 +348,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def apply_local_action_at_state(state, local_action):
         return {
-            'left_gripper_position': state['left_gripper'] + local_action['left_gripper_delta'],
+            'left_gripper_position':  state['left_gripper'] + local_action['left_gripper_delta'],
             'right_gripper_position': state['right_gripper'] + local_action['right_gripper_delta']
         }
 
@@ -492,7 +357,7 @@ class FloatingRopeScenario(Base3DScenario):
         left_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         right_gripper_noise = noise_rng.normal(scale=0.01, size=[3])
         return {
-            'left_gripper_position': action['left_gripper_position'] + left_gripper_noise,
+            'left_gripper_position':  action['left_gripper_position'] + left_gripper_noise,
             'right_gripper_position': action['right_gripper_position'] + right_gripper_noise
         }
 
@@ -513,7 +378,7 @@ class FloatingRopeScenario(Base3DScenario):
         right_gripper_delta = target_right_gripper_position - current_right_gripper_point[:, :n_action]
 
         return {
-            'left_gripper_delta': left_gripper_delta,
+            'left_gripper_delta':  left_gripper_delta,
             'right_gripper_delta': right_gripper_delta,
         }
 
@@ -557,10 +422,10 @@ class FloatingRopeScenario(Base3DScenario):
         # NOTE: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
         #  although that looses semantic meaning and means hard-coding indices a lot...
         left_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
-        left_res: GetPosition3DResponse = self.pos3d_get_srv(left_req)
+        left_res: GetPosition3DResponse = self.pos3d.get(left_req)
         left_rope_point_position = ros_numpy.numpify(left_res.pos)
         right_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
-        right_res: GetPosition3DResponse = self.pos3d_get_srv(right_req)
+        right_res: GetPosition3DResponse = self.pos3d.get(right_req)
         right_rope_point_position = ros_numpy.numpify(right_res.pos)
         return left_rope_point_position, right_rope_point_position
 
@@ -572,11 +437,11 @@ class FloatingRopeScenario(Base3DScenario):
         left_rope_point_position, right_rope_point_position = self.get_rope_point_positions()
 
         return {
-            'left_gripper': left_rope_point_position,
+            'left_gripper':  left_rope_point_position,
             'right_gripper': right_rope_point_position,
-            'gt_rope': np.array(rope_state_vector, np.float32),
-            'rope': np.array(cdcpd_vector, np.float32),
-            'rgbd': color_depth_cropped,
+            'gt_rope':       np.array(rope_state_vector, np.float32),
+            'rope':          np.array(cdcpd_vector, np.float32),
+            'rgbd':          color_depth_cropped,
         }
 
     def get_rgbd(self):
@@ -613,9 +478,9 @@ class FloatingRopeScenario(Base3DScenario):
 
     def observations_description(self) -> Dict:
         return {
-            'left_gripper': 3,
+            'left_gripper':  3,
             'right_gripper': 3,
-            'rgbd': [self.IMAGE_H, self.IMAGE_W, 4],
+            'rgbd':          [self.IMAGE_H, self.IMAGE_W, 4],
         }
 
     @staticmethod
@@ -626,7 +491,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def observation_features_description() -> Dict:
         return {
-            'rope': FloatingRopeScenario.n_links * 3,
+            'rope':  FloatingRopeScenario.n_links * 3,
             'cdcpd': FloatingRopeScenario.n_links * 3,
         }
 
@@ -634,7 +499,7 @@ class FloatingRopeScenario(Base3DScenario):
     def actions_description() -> Dict:
         # should match the keys of the dict return from action_to_dataset_action
         return {
-            'left_gripper_position': 3,
+            'left_gripper_position':  3,
             'right_gripper_position': 3,
         }
 
@@ -659,7 +524,7 @@ class FloatingRopeScenario(Base3DScenario):
             left_gripper = rng.uniform(extent[:, 0], extent[:, 1])
             right_gripper = rng.uniform(extent[:, 0], extent[:, 1])
             goal = {
-                'left_gripper': left_gripper,
+                'left_gripper':  left_gripper,
                 'right_gripper': right_gripper,
             }
             row1, col1, channel1 = grid_utils.point_to_idx_3d_in_env(
@@ -1058,19 +923,19 @@ class FloatingRopeScenario(Base3DScenario):
         register_left_req = RegisterPosition3DControllerRequest()
         register_left_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
         register_left_req.controller_type = "kinematic"
-        self.register_controller_srv(register_left_req)
+        self.pos3d.register(register_left_req)
         register_right_req = RegisterPosition3DControllerRequest()
         register_right_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
         register_right_req.controller_type = "kinematic"
-        self.register_controller_srv(register_right_req)
+        self.pos3d.register(register_right_req)
 
     def make_rope_endpoints_follow_gripper(self):
         left_follow_req = Position3DFollowRequest()
         left_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "left_gripper")
         left_follow_req.frame_id = "left_tool"
-        self.pos3d_follow_srv(left_follow_req)
+        self.pos3d.follow(left_follow_req)
 
         right_follow_req = Position3DFollowRequest()
         right_follow_req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, "right_gripper")
         right_follow_req.frame_id = "right_tool"
-        self.pos3d_follow_srv(right_follow_req)
+        self.pos3d.follow(right_follow_req)

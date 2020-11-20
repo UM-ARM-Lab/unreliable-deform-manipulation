@@ -5,7 +5,9 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import colors
 
+from link_bot_gazebo_python.position_3d import Position3D
 from link_bot_pycommon.base_services import BaseServices
+from rosgraph.names import ns_join
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -22,31 +24,25 @@ from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.grid_utils import point_to_idx_3d_in_env
 from link_bot_pycommon.ros_pycommon import make_movable_object_services, get_environment_for_extents_3d
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
-from peter_msgs.srv import DualGripperTrajectory, DualGripperTrajectoryRequest, GetDualGripperPoints, \
-    GetDualGripperPointsRequest, \
-    Position3DEnable, Position3DEnableRequest, WorldControlRequest
-from peter_msgs.srv import GetRopeState, GetRopeStateRequest, Position3DAction, Position3DActionRequest, GetPosition3D, \
-    GetPosition3DRequest
+from peter_msgs.srv import *
 from std_srvs.srv import EmptyRequest, Empty
 from visualization_msgs.msg import MarkerArray, Marker
 
 rope_key_name = 'link_bot'
+gazebo_model_name = "dragging_rope"
+
 
 class RopeDraggingScenario(Base3DScenario):
     n_links = 10
+    ROPE_NAMESPACE = 'dragging_rope'
+    ROPE_LINK_NAME = ns_join(ROPE_NAMESPACE, 'gripper1')
 
     def __init__(self):
         super().__init__()
         self.service_provider = BaseServices()
-        self.move_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/move", Position3DAction)
-        self.get_gripper_srv = rospy.ServiceProxy(f"{self.robot_name()}/get", GetPosition3D)
-        self.gripper_enable_srv = rospy.ServiceProxy(f"{self.robot_name()}/enable", Position3DEnable)
 
-        self.action_srv = rospy.ServiceProxy("execute_dual_gripper_action", DualGripperTrajectory)
-        self.get_grippers_srv = rospy.ServiceProxy("get_dual_gripper_points", GetDualGripperPoints)
-
-        self.get_rope_srv = rospy.ServiceProxy("get_rope_state", GetRopeState)
-
+        self.pos3d = Position3D()
+        self.get_rope_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "get_rope_state"), GetRopeState)
         self.reset_sim_srv = rospy.ServiceProxy("/gazebo/reset_simulation", Empty)
 
         self.last_action = None
@@ -56,6 +52,9 @@ class RopeDraggingScenario(Base3DScenario):
         for i in range(1, 10):
             k = f'moving_box{i}'
             self.movable_object_services[k] = make_movable_object_services(k)
+
+    def __repr__(self):
+        return "rope_dragging_scenario"
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
@@ -179,67 +178,30 @@ class RopeDraggingScenario(Base3DScenario):
 
         self.action_viz_pub.publish(msg)
 
-    def val_execute_action(self, action: Dict):
-        target_gripper1_point = ros_numpy.msgify(Point, action['gripper_position'])
-        target_gripper1_point.z = -0.06
-        target_gripper2_point = ros_numpy.msgify(Point, np.array([0.35, 0.2, 0.05]))
-
-        req = DualGripperTrajectoryRequest()
-        req.gripper1_points.append(target_gripper1_point)
-        req.gripper2_points.append(target_gripper2_point)
-        _ = self.action_srv(req)
+    def on_before_get_state_or_execute_action(self):
+        self.pos3d.register(RegisterPosition3DControllerRequest(scoped_link_name=self.ROPE_LINK_NAME))
 
     def execute_action(self, action: Dict):
-        # if rospy.get_param("use_val", False):
-        #     rospy.logwarn("TESTING WITH VAL")
-        #     self.val_execute_action(action)
-        #     return
-
-        # rospy.logwarn("WITH VAL")
-        # self.val_execute_action(action)
-
         req = Position3DActionRequest()
         req.position.x = action['gripper_position'][0]
         req.position.y = action['gripper_position'][1]
         req.position.z = action['gripper_position'][2]
-        if 'timeout' not in action:
-            req.timeout = 1.0
-        else:
-            req.timeout = action['timeout'][0]
+        timeout_s = action.get('timeout_s', 1.0)
+        speed_mps = action.get('speed', 0.1)
+        req = Position3DActionRequest(scoped_link_name=self.ROPE_LINK_NAME,
+                                      position=ros_numpy.msgify(Point, action['gripper_position']),
+                                      speed_mps=speed_mps,
+                                      timeout_s=timeout_s,
+                                      )
+        self.pos3d.move(req)
 
-        _ = self.move_gripper_srv(req)
-
-    def batch_stateless_sample_action(self,
-                                      environment: Dict,
-                                      state: Dict,
-                                      batch_size: int,
-                                      n_action_samples: int,
-                                      n_actions: int,
-                                      data_collection_params: Dict,
-                                      action_params: Dict,
-                                      action_rng: np.random.RandomState):
-        del action_rng  # unused, we used tf here
-        # Sample a new random action
-        yaw = tf.random.uniform([batch_size, n_action_samples, n_actions], -np.pi, np.pi)
-        max_d = action_params['max_distance_gripper_can_move']
-
-        displacement = tf.random.uniform([batch_size, n_action_samples, n_actions, 1], 0, max_d)
-
-        zeros = tf.zeros([batch_size, n_action_samples, n_actions], dtype=tf.float32)
-
-        gripper_delta_position = tf.stack([tf.math.sin(yaw), tf.math.cos(yaw), zeros], axis=3)
-        gripper_delta_position = gripper_delta_position * displacement
-
-        # Apply delta
-        gripper_position = state['gripper'][:, tf.newaxis, tf.newaxis] + gripper_delta_position
-
-        actions = {
-            'gripper_position': gripper_position,
-        }
-        return actions
-
-    def sample_action(self, action_rng: np.random.RandomState, environment: Dict, state, action_params: Dict,
-                      validate=False):
+    def sample_action(self,
+                      action_rng: np.random.RandomState,
+                      environment: Dict,
+                      state: Dict,
+                      action_params: Dict,
+                      validate: bool,
+                      stateless: Optional[bool] = False):
         action = None
         for _ in range(self.max_action_attempts):
             # sample the previous action with 80% probability, this improves exploration
@@ -255,20 +217,22 @@ class RopeDraggingScenario(Base3DScenario):
                 gripper_delta_position = np.array([dx, dy, 0])
 
             gripper_position = state['gripper'] + gripper_delta_position
-            rospy.logerr_once("FORCING Z POSITION TO BE 0")
-            gripper_position[2] = 0.02  # slightly off the ground
             action = {
-                'gripper_position': gripper_position,
+                'gripper_position':       gripper_position,
                 'gripper_delta_position': gripper_delta_position,
-                'timeout': [action_params['dt']],
+                'timeout':                [action_params['dt']],
             }
-            out_of_bounds = self.gripper_out_of_bounds(gripper_position, data_collection_params)
-            if not out_of_bounds:
+           
+            if not validate or self.is_action_valid(action, action_params):
                 self.last_action = action
                 return action
 
         rospy.logwarn("Could not find a valid action, executing an invalid one")
         return action
+
+    def is_action_valid(self, action: Dict, action_params: Dict):
+        out_of_bounds = self.gripper_out_of_bounds(action['gripper_position'], action_params)
+        return not out_of_bounds
 
     @staticmethod
     def interpolate(start_state, end_state, step_size=0.05):
@@ -308,29 +272,8 @@ class RopeDraggingScenario(Base3DScenario):
                or y < y_min or y > y_max \
                or z < z_min or z > z_max
 
-    def get_state_val(self):
-        grippers_res = self.get_grippers_srv(GetDualGripperPointsRequest())
-
-        rope_res = self.get_rope_srv(GetRopeStateRequest())
-
-        rope_state_vector = []
-        assert (len(rope_res.positions) == RopeDraggingScenario.n_links)
-        for p in rope_res.positions:
-            rope_state_vector.append(p.x)
-            rope_state_vector.append(p.y)
-            rope_state_vector.append(p.z)
-
-        return {
-            'gripper': ros_numpy.numpify(grippers_res.gripper1),
-            rope_key_name: np.array(rope_state_vector, np.float32),
-        }
-
     def get_state(self):
-        if rospy.get_param("use_val", False):
-            rospy.logwarn("TESTING WITH VAL")
-            return self.get_state_val()
-
-        gripper_res = self.get_gripper_srv(GetPosition3DRequest())
+        gripper_res = self.pos3d.get(GetPosition3DRequest())
 
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
@@ -342,14 +285,14 @@ class RopeDraggingScenario(Base3DScenario):
             rope_state_vector.append(p.z)
 
         return {
-            'gripper': ros_numpy.numpify(gripper_res.pos),
+            'gripper':     ros_numpy.numpify(gripper_res.pos),
             rope_key_name: np.array(rope_state_vector, np.float32),
         }
 
     @staticmethod
     def states_description() -> Dict:
         return {
-            'gripper': 3,
+            'gripper':     3,
             rope_key_name: RopeDraggingScenario.n_links * 3,
         }
 
@@ -358,7 +301,7 @@ class RopeDraggingScenario(Base3DScenario):
         # should match the keys of the dict return from action_to_dataset_action
         return {
             'gripper_position': 3,
-            'timeout': 1,
+            'timeout':          1,
         }
 
     @staticmethod
@@ -424,10 +367,6 @@ class RopeDraggingScenario(Base3DScenario):
         return "rope dragging"
 
     @staticmethod
-    def robot_name():
-        return "rope_2d"
-
-    @staticmethod
     def dynamics_loss_function(dataset_element, predictions):
         return dynamics_loss_function(dataset_element, predictions)
 
@@ -455,7 +394,7 @@ class RopeDraggingScenario(Base3DScenario):
         rope_local = tf.reshape(rope_points_local, rope.shape)
 
         return {
-            'gripper': gripper_local,
+            'gripper':     gripper_local,
             rope_key_name: rope_local,
         }
 
@@ -521,11 +460,11 @@ class RopeDraggingScenario(Base3DScenario):
         # disable the rope dragging controller
         disable = Position3DEnableRequest()
         disable.enable = False
-        self.gripper_enable_srv(disable)
+        self.pos3d.enable(disable)
 
         # lift the rope up out of the way with SetModelState
         move_rope = SetModelStateRequest()
-        move_rope.model_state.model_name = self.robot_name()
+        move_rope.model_state.model_name = gazebo_model_name
         move_rope.model_state.pose.position.x = 0
         move_rope.model_state.pose.position.y = 0
         move_rope.model_state.pose.position.z = 1
@@ -541,7 +480,7 @@ class RopeDraggingScenario(Base3DScenario):
         # re-enable the rope dragging controller
         enable = Position3DEnableRequest()
         enable.enable = True
-        self.gripper_enable_srv(enable)
+        self.pos3d.enable(enable)
 
         # move to a random position, to improve diversity of "starting" configurations,
         # and to also reduce the number of trials where the rope starts on top of an obstacle
@@ -549,7 +488,7 @@ class RopeDraggingScenario(Base3DScenario):
         random_position[2] = 0.02
         self.execute_action({
             'gripper_position': random_position,
-            'timeout': [30],
+            'timeout':          [30],
         })
 
     @staticmethod
@@ -572,15 +511,6 @@ class RopeDraggingScenario(Base3DScenario):
         return action_t
 
     @staticmethod
-    def compute_label(actual: Dict, predicted: Dict, labeling_params: Dict):
-        actual_rope = np.array(actual["rope"])
-        predicted_rope = np.array(predicted["rope"])
-        model_error = np.linalg.norm(actual_rope - predicted_rope)
-        threshold = labeling_params['threshold']
-        is_close = model_error < threshold
-        return is_close
-
-    @staticmethod
     def numpy_to_ompl_state(state_np: Dict, state_out: ob.CompoundState):
         for i in range(3):
             state_out[0][i] = np.float64(state_np['gripper'][i])
@@ -599,9 +529,9 @@ class RopeDraggingScenario(Base3DScenario):
             rope.append(ompl_state[1][3 * i + 2])
         rope = np.array(rope)
         return {
-            'gripper': gripper,
-            rope_key_name: rope,
-            'stdev': np.array([ompl_state[2][0]]),
+            'gripper':      gripper,
+            rope_key_name:  rope,
+            'stdev':        np.array([ompl_state[2][0]]),
             'num_diverged': np.array([ompl_state[3][0]]),
         }
 
@@ -615,7 +545,7 @@ class RopeDraggingScenario(Base3DScenario):
         target_gripper_position = current_gripper_position + gripper_delta_position
         return {
             'gripper_position': target_gripper_position,
-            'timeout': [self.action_params['dt']],
+            'timeout':          [self.action_params['dt']],
         }
 
     def make_goal_region(self, si: oc.SpaceInformation, rng: np.random.RandomState, params: Dict, goal: Dict,
@@ -759,6 +689,9 @@ class RopeDraggingScenario(Base3DScenario):
                                               service_provider=self.service_provider,
                                               excluded_models=self.get_excluded_models_for_env())
 
+    def get_excluded_models_for_env(self):
+        return ['dragging_rope']
+
 
 class RopeDraggingControlSampler(oc.ControlSampler):
     def __init__(self,
@@ -808,10 +741,10 @@ class RopeDraggingStateSampler(ob.RealVectorStateSampler):
         random_point = self.rng.uniform(self.extent[:, 0], self.extent[:, 1])
         random_point_rope = np.concatenate([random_point] * RopeDraggingScenario.n_links)
         state_np = {
-            'gripper': random_point,
-            rope_key_name: random_point_rope,
+            'gripper':      random_point,
+            rope_key_name:  random_point_rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'stdev':        np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(state_np, state_out)
@@ -858,10 +791,10 @@ class RopeDraggingGoalRegion(ob.GoalSampleableRegion):
         rope = np.concatenate([self.goal['tail']] * RopeDraggingScenario.n_links)
 
         goal_state_np = {
-            'gripper': self.goal['tail'],
-            rope_key_name: rope,
+            'gripper':      self.goal['tail'],
+            rope_key_name:  rope,
             'num_diverged': np.zeros(1, dtype=np.float64),
-            'stdev': np.zeros(1, dtype=np.float64),
+            'stdev':        np.zeros(1, dtype=np.float64),
         }
 
         self.scenario.numpy_to_ompl_state(goal_state_np, state_out)

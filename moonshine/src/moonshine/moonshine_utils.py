@@ -156,6 +156,23 @@ def sequence_of_dicts_to_dict_of_tensors(seq_of_dicts, axis=0):
     return {k: tf.stack(v, axis) for k, v in dict_of_seqs.items()}
 
 
+def repeat(d: Dict, repetitions: int, axis: int, new_axis: bool):
+    out_d = {}
+    for k, v in d.items():
+        if np.isscalar(v):
+            multiples = []
+        else:
+            multiples = [1] * v.ndim
+        if new_axis:
+            multiples.insert(axis, repetitions)
+            v = tf.expand_dims(v, axis=axis)
+            out_d[k] = tf.tile(v, multiples)
+        else:
+            multiples[axis] *= repetitions
+            out_d[k] = tf.tile(v, multiples)
+    return out_d
+
+
 def dict_of_sequences_to_sequence_of_dicts_tf(dict_of_seqs, time_axis=0):
     # FIXME: a common problem I have is that I have a dictionary of tensors, each with the same shape in the first M dimensions
     # and I want to get those shapes, but I don't care which key/value I use. Feels like I need a different datastructure here.
@@ -189,6 +206,13 @@ def remove_batch(*xs):
         return remove_batch_single(xs[0])
     else:
         return [remove_batch_single(x) for x in xs]
+
+
+def add_time_dim(*xs, batch_axis=1):
+    if len(xs) == 1:
+        return add_batch_single(xs[0], batch_axis)
+    else:
+        return [add_batch_single(x, batch_axis) for x in xs]
 
 
 def add_batch(*xs, batch_axis=0):
@@ -225,7 +249,7 @@ def add_batch_single(x, batch_axis=0):
         x.is_batched = True
         return x
     elif isinstance(x, dict):
-        return {k: add_batch_single(v) for k, v in x.items()}
+        return {k: add_batch_single(v, batch_axis) for k, v in x.items()}
     else:
         return np.array([x])
 
