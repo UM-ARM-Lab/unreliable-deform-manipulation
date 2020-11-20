@@ -11,7 +11,8 @@ from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset, add_lab
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.serialization import my_hdump
-from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, gather_dict
+from moonshine.moonshine_utils import gather_dict
+from moonshine.indexing import index_dict_of_batched_tensors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 

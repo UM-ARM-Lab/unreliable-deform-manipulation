@@ -8,7 +8,8 @@ import numpy as np
 import tensorflow as tf
 
 import rospy
-from link_bot_data.dynamics_dataset import DynamicsDatasetLoader, index_time_np
+from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
+from moonshine.indexing import index_time_np
 from link_bot_pycommon.args import my_formatter
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify
@@ -32,12 +33,12 @@ def plot_3d(args, dataset: DynamicsDatasetLoader, tf_dataset: tf.data.Dataset):
         while not anim.done:
             t = anim.t()
             scenario.plot_environment_rviz(example)
-            example_t = index_time_np(dataset.time_indexed_keys, example, t)
+            example_t = index_time_np(example, dataset.time_indexed_keys, t)
             scenario.plot_state_rviz(example_t, label='')
             scenario.plot_action_rviz_internal(example_t, label='')
 
             if t < dataset.steps_per_traj - 1:
-                s_next = index_time_np(dataset.time_indexed_keys, example, t + 1)
+                s_next = index_time_np(example, dataset.time_indexed_keys, t + 1)
                 # diff = s['rgbd'][:, :, :3] - s_next['rgbd'][:, :, :3]
                 # publish_color_image(image_diff_viz_pub, diff)
 

@@ -289,18 +289,6 @@ def add_label(example: Dict, threshold: float):
     example['is_close'] = tf.cast(is_close, dtype=tf.float32)
 
 
-def index_batch_time_with_metadata(metadata: Dict, example: Dict, keys, b: int, t: int):
-    e_t = {k: example[k][b, t] for k in keys}
-    e_t.update(metadata)
-    return e_t
-
-
-def index_time_with_metadata(metadata: Dict, example: Dict, keys, t: int):
-    e_t = {k: example[k][t] for k in keys}
-    e_t.update(metadata)
-    return e_t
-
-
 def tf_write_example(full_output_directory: pathlib.Path,
                      out_example: Dict,
                      example_idx: int):
@@ -329,3 +317,5 @@ def count_up_to_next_record_idx(full_output_directory):
             break
         record_idx += 1
     return record_idx
+
+

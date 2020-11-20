@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
-from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf
+from moonshine.indexing import index_dict_of_batched_tensors_tf
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
 
@@ -16,6 +16,7 @@ class ExperimentScenario:
         self.traj_idx_viz_pub = rospy.Publisher("traj_idx_viz", Float32, queue_size=10, latch=True)
         self.recovery_prob_viz_pub = rospy.Publisher("recovery_probability_viz", Float32, queue_size=10, latch=True)
         self.accept_probability_viz_pub = rospy.Publisher("accept_probability_viz", Float32, queue_size=10, latch=True)
+        self.stdev_viz_pub = rospy.Publisher("stdev", Float32, queue_size=10)
 
         self.tf = TF2Wrapper()
 
@@ -130,10 +131,22 @@ class ExperimentScenario:
     def plot_recovery_probability_t(self, example: Dict, t: int):
         self.plot_recovery_probability(example['recovery_probability'][t])
 
+    def plot_accept_probability_t(self, example: Dict, t: int):
+        self.plot_accept_probability(example['accept_probability'][t])
+
     def plot_accept_probability(self, accept_probability_t: float):
         msg = Float32()
         msg.data = accept_probability_t
         self.accept_probability_viz_pub.publish(msg)
+
+    def plot_stdev_t(self, example: Dict, t: int):
+        stdev_t = example['stdev'][t]
+        self.plot_stdev(stdev_t)
+
+    def plot_stdev(self, stdev_t: float):
+        msg = Float32()
+        msg.data = stdev_t
+        self.stdev_viz_pub.publish(msg)
 
     def animate_rviz(self, environment, actual_states, predicted_states, actions, labels, accept_probabilities):
         raise NotImplementedError()

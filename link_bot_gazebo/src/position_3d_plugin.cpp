@@ -103,6 +103,15 @@ void Position3dPlugin::CreateServices()
   }
 
   {
+    auto pos_list_bind = [this](peter_msgs::Position3DListRequest &req, peter_msgs::Position3DListResponse &res)
+    {
+      return OnList(req, res);
+    };
+    auto pos_list_so = create_service_options(peter_msgs::Position3DList, "list", pos_list_bind);
+    list_service_ = private_ros_node_->advertiseService(pos_list_so);
+  }
+
+  {
     auto pos_wait_bind = [this](peter_msgs::Position3DWaitRequest &req, peter_msgs::Position3DWaitResponse &res)
     {
       return OnWait(req, res);
@@ -234,6 +243,17 @@ bool Position3dPlugin::OnSet(peter_msgs::Position3DActionRequest &req, peter_msg
   } else
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(1, PLUGIN_NAME, "No link " << req.scoped_link_name);
+  }
+  return true;
+}
+
+bool Position3dPlugin::OnList(peter_msgs::Position3DListRequest &req, peter_msgs::Position3DListResponse &res)
+{
+  (void) req;
+  for (auto const &[name, controller] : controllers_map_)
+  {
+    res.controller_names.push_back(name);
+    res.controller_types.push_back(controller->type);
   }
   return true;
 }

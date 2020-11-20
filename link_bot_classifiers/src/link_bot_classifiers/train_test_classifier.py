@@ -12,11 +12,12 @@ from link_bot_classifiers.classifier_utils import load_generic_model
 from link_bot_data.balance import balance
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset
-from link_bot_data.visualization import init_viz_env, stdev_viz_t
+from link_bot_data.visualization import init_viz_env
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
-from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_sequences
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_sequences
+from moonshine.indexing import index_dict_of_batched_tensors_tf
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model.utils import reduce_mean_dict
@@ -265,7 +266,7 @@ def viz_main(dataset_dirs: List[pathlib.Path],
                                              ],
                                  t_funcs=[_custom_viz_t,
                                           test_dataset.classifier_transition_viz_t(),
-                                          stdev_viz_t(stdev_pub_),
+                                          scenario.plot_stdev_t,
                                           ])
             anim.play(example)
 

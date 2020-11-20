@@ -1,6 +1,6 @@
 import rospy
 from geometry_msgs.msg import Point
-from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
+from link_bot_pycommon.marker_index_generator import marker_index_generator
 from visualization_msgs.msg import Marker
 
 
@@ -27,13 +27,14 @@ def make_gripper_marker(position, id, r, g, b, a, label, type):
 
 
 def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marker_type=Marker.SPHERE_LIST):
+    ig = marker_index_generator(idx)
     lines = Marker()
     lines.action = Marker.ADD  # create or modify
     lines.type = Marker.LINE_STRIP
     lines.header.frame_id = frame_id
     lines.header.stamp = rospy.Time.now()
     lines.ns = label
-    lines.id = 6 * idx + 0
+    lines.id = next(ig)
     lines.pose.position.x = 0
     lines.pose.position.y = 0
     lines.pose.position.z = 0
@@ -54,7 +55,7 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     points_marker.header.frame_id = frame_id
     points_marker.header.stamp = rospy.Time.now()
     points_marker.ns = label
-    points_marker.id = 6 * idx + 1
+    points_marker.id = next(ig)
     points_marker.scale.x = 0.01
     points_marker.scale.y = 0.01
     points_marker.scale.z = 0.01
@@ -83,11 +84,11 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     midpoint_sphere.header.frame_id = frame_id
     midpoint_sphere.header.stamp = rospy.Time.now()
     midpoint_sphere.ns = label
-    midpoint_sphere.id = 6 * idx + 5
+    midpoint_sphere.id = next(ig)
     midpoint_sphere.scale.x = 0.012
     midpoint_sphere.scale.y = 0.012
     midpoint_sphere.scale.z = 0.012
-    rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
+    rope_midpoint = rope_points[int(rope_points.shape[0] / 2)]
     midpoint_sphere.pose.position.x = rope_midpoint[0]
     midpoint_sphere.pose.position.y = rope_midpoint[1]
     midpoint_sphere.pose.position.z = rope_midpoint[2]
@@ -105,7 +106,7 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     first_point_text.header.frame_id = frame_id
     first_point_text.header.stamp = rospy.Time.now()
     first_point_text.ns = label
-    first_point_text.id = 6 * idx + 4
+    first_point_text.id = next(ig)
     first_point_text.text = "0"
     first_point_text.scale.z = 0.015
     first_point_text.pose.position.x = rope_points[0, 0]

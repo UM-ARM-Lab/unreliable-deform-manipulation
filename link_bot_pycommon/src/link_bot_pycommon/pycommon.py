@@ -244,6 +244,7 @@ def paths_to_json(model_dirs: Union[List[pathlib.Path], pathlib.Path]) -> Union[
     else:
         raise NotImplementedError()
 
+
 def log_scale_0_to_1(x, k=10):
     """
     Performs a log rescaling of the numbers from 0 to 1
@@ -251,5 +252,4 @@ def log_scale_0_to_1(x, k=10):
     so that small values are larger. k controls the amount of squishedness,
     larger is more squished
     """
-    return np.log(k*x + 1) / np.log(k + 1)
-
+    return np.log(k * x + 1) / np.log(k + 1)

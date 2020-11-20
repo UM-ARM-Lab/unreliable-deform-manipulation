@@ -12,7 +12,7 @@ LinkPosition3dPIDController::LinkPosition3dPIDController(char const *plugin_name
                                                          double const max_force,
                                                          double const max_vel,
                                                          bool const grav_comp) :
-    BaseLinkPositionController(plugin_name, link),
+    BaseLinkPositionController(plugin_name, link, "kinematic"),
     kP_pos_(kp_pos),
     kP_vel_(kp_vel),
     max_force_(max_force),

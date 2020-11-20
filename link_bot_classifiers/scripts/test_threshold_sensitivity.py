@@ -132,15 +132,17 @@ def plot(outputs: Dict, results_dir: pathlib.Path):
     train_accuracies = np.array(train_accuracies).T
     val_accuracies = np.array(val_accuracies).T
 
-    fig, axes = plt.subplots(1, 2)
+    plt.style.use("slides-dark")
+    fig, axes = plt.subplots(1, 2, figsize=(20, 5), sharey=True)
 
-    trending_boxplots(fig, axes[0], thresholds, train_accuracies, 'r', 0.02, 'train')
-    trending_boxplots(fig, axes[1], thresholds, val_accuracies, 'b', 0.02, 'val')
+    width = 0.005
+    trending_boxplots(fig, axes[0], thresholds, train_accuracies, 'r', width=width, label='train')
+    trending_boxplots(fig, axes[1], thresholds, val_accuracies, 'y', width=width, label='val')
 
     for ax in axes:
         ax.set_xlabel("threshold")
         ax.set_ylabel("accuracy")
-        ax.set_xlim([-0.05, 0.2])
+        ax.set_xlim([0.02, 0.11])
         ax.legend()
 
     filename = results_dir / 'plot.png'

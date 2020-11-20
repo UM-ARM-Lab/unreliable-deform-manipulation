@@ -95,3 +95,7 @@ class GazeboServices(BaseServices):
             self.pause_srv(EmptyRequest())
         except rospy.ServiceException:
             pass
+
+
+def gz_scope(*args):
+    return "::".join(args)

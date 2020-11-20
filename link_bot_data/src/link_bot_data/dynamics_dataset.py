@@ -6,8 +6,9 @@ from colorama import Fore
 
 from link_bot_data.base_dataset import BaseDatasetLoader
 from link_bot_data.dataset_utils import use_gt_rope
+from moonshine.indexing import index_time_batched
 from link_bot_pycommon.get_scenario import get_scenario
-from moonshine.moonshine_utils import numpify, remove_batch, add_batch
+from moonshine.moonshine_utils import numpify, remove_batch
 
 
 class DynamicsDatasetLoader(BaseDatasetLoader):
@@ -89,46 +90,8 @@ class DynamicsDatasetLoader(BaseDatasetLoader):
         return dataset
 
     def index_time_batched(self, example_batched, t: int):
-        e_t = numpify(remove_batch(index_time_batched(self.time_indexed_keys, example_batched, t)))
+        e_t = numpify(remove_batch(index_time_batched(example_batched, self.time_indexed_keys, t)))
         return e_t
-
-
-def index_time_np(time_indexed_keys: List[str], e: Dict, t: int):
-    return numpify(index_time(time_indexed_keys, e, t))
-
-
-def index_time(time_indexed_keys: List[str], e: Dict, t: int):
-    return remove_batch(index_time_batched(time_indexed_keys, add_batch(e), t))
-
-
-def index_time_batched(time_indexed_keys: List[str], e: Dict, t: int):
-    e_t = {}
-    for k, v in e.items():
-        e_t[k] = index_time_batched_kv(e, k, t, time_indexed_keys, v)
-    return e_t
-
-
-def index_time_batched_kv(e, k, t, time_indexed_keys, v):
-    if k in time_indexed_keys:
-        if v.ndim == 1:
-            return v
-        elif t < v.shape[1]:
-            return v[:, t]
-        elif t == e[k].shape[1]:
-            return v[:, t - 1]
-        else:
-            err_msg = f"time index {t} out of bounds for {k} which has shape {v.shape}"
-            raise IndexError(err_msg)
-    else:
-        return v
-
-
-def index_label_time_batched(example: Dict, t: int):
-    if t == 0:
-        # it makes no sense to have a label at t=0, labels are for transitions/sequences
-        # the plotting function that consumes this should use None correctly
-        return None
-    return example['is_close'][:, t]
 
 
 def get_state_like_keys(params: Dict):

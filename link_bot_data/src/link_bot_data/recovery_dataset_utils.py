@@ -14,7 +14,8 @@ from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.pycommon import make_dict_tf_float32
 from link_bot_pycommon.serialization import my_hdump
-from moonshine.moonshine_utils import index_dict_of_batched_tensors_tf, sequence_of_dicts_to_dict_of_tensors
+from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_tensors
+from moonshine.indexing import index_dict_of_batched_tensors_tf
 from state_space_dynamics import model_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 

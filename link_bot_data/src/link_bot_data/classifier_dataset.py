@@ -5,7 +5,8 @@ import tensorflow as tf
 
 import rospy
 from link_bot_data.base_dataset import BaseDatasetLoader
-from link_bot_data.dataset_utils import add_predicted, use_gt_rope, add_label, index_time_with_metadata
+from link_bot_data.dataset_utils import add_predicted, use_gt_rope, add_label
+from moonshine.indexing import index_time_with_metadata
 from link_bot_data.visualization import classifier_transition_viz_t, init_viz_action, init_viz_env
 from link_bot_pycommon.get_scenario import get_scenario
 from merrrt_visualization.rviz_animation_controller import RvizAnimation

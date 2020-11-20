@@ -6,7 +6,7 @@ namespace gazebo
 {
 
 LinkPosition3dKinematicController::LinkPosition3dKinematicController(char const *plugin_name, physics::LinkPtr link) :
-    BaseLinkPositionController(plugin_name, link)
+    BaseLinkPositionController(plugin_name, link, "kinematic")
 {}
 
 void LinkPosition3dKinematicController::Update(ignition::math::Vector3d const &setpoint)

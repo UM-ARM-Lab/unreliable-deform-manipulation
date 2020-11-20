@@ -5,8 +5,12 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import colors
 
+from link_bot_data.dataset_utils import add_predicted, get_maybe_predicted
+from link_bot_gazebo_python.gazebo_services import gz_scope
 from link_bot_gazebo_python.position_3d import Position3D
 from link_bot_pycommon.base_services import BaseServices
+from link_bot_pycommon.make_rope_markers import make_rope_marker, make_gripper_marker
+from link_bot_pycommon.marker_index_generator import marker_index_generator
 from rosgraph.names import ns_join
 
 with warnings.catch_warnings():
@@ -35,7 +39,7 @@ gazebo_model_name = "dragging_rope"
 class RopeDraggingScenario(Base3DScenario):
     n_links = 10
     ROPE_NAMESPACE = 'dragging_rope'
-    ROPE_LINK_NAME = ns_join(ROPE_NAMESPACE, 'gripper1')
+    ROPE_LINK_NAME = gz_scope(ROPE_NAMESPACE, 'gripper1')
 
     def __init__(self):
         super().__init__()
@@ -59,102 +63,29 @@ class RopeDraggingScenario(Base3DScenario):
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)
-
-        rope_points = np.reshape(state[rope_key_name], [-1, 3])
+        ig = marker_index_generator(idx)
 
         msg = MarkerArray()
-        lines = Marker()
-        lines.action = Marker.ADD  # create or modify
-        lines.type = Marker.LINE_STRIP
-        lines.header.frame_id = "world"
-        lines.header.stamp = rospy.Time.now()
-        lines.ns = label
-        lines.id = 3 * idx + 0
+        if rope_key_name in state:
+            rope_points = np.reshape(state[rope_key_name], [-1, 3])
+            markers = make_rope_marker(rope_points, 'world', label + "_gt_" + rope_key_name, next(ig), r, g, b, a)
+            msg.markers.extend(markers)
 
-        lines.pose.position.x = 0
-        lines.pose.position.y = 0
-        lines.pose.position.z = 0
-        lines.pose.orientation.x = 0
-        lines.pose.orientation.y = 0
-        lines.pose.orientation.z = 0
-        lines.pose.orientation.w = 1
+        if 'gripper' in state:
+            gripper = state['gripper']
+            gripper_sphere = make_gripper_marker(gripper, next(ig), r, g, b, a, label + 'gt_gripper', Marker.SPHERE)
+            msg.markers.append(gripper_sphere)
 
-        lines.scale.x = 0.01
+        if add_predicted(rope_key_name) in state:
+            rope_points = np.reshape(state[add_predicted(rope_key_name)], [-1, 3])
+            markers = make_rope_marker(rope_points, 'world', label + "_" + rope_key_name, next(ig), r, g, b, a)
+            msg.markers.extend(markers)
 
-        lines.color.r = r
-        lines.color.g = g
-        lines.color.b = b
-        lines.color.a = a
+        if add_predicted('gripper') in state:
+            pred_gripper = state[add_predicted('gripper')]
+            gripper_sphere = make_gripper_marker(pred_gripper, next(ig), r, g, b, a, label + "_gripper", Marker.SPHERE)
+            msg.markers.append(gripper_sphere)
 
-        spheres = Marker()
-        spheres.action = Marker.ADD
-        spheres.type = Marker.SPHERE_LIST
-        spheres.header.frame_id = "world"
-        spheres.header.stamp = rospy.Time.now()
-        spheres.ns = label
-        spheres.id = 3 * idx + 1
-
-        spheres.scale.x = 0.02
-        spheres.scale.y = 0.02
-        spheres.scale.z = 0.02
-
-        spheres.pose.position.x = 0
-        spheres.pose.position.y = 0
-        spheres.pose.position.z = 0
-        spheres.pose.orientation.x = 0
-        spheres.pose.orientation.y = 0
-        spheres.pose.orientation.z = 0
-        spheres.pose.orientation.w = 1
-
-        spheres.color.r = r
-        spheres.color.g = g
-        spheres.color.b = b
-        spheres.color.a = a
-
-        for i, (x, y, z) in enumerate(rope_points):
-            point = Point()
-            point.x = x
-            point.y = y
-            point.z = z
-
-            spheres.points.append(point)
-            lines.points.append(point)
-
-        gripper_point = Point()
-        gripper_point.x = state['gripper'][0]
-        gripper_point.y = state['gripper'][1]
-        gripper_point.z = state['gripper'][2]
-
-        spheres.points.append(gripper_point)
-
-        gripper = Marker()
-        gripper.action = Marker.ADD
-        gripper.type = Marker.SPHERE
-        gripper.header.frame_id = "world"
-        gripper.header.stamp = rospy.Time.now()
-        gripper.ns = label
-        gripper.id = 3 * idx + 2
-
-        gripper.scale.x = 0.02
-        gripper.scale.y = 0.02
-        gripper.scale.z = 0.02
-
-        gripper.pose.position.x = state['gripper'][0]
-        gripper.pose.position.y = state['gripper'][1]
-        gripper.pose.position.z = state['gripper'][2]
-        gripper.pose.orientation.x = 0
-        gripper.pose.orientation.y = 0
-        gripper.pose.orientation.z = 0
-        gripper.pose.orientation.w = 1
-
-        gripper.color.r = 1 - r
-        gripper.color.g = 1 - g
-        gripper.color.b = b
-        gripper.color.a = a
-
-        msg.markers.append(spheres)
-        msg.markers.append(lines)
-        msg.markers.append(gripper)
         self.state_viz_pub.publish(msg)
 
     def plot_action_rviz(self, state: Dict, action: Dict, label: str = 'action', **kwargs):
@@ -165,8 +96,8 @@ class RopeDraggingScenario(Base3DScenario):
 
     def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        gripper = np.reshape(data['gripper'], [3])
-        target_gripper = np.reshape(data['gripper_position'], [3])
+        gripper = np.reshape(get_maybe_predicted(data, 'gripper'), [3])
+        target_gripper = np.reshape(get_maybe_predicted(data, 'gripper_position'), [3])
 
         idx = kwargs.get("idx", 0)
 
@@ -179,13 +110,14 @@ class RopeDraggingScenario(Base3DScenario):
         self.action_viz_pub.publish(msg)
 
     def on_before_get_state_or_execute_action(self):
-        self.pos3d.register(RegisterPosition3DControllerRequest(scoped_link_name=self.ROPE_LINK_NAME))
+        self.pos3d.register(RegisterPosition3DControllerRequest(scoped_link_name=self.ROPE_LINK_NAME,
+                                                                controller_type='pid',
+                                                                kp_vel=10.0,
+                                                                kp_pos=10.0,
+                                                                max_force=10.0,
+                                                                max_vel=0.1, ))
 
     def execute_action(self, action: Dict):
-        req = Position3DActionRequest()
-        req.position.x = action['gripper_position'][0]
-        req.position.y = action['gripper_position'][1]
-        req.position.z = action['gripper_position'][2]
         timeout_s = action.get('timeout_s', 1.0)
         speed_mps = action.get('speed', 0.1)
         req = Position3DActionRequest(scoped_link_name=self.ROPE_LINK_NAME,
@@ -205,7 +137,7 @@ class RopeDraggingScenario(Base3DScenario):
         action = None
         for _ in range(self.max_action_attempts):
             # sample the previous action with 80% probability, this improves exploration
-            if self.last_action is not None and action_rng.uniform(0, 1) < 0.80:
+            if self.last_action is not None and action_rng.uniform(0, 1) < 0.80 and not stateless:
                 gripper_delta_position = self.last_action['gripper_delta_position']
             else:
                 theta = action_rng.uniform(-np.pi, np.pi)
@@ -222,7 +154,7 @@ class RopeDraggingScenario(Base3DScenario):
                 'gripper_delta_position': gripper_delta_position,
                 'timeout':                [action_params['dt']],
             }
-           
+
             if not validate or self.is_action_valid(action, action_params):
                 self.last_action = action
                 return action
@@ -273,7 +205,7 @@ class RopeDraggingScenario(Base3DScenario):
                or z < z_min or z > z_max
 
     def get_state(self):
-        gripper_res = self.pos3d.get(GetPosition3DRequest())
+        gripper_res = self.pos3d.get(GetPosition3DRequest(scoped_link_name=self.ROPE_LINK_NAME))
 
         rope_res = self.get_rope_srv(GetRopeStateRequest())
 
@@ -429,8 +361,7 @@ class RopeDraggingScenario(Base3DScenario):
         # set random positions for all the objects
         for services in self.movable_object_services.values():
             position, _ = self.random_object_pose(env_rng, objects_params)
-            set_msg = Position3DActionRequest()
-            set_msg.position = ros_numpy.msgify(Point, position)
+            set_msg = Position3DActionRequest(position=ros_numpy.msgify(Point, position))
             services['set'](set_msg)
 
         req = WorldControlRequest()
@@ -438,9 +369,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.world_control_srv(req)
 
         for services in self.movable_object_services.values():
-            disable = Position3DEnableRequest()
-            disable.enable = False
-            services['enable'](disable)
+            services['enable'](Position3DEnableRequest(enable=False))
 
         req = WorldControlRequest()
         req.seconds = 0.2
@@ -458,9 +387,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.reset_sim_srv(EmptyRequest())
 
         # disable the rope dragging controller
-        disable = Position3DEnableRequest()
-        disable.enable = False
-        self.pos3d.enable(disable)
+        self.pos3d.enable(Position3DEnableRequest(enable=False))
 
         # lift the rope up out of the way with SetModelState
         move_rope = SetModelStateRequest()
@@ -478,9 +405,7 @@ class RopeDraggingScenario(Base3DScenario):
         self.settle()
 
         # re-enable the rope dragging controller
-        enable = Position3DEnableRequest()
-        enable.enable = True
-        self.pos3d.enable(enable)
+        self.pos3d.enable(Position3DEnableRequest(enable=True))
 
         # move to a random position, to improve diversity of "starting" configurations,
         # and to also reduce the number of trials where the rope starts on top of an obstacle
@@ -644,8 +569,9 @@ class RopeDraggingScenario(Base3DScenario):
         g = kwargs.pop("g", 0.2)
         b = kwargs.pop("b", 0.8)
         a = kwargs.pop("a", 1.0)
-        idx1 = self.tree_action_idx * 2 + 0
-        idx2 = self.tree_action_idx * 2 + 1
+        ig = marker_index_generator(self.tree_action_idx)
+        idx1 = next(ig)
+        idx2 = next(ig)
         self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
         self.tree_action_idx += 1
 

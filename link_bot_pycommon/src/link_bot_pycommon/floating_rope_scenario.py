@@ -12,6 +12,7 @@ from arc_utilities.marker_utils import scale_marker_array
 from geometry_msgs.msg import Point
 from link_bot_data.dataset_utils import get_maybe_predicted, in_maybe_predicted, add_predicted
 from link_bot_data.visualization import rviz_arrow
+from link_bot_gazebo_python.gazebo_services import gz_scope
 from link_bot_gazebo_python.position_3d import Position3D
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
@@ -20,6 +21,7 @@ from link_bot_pycommon.bbox_visualization import extent_array_to_bbox
 from link_bot_pycommon.collision_checking import inflate_tf_3d
 from link_bot_pycommon.constants import KINECT_MAX_DEPTH
 from link_bot_pycommon.make_rope_markers import make_gripper_marker, make_rope_marker
+from link_bot_pycommon.marker_index_generator import marker_index_generator
 from link_bot_pycommon.pycommon import default_if_none
 from link_bot_pycommon.ros_pycommon import publish_color_image, publish_depth_image
 from moonshine.base_learned_dynamics_model import dynamics_loss_function, dynamics_points_metrics_function
@@ -36,11 +38,6 @@ try:
     from jsk_recognition_msgs.msg import BoundingBox
 except ImportError:
     rospy.logwarn("ignoring failed import of BBox message")
-
-
-def gz_scope(*args):
-    return "::".join(args)
-
 
 rope_key_name = 'rope'
 
@@ -88,7 +85,6 @@ class FloatingRopeScenario(Base3DScenario):
             pass
         self.overstretching_srv = rospy.ServiceProxy(ns_join(self.ROPE_NAMESPACE, "rope_overstretched"),
                                                      GetOverstretching)
-        self.stdev_pub = rospy.Publisher("stdev", Float32, queue_size=10)
         self.error_pub = rospy.Publisher("error", Float32, queue_size=10)
 
         self.max_action_attempts = 100
@@ -808,8 +804,9 @@ class FloatingRopeScenario(Base3DScenario):
         g = kwargs.pop("g", 0.2)
         b = kwargs.pop("b", 0.8)
         a = kwargs.pop("a", 1.0)
-        idx1 = self.tree_action_idx * 2 + 0
-        idx2 = self.tree_action_idx * 2 + 1
+        ig = marker_index_generator(self.tree_action_idx)
+        idx1 = next(ig)
+        idx2 = next(ig)
         self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
         self.tree_action_idx += 1
 
@@ -822,19 +819,21 @@ class FloatingRopeScenario(Base3DScenario):
 
         msg = MarkerArray()
 
+        ig = marker_index_generator(idx)
+
         if 'gt_rope' in state:
             rope_points = np.reshape(state['gt_rope'], [-1, 3])
-            markers = make_rope_marker(rope_points, 'world', label + "_gt_rope", idx, r, g, b, a)
+            markers = make_rope_marker(rope_points, 'world', label + "_gt_rope", next(ig), r, g, b, a)
             msg.markers.extend(markers)
 
         if 'rope' in state:
             rope_points = np.reshape(state['rope'], [-1, 3])
-            markers = make_rope_marker(rope_points, 'world', label + "_rope", 1000 + idx, r, g, b, a)
+            markers = make_rope_marker(rope_points, 'world', label + "_rope", next(ig), r, g, b, a)
             msg.markers.extend(markers)
 
         if add_predicted('rope') in state:
             rope_points = np.reshape(state[add_predicted('rope')], [-1, 3])
-            markers = make_rope_marker(rope_points, 'world', label + "_pred_rope", 1000 + idx, r, g, b, a,
+            markers = make_rope_marker(rope_points, 'world', label + "_pred_rope", next(ig), r, g, b, a,
                                        Marker.CUBE_LIST)
             msg.markers.extend(markers)
 
@@ -842,7 +841,7 @@ class FloatingRopeScenario(Base3DScenario):
             r = 0.2
             g = 0.2
             b = 0.8
-            left_gripper_sphere = make_gripper_marker(state['left_gripper'], 6 * idx + 2, r, g, b, a, label + '_l',
+            left_gripper_sphere = make_gripper_marker(state['left_gripper'], next(ig), r, g, b, a, label + '_l',
                                                       Marker.SPHERE)
             msg.markers.append(left_gripper_sphere)
 
@@ -850,7 +849,7 @@ class FloatingRopeScenario(Base3DScenario):
             r = 0.8
             g = 0.8
             b = 0.2
-            right_gripper_sphere = make_gripper_marker(state['right_gripper'], 6 * idx + 3, r, g, b, a, label + "_r",
+            right_gripper_sphere = make_gripper_marker(state['right_gripper'], next(ig), r, g, b, a, label + "_r",
                                                        Marker.SPHERE)
             msg.markers.append(right_gripper_sphere)
 
@@ -859,7 +858,7 @@ class FloatingRopeScenario(Base3DScenario):
             g = 0.2
             b = 0.8
             lgpp = state[add_predicted('left_gripper')]
-            left_gripper_sphere = make_gripper_marker(lgpp, 6 * idx + 2, r, g, b, a, label + "_lp", Marker.CUBE)
+            left_gripper_sphere = make_gripper_marker(lgpp, next(ig), r, g, b, a, label + "_lp", Marker.CUBE)
             msg.markers.append(left_gripper_sphere)
 
         if add_predicted('right_gripper') in state:
@@ -867,7 +866,7 @@ class FloatingRopeScenario(Base3DScenario):
             g = 0.8
             b = 0.2
             rgpp = state[add_predicted('right_gripper')]
-            right_gripper_sphere = make_gripper_marker(rgpp, 6 * idx + 3, r, g, b, a, label + "_rp",
+            right_gripper_sphere = make_gripper_marker(rgpp, next(ig), r, g, b, a, label + "_rp",
                                                        Marker.CUBE)
             msg.markers.append(right_gripper_sphere)
 
@@ -882,9 +881,7 @@ class FloatingRopeScenario(Base3DScenario):
 
         if add_predicted('stdev') in state:
             stdev_t = state[add_predicted('stdev')][0]
-            stdev_msg = Float32()
-            stdev_msg.data = stdev_t
-            self.stdev_pub.publish(stdev_msg)
+            self.plot_stdev(stdev_t)
 
         if 'error' in state:
             error_msg = Float32()
@@ -906,9 +903,10 @@ class FloatingRopeScenario(Base3DScenario):
         a2 = np.reshape(get_maybe_predicted(data, 'right_gripper_position'), [3])
 
         idx = kwargs.pop("idx", None)
+        ig = marker_index_generator(idx)
         if idx is not None:
-            idx1 = idx
-            idx2 = idx + 100
+            idx1 = next(ig)
+            idx2 = next(ig)
         else:
             idx1 = kwargs.pop("idx1", 0)
             idx2 = kwargs.pop("idx2", 1)

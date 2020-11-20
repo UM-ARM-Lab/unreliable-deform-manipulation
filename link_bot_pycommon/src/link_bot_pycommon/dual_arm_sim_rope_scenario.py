@@ -3,10 +3,9 @@ from typing import Dict
 import numpy as np
 
 import rospy
-from link_bot_gazebo_python.gazebo_services import GazeboServices
+from link_bot_gazebo_python.gazebo_services import GazeboServices, gz_scope
 from link_bot_pycommon.base_dual_arm_rope_scenario import BaseDualArmRopeScenario
 from link_bot_pycommon.dual_arm_rope_action import dual_arm_rope_execute_action
-from link_bot_pycommon.floating_rope_scenario import gz_scope
 from peter_msgs.srv import *
 from rosgraph.names import ns_join
 

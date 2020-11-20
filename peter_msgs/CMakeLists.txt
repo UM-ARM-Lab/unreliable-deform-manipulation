@@ -40,6 +40,7 @@ add_service_files(
         Position3DEnable.srv
         Position3DWait.srv
         Position3DStop.srv
+        Position3DList.srv
         Reconstruction.srv
         RegisterPosition3DController.srv
         SetDualGripperPoints.srv

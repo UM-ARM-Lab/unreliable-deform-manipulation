@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pathlib
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import tensorflow as tf
 from colorama import Fore
@@ -19,21 +19,23 @@ from link_bot_pycommon.pycommon import make_dict_float32, make_dict_tf_float32
 from moonshine.classifier_losses_and_metrics import binary_classification_sequence_metrics_function, \
     class_weighted_mean_loss
 from moonshine.get_local_environment import get_local_env_and_origin_3d_tf as get_local_env
+from moonshine.indexing import index_time
 from moonshine.moonshine_utils import add_batch, remove_batch, sequence_of_dicts_to_dict_of_tensors
 from moonshine.raster_3d import raster_3d
 from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
+DEBUG_VIZ = False
 
 class NNClassifier(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: Base3DScenario):
         super().__init__(hparams, batch_size)
         self.scenario = scenario
 
-        self.debug_pub = rospy.Publisher('classifier_debug', OccupancyStamped, queue_size=10, latch=True)
-        self.raster_debug_pubs = [rospy.Publisher(
-            f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=False) for i in range(3)]
+        self.raster_debug_pubs = [
+            rospy.Publisher(f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=False) for i in
+            range(3)]
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
@@ -97,19 +99,8 @@ class NNClassifier(MyKerasModel):
         pixel_indices = tf.expand_dims(pixel_indices, axis=0)
         pixel_indices = tf.tile(pixel_indices, [batch_size, 1, 1, 1, 1])
 
-        # # # DEBUG
-        # from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
-        # from moonshine.moonshine_utils import index_dict_of_batched_vectors_tf, numpify
-        # from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, grid_to_bbox, send_occupancy_tf
-        # from link_bot_data.dataset_utils import index_time_with_metadata
-        # stepper = RvizSimpleStepper()
-        # input_dict.pop("batch_size")
-        # input_dict.pop("time")
-        # b = 0
-        # example = index_dict_of_batched_vectors_tf(input_dict, b)
-        # # END DEBUG
-
         conv_outputs_array = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+        debug_info_seq = []
         for t in tf.range(time):
             state_t = {k: input_dict[add_predicted(k)][:, t] for k in self.state_keys}
 
@@ -142,53 +133,21 @@ class NNClassifier(MyKerasModel):
                                                        c=self.local_env_c_channels,
                                                        k=self.rope_image_k,
                                                        batch_size=batch_size)
-                # # DEBUG
-                # raster_dict = {
-                #     'env': tf.clip_by_value(state_component_voxel_grid[b], 0, 1),
-                #     'origin': local_env_origin_t[b].numpy(),
-                #     'res': input_dict['res'][b].numpy(),
-                # }
-                # raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
-                # self.raster_debug_pubs[i].publish(raster_msg)
-                # # END  DEBUG
 
                 local_voxel_grid_t_array = local_voxel_grid_t_array.write(i + 1, state_component_voxel_grid)
             local_voxel_grid_t = tf.transpose(local_voxel_grid_t_array.stack(), [1, 2, 3, 4, 0])
             # add channel dimension information because tf.function erases it somehow...
             local_voxel_grid_t.set_shape([None, None, None, None, len(self.state_keys) + 1])
 
-            # # DEBUG
-            # local_env_dict = {
-            #     'env': local_env_t[b],
-            #     'origin': local_env_origin_t[b].numpy(),
-            #     'res': input_dict['res'][b].numpy(),
-            # }
-            # msg = environment_to_occupancy_msg(local_env_dict, frame='local_occupancy')
-            # send_occupancy_tf(self.scenario.tf.tf_broadcaster, local_env_dict, frame='local_occupancy')
-            # self.debug_pub.publish(msg)
-            #
-            # pred_t = index_time_with_metadata(self.scenario, example, self.pred_state_keys, t)
-            # true_t = index_time_with_metadata(self.scenario, example, self.true_state_keys, t)
-            # self.scenario.plot_state_rviz(numpify(true_t), label='actual', color='#ff0000ff', scale=1.1)
-            # self.scenario.plot_state_rviz(numpify(pred_t), label='predicted', color='#0000ffff')
-            # label_t = example['is_close'][1]
-            # self.scenario.plot_is_close(label_t)
-            # bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
-            #                         cols=self.local_env_w_cols,
-            #                         channels=self.local_env_c_channels,
-            #                         resolution=example['res'].numpy())
-            # bbox_msg.header.frame_id = 'local_occupancy'
-            # self.local_env_bbox_pub.publish(bbox_msg)
-            #
-            # stepper.step()
-            # # END DEBUG
-
             out_conv_z = self.fwd_conv(batch_size, local_voxel_grid_t)
 
             conv_outputs_array = conv_outputs_array.write(t, out_conv_z)
 
+            if DEBUG_VIZ:
+                debug_info_seq.append((state_t, local_env_origin_t, local_env_t, local_voxel_grid_t))
+
         conv_outputs = conv_outputs_array.stack()
-        return tf.transpose(conv_outputs, [1, 0, 2])
+        return tf.transpose(conv_outputs, [1, 0, 2]), debug_info_seq
 
     @tf.function
     def fwd_conv(self, batch_size, local_voxel_grid_t):
@@ -229,12 +188,11 @@ class NNClassifier(MyKerasModel):
     def compute_metrics(self, dataset_element, outputs):
         return binary_classification_sequence_metrics_function(dataset_element, outputs)
 
-    # @tf.function
     def call(self, input_dict: Dict, training, **kwargs):
         batch_size = input_dict['batch_size']
         time = tf.cast(input_dict['time'], tf.int32)
 
-        conv_output = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
+        conv_output, debug_info_seq = self.make_traj_voxel_grids_from_input_dict(input_dict, batch_size, time)
 
         states = {k: input_dict[add_predicted(k)] for k in self.state_keys}
         states_in_local_frame = self.scenario.put_state_local_frame(states)
@@ -274,10 +232,64 @@ class NNClassifier(MyKerasModel):
         valid_accept_logits = all_accept_logits[:, 1:]
         valid_accept_probabilities = self.sigmoid(valid_accept_logits)
 
+        if DEBUG_VIZ:
+            self.debug_rviz(input_dict, debug_info_seq)
+
         return {
-            'logits': valid_accept_logits,
+            'logits':        valid_accept_logits,
             'probabilities': valid_accept_probabilities,
         }
+
+    def debug_rviz(self, input_dict: Dict, debug_info_seq: List[Tuple]):
+        from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
+        from link_bot_pycommon.bbox_visualization import grid_to_bbox
+        from moonshine.moonshine_utils import numpify
+        from moonshine.indexing import index_dict_of_batched_tensors_tf, index_time_with_metadata
+        from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, send_occupancy_tf
+        import numpy as np
+        stepper = RvizSimpleStepper()
+        batch_size = input_dict.pop("batch_size").numpy().astype(np.int32)
+        input_dict.pop("time")
+
+        for b in range(batch_size):
+            example = index_dict_of_batched_tensors_tf(input_dict, b)
+
+            for t, debug_info_t in enumerate(debug_info_seq):
+                state_t, local_env_origin_t, local_env_t, local_voxel_grid_t = debug_info_t
+                for i, state_component_k_voxel_grid in enumerate(tf.transpose(local_voxel_grid_t, [4, 0, 1, 2, 3])):
+                    raster_dict = {
+                        'env':    tf.clip_by_value(state_component_k_voxel_grid[b], 0, 1),
+                        'origin': local_env_origin_t[b].numpy(),
+                        'res':    input_dict['res'][b].numpy(),
+                    }
+                    raster_msg = environment_to_occupancy_msg(raster_dict, frame='local_occupancy')
+                    self.raster_debug_pubs[i].publish(raster_msg)
+
+                local_env_dict = {
+                    'env':    local_env_t[b],
+                    'origin': local_env_origin_t[b].numpy(),
+                    'res':    input_dict['res'][b].numpy(),
+                }
+                send_occupancy_tf(self.scenario.tf.tf_broadcaster, local_env_dict, frame='local_occupancy')
+
+                pred_t = index_time_with_metadata({}, example, self.pred_state_keys, t)
+                action_t = index_time(example, self.action_keys + self.pred_state_keys, t)
+                self.scenario.plot_state_rviz(numpify(pred_t), label='predicted', color='#0000ffff')
+                if action_t is not None:
+                    self.scenario.plot_action_rviz(numpify(pred_t), numpify(action_t), label='action', color='#0000ffff')
+                # # Ground-Truth
+                # true_t = index_time_with_metadata({}, example, self.true_state_keys, t)
+                # self.scenario.plot_state_rviz(numpify(true_t), label='actual', color='#ff0000ff', scale=1.1)
+                # label_t = example['is_close'][1]
+                # self.scenario.plot_is_close(label_t)
+                bbox_msg = grid_to_bbox(rows=self.local_env_h_rows,
+                                        cols=self.local_env_w_cols,
+                                        channels=self.local_env_c_channels,
+                                        resolution=example['res'].numpy())
+                bbox_msg.header.frame_id = 'local_occupancy'
+                self.local_env_bbox_pub.publish(bbox_msg)
+
+                stepper.step()
 
 
 # FIXME: inherit from Ensemble
@@ -335,7 +347,7 @@ class NNClassifierWrapper(BaseConstraintChecker):
         # construct network inputs
         net_inputs = {
             'batch_size': batch_size,
-            'time': state_sequence_length,
+            'time':       state_sequence_length,
         }
         net_inputs.update(make_dict_tf_float32(environment))
 

@@ -16,7 +16,7 @@ namespace gazebo
 class BaseLinkPositionController
 {
  public:
-  BaseLinkPositionController(char const *plugin_name, physics::LinkPtr link);
+  BaseLinkPositionController(char const *plugin_name, physics::LinkPtr link, std::string const type);
 
   void OnUpdate();
 
@@ -45,6 +45,8 @@ class BaseLinkPositionController
   ignition::math::Vector3d setpoint_;
   double timeout_s_ = 0;
   double speed_mps_ = 0;
+
+  const std::string type;
 };
 
 }
