@@ -20,6 +20,8 @@
     classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.045
     classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.055
     classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.075
+    classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.085
+    classifier_data/scirob_dragging_test_threshold_sensitivity/threshold=0.095
   ]
   trial_dirs:
   {
@@ -58,6 +60,24 @@
       0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.075_0/November_19_05-54-06_d31d770277
       1: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.075_1/November_19_06-48-42_d31d770277
       2: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.075_2/November_19_07-43-19_d31d770277
+    }
+    0.085:
+    {
+      0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.085_0/November_19_09-41-40_090abaf8ae
+      1: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.085_1/November_19_11-10-41_090abaf8ae
+      2: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.085_2/November_19_12-32-20_090abaf8ae
+    }
+    0.095:
+    {
+      0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.095_0/November_19_14-39-23_090abaf8ae
+      1: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.095_1/November_19_15-37-33_090abaf8ae
+      2: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.095_2/November_19_16-35-51_090abaf8ae
+    }
+    0.105:
+    {
+      0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.105_0/November_19_17-53-28_090abaf8ae
+      1: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.105_1/November_19_18-53-53_090abaf8ae
+      2: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.105_2/November_19_19-53-17_090abaf8ae
     }
   }
   output_filename: results/scirob_dragging_threshold_sensitivity/metrics.hjson
