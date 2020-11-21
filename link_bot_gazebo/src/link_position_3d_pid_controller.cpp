@@ -55,6 +55,7 @@ void LinkPosition3dPIDController::Update(ignition::math::Vector3d const &setpoin
 
   auto const vel_error = vel_ - target_vel;
   auto force = vel_error.Normalized() * vel_pid_.Update(vel_error.Length(), dt);
+  ROS_DEBUG_STREAM_NAMED(plugin_name_, "force " << force.X() << " " << force.Y() << " " << force.Z());
 
   if (gravity_compensation_)
   {
@@ -72,10 +73,7 @@ void LinkPosition3dPIDController::Update(ignition::math::Vector3d const &setpoin
     force.Z(force.Z() + z_comp);
   }
 
-  if (enabled_)
-  {
-    link_->AddForce(force);
-  }
+  link_->AddForce(force);
 }
 
 }  // namespace gazebo

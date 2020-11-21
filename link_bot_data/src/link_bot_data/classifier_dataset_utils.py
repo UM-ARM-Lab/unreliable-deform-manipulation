@@ -13,7 +13,7 @@ from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.serialization import my_hdump
 from moonshine.moonshine_utils import gather_dict
 from moonshine.indexing import index_dict_of_batched_tensors_tf
-from state_space_dynamics import model_utils
+from state_space_dynamics import dynamics_utils
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 
 
@@ -66,7 +66,7 @@ def make_classifier_dataset_from_params_dict(dataset_dir: pathlib.Path, fwd_mode
     fwd_model_dir = [p / 'best_checkpoint' for p in fwd_model_dir]
 
     dynamics_hparams = hjson.load((dataset_dir / 'hparams.hjson').open('r'))
-    fwd_models, _ = model_utils.load_generic_model(fwd_model_dir)
+    fwd_models, _ = dynamics_utils.load_generic_model(fwd_model_dir)
 
     dataset = DynamicsDatasetLoader([dataset_dir], use_gt_rope=use_gt_rope)
 

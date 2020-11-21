@@ -28,7 +28,6 @@ class LinkPosition3dPIDController : public BaseLinkPositionController
 
   void Update(ignition::math::Vector3d const &setpoint) override;
 
-  char const *plugin_name_;
   double kP_pos_;
   double kP_vel_;
   double max_force_;
@@ -38,7 +37,6 @@ class LinkPosition3dPIDController : public BaseLinkPositionController
   double kI_vel_{0.0};
   double kD_vel_{0.0};
 
-  bool enabled_{false};
   common::PID pos_pid_;
   common::PID vel_pid_;
   ignition::math::Vector3d pos_error_{0, 0, 0};

@@ -12,6 +12,10 @@ class Position3D:
         self.move_srv = rospy.ServiceProxy("/position_3d_plugin/move", Position3DAction)
         self.wait_srv = rospy.ServiceProxy("/position_3d_plugin/wait", Position3DWait)
         self.get_srv = rospy.ServiceProxy("/position_3d_plugin/get", GetPosition3D)
+        self.list_srv = rospy.ServiceProxy("/position_3d_plugin/list", Position3DList)
+
+    def list(self) -> Position3DListResponse:
+        return self.list_srv(Position3DListRequest())
 
     def register(self, msg: RegisterPosition3DControllerRequest) -> RegisterPosition3DControllerResponse:
         return self.register_controller_srv(msg)
@@ -33,3 +37,7 @@ class Position3D:
 
     def get(self, msg: GetPosition3DRequest) -> GetPosition3DResponse:
         return self.get_srv(msg)
+
+    def exists(self, name: str):
+        res = self.list()
+        return name in res.controller_names

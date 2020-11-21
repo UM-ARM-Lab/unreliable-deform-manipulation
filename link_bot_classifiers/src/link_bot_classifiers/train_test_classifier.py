@@ -5,22 +5,26 @@ from typing import List, Optional, Dict
 import hjson
 import numpy as np
 import tensorflow as tf
+from progressbar import progressbar
 
 import link_bot_classifiers
 import rospy
+from link_bot_classifiers import classifier_utils
 from link_bot_classifiers.classifier_utils import load_generic_model
+from link_bot_data import base_dataset
 from link_bot_data.balance import balance
 from link_bot_data.classifier_dataset import ClassifierDatasetLoader
 from link_bot_data.dataset_utils import add_predicted, batch_tf_dataset
 from link_bot_data.visualization import init_viz_env
 from link_bot_pycommon.base_3d_scenario import Base3DScenario
 from link_bot_pycommon.collision_checking import batch_in_collision_tf_3d
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
+from link_bot_pycommon.serialization import my_hdump
 from merrrt_visualization.rviz_animation_controller import RvizAnimation
-from moonshine.moonshine_utils import sequence_of_dicts_to_dict_of_sequences
 from moonshine.indexing import index_dict_of_batched_tensors_tf
+from moonshine.moonshine_utils import numpify
 from shape_completion_training.metric import AccuracyMetric
 from shape_completion_training.model import filepath_tools
-from shape_completion_training.model.utils import reduce_mean_dict
 from shape_completion_training.model_runner import ModelRunner
 from state_space_dynamics import common_train_hparams
 from state_space_dynamics.train_test import setup_training_paths
@@ -65,6 +69,7 @@ def train_main(dataset_dirs: List[pathlib.Path],
                checkpoint: Optional[pathlib.Path] = None,
                threshold: Optional[float] = None,
                ensemble_idx: Optional[int] = None,
+               old_compat: bool = False,
                take: Optional[int] = None,
                validate: bool = True,
                trials_directory: Optional[pathlib.Path] = None,
@@ -76,11 +81,15 @@ def train_main(dataset_dirs: List[pathlib.Path],
     train_dataset = ClassifierDatasetLoader(dataset_dirs=dataset_dirs,
                                             load_true_states=True,
                                             use_gt_rope=use_gt_rope,
-                                            threshold=threshold)
+                                            threshold=threshold,
+                                            old_compat=old_compat,
+                                            )
     val_dataset = ClassifierDatasetLoader(dataset_dirs=dataset_dirs,
                                           load_true_states=True,
                                           use_gt_rope=use_gt_rope,
-                                          threshold=threshold)
+                                          threshold=threshold,
+                                          old_compat=old_compat,
+                                          )
 
     model_hparams.update(setup_hparams(batch_size, dataset_dirs, seed, train_dataset, use_gt_rope))
     model = model_class(hparams=model_hparams, batch_size=batch_size, scenario=train_dataset.scenario)
@@ -120,6 +129,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               mode: str,
               batch_size: int,
               use_gt_rope: bool,
+              old_compat: bool = False,
               take: Optional[int] = None,
               checkpoint: Optional[pathlib.Path] = None,
               trials_directory=pathlib.Path,
@@ -134,7 +144,10 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
+    dataset = ClassifierDatasetLoader(dataset_dirs,
+                                      load_true_states=True,
+                                      use_gt_rope=use_gt_rope,
+                                      old_compat=old_compat)
     tf_dataset = dataset.get_datasets(mode=mode, take=take)
     tf_dataset = balance(tf_dataset)
 
@@ -165,6 +178,7 @@ def viz_main(dataset_dirs: List[pathlib.Path],
              batch_size: int,
              only_errors: bool,
              use_gt_rope: bool,
+             old_compat: bool = False,
              **kwargs):
     stdev_pub_ = rospy.Publisher("stdev", Float32, queue_size=10)
     traj_idx_pub_ = rospy.Publisher("traj_idx_viz", Float32, queue_size=10)
@@ -181,72 +195,39 @@ def viz_main(dataset_dirs: List[pathlib.Path],
     ###############
     # Dataset
     ###############
-    test_dataset = ClassifierDatasetLoader(dataset_dirs, load_true_states=True, use_gt_rope=use_gt_rope)
-    test_tf_dataset = test_dataset.get_datasets(mode=mode)
-    scenario = test_dataset.scenario
+    dataset = ClassifierDatasetLoader(dataset_dirs,
+                                           load_true_states=True,
+                                           use_gt_rope=use_gt_rope,
+                                           old_compat=old_compat)
+    tf_dataset = dataset.get_datasets(mode=mode)
+    scenario = dataset.scenario
 
     ###############
     # Evaluate
     ###############
-    test_tf_dataset = batch_tf_dataset(test_tf_dataset, batch_size, drop_remainder=True)
+    tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=True)
 
-    net = model(hparams=params, batch_size=batch_size, scenario=test_dataset.scenario)
-    # This call to model runner restores the model
-    runner = ModelRunner(model=net,
-                         training=False,
-                         params=params,
-                         checkpoint=checkpoint,
-                         trial_path=trial_path,
-                         key_metric=AccuracyMetric,
-                         batch_metadata=test_dataset.batch_metadata)
+    model = classifier_utils.load_generic_model([checkpoint])
 
-    # Iterate over test set
-    all_accuracies_over_time = []
-    test_metrics = []
-    all_stdevs = []
-    all_labels = []
-    for batch_idx, test_batch in enumerate(test_tf_dataset):
-        print(batch_idx)
-        test_batch.update(test_dataset.batch_metadata)
+    for batch_idx, example in enumerate(progressbar(tf_dataset, widgets=base_dataset.widgets)):
+        example.update(dataset.batch_metadata)
+        predictions, _ = model.check_constraint_from_example(example, training=False)
 
-        predictions, test_batch_metrics = runner.model.val_step(test_batch)
-
-        test_metrics.append(test_batch_metrics)
-        labels = tf.expand_dims(test_batch['is_close'][:, 1:], axis=2)
-
-        all_labels = tf.concat((all_labels, tf.reshape(test_batch['is_close'][:, 1:], [-1])), axis=0)
-        all_stdevs = tf.concat((all_stdevs, tf.reshape(test_batch[add_predicted('stdev')], [-1])), axis=0)
+        labels = tf.expand_dims(example['is_close'][:, 1:], axis=2)
 
         probabilities = predictions['probabilities']
-        accuracy_over_time = tf.keras.metrics.binary_accuracy(y_true=labels, y_pred=probabilities)
-        all_accuracies_over_time.append(accuracy_over_time)
 
         # Visualization
-        test_batch.pop("time")
-        test_batch.pop("batch_size")
+        example.pop("time")
+        example.pop("batch_size")
         decisions = probabilities > 0.5
         classifier_is_correct = tf.squeeze(tf.equal(decisions, tf.cast(labels, tf.bool)), axis=-1)
         for b in range(batch_size):
-            example = index_dict_of_batched_tensors_tf(test_batch, b)
+            example_b = index_dict_of_batched_tensors_tf(example, b)
 
             # if the classifier is correct at all time steps, ignore
             if only_errors and tf.reduce_all(classifier_is_correct[b]):
                 continue
-
-            predicted_rope_states = tf.reshape(example[add_predicted('rope')][1], [-1, 3])
-            xs = predicted_rope_states[:, 0]
-            ys = predicted_rope_states[:, 1]
-            zs = predicted_rope_states[:, 2]
-            in_collision = bool(batch_in_collision_tf_3d(environment=example,
-                                                         xs=xs, ys=ys, zs=zs,
-                                                         inflate_radius_m=0)[0].numpy())
-            label = bool(example['is_close'][1].numpy())
-            accept = decisions[b, 0, 0].numpy()
-
-            # if not (in_collision and accept):
-            #     continue
-
-            # if label and only_positive
 
             def _custom_viz_t(scenario: Base3DScenario, e: Dict, t: int):
                 if t > 0:
@@ -260,44 +241,17 @@ def viz_main(dataset_dirs: List[pathlib.Path],
                 traj_idx_pub_.publish(traj_idx_msg)
 
             anim = RvizAnimation(scenario=scenario,
-                                 n_time_steps=test_dataset.horizon,
+                                 n_time_steps=dataset.horizon,
                                  init_funcs=[init_viz_env,
-                                             test_dataset.init_viz_action(),
+                                             dataset.init_viz_action(),
                                              ],
                                  t_funcs=[_custom_viz_t,
-                                          test_dataset.classifier_transition_viz_t(),
-                                          scenario.plot_stdev_t,
+                                          dataset.classifier_transition_viz_t(),
+                                          ExperimentScenario.plot_stdev_t,
                                           ])
-            anim.play(example)
-
-    all_accuracies_over_time = tf.concat(all_accuracies_over_time, axis=0)
-    mean_accuracies_over_time = tf.reduce_mean(all_accuracies_over_time, axis=0)
-    std_accuracies_over_time = tf.math.reduce_std(all_accuracies_over_time, axis=0)
-
-    test_metrics = sequence_of_dicts_to_dict_of_sequences(test_metrics)
-    mean_test_metrics = reduce_mean_dict(test_metrics)
-    for metric_name, metric_value in mean_test_metrics.items():
-        metric_value_str = np.format_float_positional(metric_value, precision=4, unique=False, fractional=False)
-        print(f"{metric_name}: {metric_value_str}")
-
-    import matplotlib.pyplot as plt
-    plt.style.use("slides")
-    time_steps = np.arange(1, test_dataset.horizon)
-    plt.plot(time_steps, mean_accuracies_over_time, label='mean', color='r')
-    plt.plot(time_steps, mean_accuracies_over_time - std_accuracies_over_time, color='orange', alpha=0.5)
-    plt.plot(time_steps, mean_accuracies_over_time + std_accuracies_over_time, color='orange', alpha=0.5)
-    plt.fill_between(time_steps,
-                     mean_accuracies_over_time - std_accuracies_over_time,
-                     mean_accuracies_over_time + std_accuracies_over_time,
-                     label="68% confidence interval",
-                     color='r',
-                     alpha=0.3)
-    plt.ylim(0, 1.05)
-    plt.title("classifier accuracy versus horizon")
-    plt.xlabel("time step")
-    plt.ylabel("accuracy")
-    plt.legend()
-    plt.show()
+            with open("debugging.hjson", 'w') as f:
+                my_hdump(numpify(example_b), f)
+            anim.play(example_b)
 
 
 def viz_ensemble_main(dataset_dir: pathlib.Path,

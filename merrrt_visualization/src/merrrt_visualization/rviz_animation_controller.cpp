@@ -136,7 +136,7 @@ void RVizAnimationController::LoopToggled()
   command_pub_.publish(cmd);
 
   if (ui.auto_play_checkbox->isChecked()) {
-    ROS_WARN_STREAM("Looping takes precedence over auto-play");
+    ROS_WARN_STREAM("Auto-play takes precedence over looping");
     // show a warning here
   }
 }

@@ -15,7 +15,7 @@ from link_bot_pycommon.ros_pycommon import publish_color_image
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 from sensor_msgs.msg import Image
-from state_space_dynamics import model_utils, filter_utils
+from state_space_dynamics import dynamics_utils, filter_utils
 
 
 # limit_gpu_mem(10)
@@ -42,7 +42,7 @@ def main():
     test_tf_dataset = test_dataset.get_datasets(mode=args.mode)
 
     filter_model = filter_utils.load_filter([args.checkpoint])
-    latent_dynamics_model, _ = model_utils.load_generic_model([args.checkpoint])
+    latent_dynamics_model, _ = dynamics_utils.load_generic_model([args.checkpoint])
 
     test_as_inverse_model(filter_model, latent_dynamics_model, test_dataset, test_tf_dataset)
 

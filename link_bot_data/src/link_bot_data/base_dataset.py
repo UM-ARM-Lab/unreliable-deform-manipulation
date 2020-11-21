@@ -40,6 +40,13 @@ class SizedTFDataset:
     def __iter__(self):
         return self.dataset.__iter__()
 
+    def __repr__(self):
+        if len(self.records) > 0:
+            dir = pathlib.Path(self.records[0]).parent.as_posix()
+        else:
+            dir = "??"
+        return f"Dataset: {dir}, size={self.size}"
+
     def batch(self, batch_size: int, *args, **kwargs):
         dataset_batched = self.dataset.batch(*args, batch_size=batch_size, **kwargs)
         return SizedTFDataset(dataset_batched, self.records, size=int(self.size / batch_size))

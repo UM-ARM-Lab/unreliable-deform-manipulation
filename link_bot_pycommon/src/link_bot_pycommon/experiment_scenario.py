@@ -5,6 +5,7 @@ import numpy as np
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
+from link_bot_data.dataset_utils import add_predicted
 from moonshine.indexing import index_dict_of_batched_tensors_tf
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
@@ -140,7 +141,7 @@ class ExperimentScenario:
         self.accept_probability_viz_pub.publish(msg)
 
     def plot_stdev_t(self, example: Dict, t: int):
-        stdev_t = example['stdev'][t]
+        stdev_t = example[add_predicted('stdev')][t]
         self.plot_stdev(stdev_t)
 
     def plot_stdev(self, stdev_t: float):

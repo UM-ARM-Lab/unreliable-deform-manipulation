@@ -15,7 +15,7 @@ from merrrt_visualization.rviz_animation_controller import RvizAnimationControll
 from moonshine.moonshine_utils import remove_batch
 from shape_completion_training.model import filepath_tools
 from shape_completion_training.model_runner import ModelRunner
-from state_space_dynamics import model_utils, common_train_hparams
+from state_space_dynamics import dynamics_utils, common_train_hparams
 
 
 def train_main(dataset_dirs: List[pathlib.Path],
@@ -202,7 +202,7 @@ def viz_dataset(dataset_dirs: List[pathlib.Path],
     test_tf_dataset = test_dataset.get_datasets(mode=mode)
     test_tf_dataset = batch_tf_dataset(test_tf_dataset, 1, drop_remainder=True)
 
-    model, _ = model_utils.load_generic_model([checkpoint])
+    model, _ = dynamics_utils.load_generic_model([checkpoint])
 
     for i, batch in enumerate(test_tf_dataset):
         batch.update(test_dataset.batch_metadata)

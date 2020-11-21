@@ -13,7 +13,7 @@ import rospy
 from link_bot_classifiers import classifier_utils
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify, listify
-from state_space_dynamics import model_utils
+from state_space_dynamics import dynamics_utils
 
 limit_gpu_mem(7)
 
@@ -34,7 +34,7 @@ def main():
 
     planner_params = metadata['planner_params']
     fwd_model_dirs = [pathlib.Path(p) for p in planner_params['fwd_model_dir']]
-    fwd_model, _ = model_utils.load_generic_model(fwd_model_dirs)
+    fwd_model, _ = dynamics_utils.load_generic_model(fwd_model_dirs)
     scenario = fwd_model.scenario
 
     classifier_model_dir = pathlib.Path(planner_params['classifier_model_dir'])

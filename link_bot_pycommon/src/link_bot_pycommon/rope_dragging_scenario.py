@@ -110,12 +110,13 @@ class RopeDraggingScenario(Base3DScenario):
         self.action_viz_pub.publish(msg)
 
     def on_before_get_state_or_execute_action(self):
-        self.pos3d.register(RegisterPosition3DControllerRequest(scoped_link_name=self.ROPE_LINK_NAME,
-                                                                controller_type='pid',
-                                                                kp_vel=10.0,
-                                                                kp_pos=10.0,
-                                                                max_force=10.0,
-                                                                max_vel=0.1, ))
+        if not self.pos3d.exists(self.ROPE_LINK_NAME):
+            self.pos3d.register(RegisterPosition3DControllerRequest(scoped_link_name=self.ROPE_LINK_NAME,
+                                                                    controller_type='pid',
+                                                                    kp_vel=10.0,
+                                                                    kp_pos=10.0,
+                                                                    max_force=10.0,
+                                                                    max_vel=0.1, ))
 
     def execute_action(self, action: Dict):
         timeout_s = action.get('timeout_s', 1.0)

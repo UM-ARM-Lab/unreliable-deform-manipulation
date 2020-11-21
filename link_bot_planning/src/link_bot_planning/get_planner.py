@@ -4,7 +4,7 @@ from typing import Dict
 from link_bot_planning.rrt import RRT
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.pycommon import paths_from_json
-from state_space_dynamics import model_utils, filter_utils
+from state_space_dynamics import dynamics_utils, filter_utils
 
 
 def get_planner(planner_params: Dict, verbose: int):
@@ -57,5 +57,5 @@ def get_planner(planner_params: Dict, verbose: int):
 
 def load_fwd_model(planner_params):
     fwd_model_dirs = paths_from_json(planner_params['fwd_model_dir'])
-    fwd_model, _ = model_utils.load_generic_model(fwd_model_dirs)
+    fwd_model, _ = dynamics_utils.load_generic_model(fwd_model_dirs)
     return fwd_model

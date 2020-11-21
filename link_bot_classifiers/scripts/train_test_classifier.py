@@ -61,6 +61,7 @@ def main():
                               help='report validation every this many epochs', default=1)
     train_parser.add_argument('--seed', type=int, default=None)
     train_parser.add_argument('--use-gt-rope', action='store_true')
+    train_parser.add_argument('--old-compat', action='store_true')
     train_parser.add_argument('--threshold', type=float, default=None)
     train_parser.set_defaults(func=train_main)
 
@@ -82,6 +83,7 @@ def main():
     viz_parser.add_argument('--verbose', '-v', action='count', default=0)
     viz_parser.add_argument('--only-errors', action='store_true')
     viz_parser.add_argument('--use-gt-rope', action='store_true')
+    viz_parser.add_argument('--old-compat', action='store_true')
     viz_parser.set_defaults(func=viz_main)
 
     viz_ensemble_parser = subparsers.add_parser('viz_ensemble')

@@ -28,6 +28,7 @@ from shape_completion_training.my_keras_model import MyKerasModel
 
 DEBUG_VIZ = False
 
+
 class NNClassifier(MyKerasModel):
     def __init__(self, hparams: Dict, batch_size: int, scenario: Base3DScenario):
         super().__init__(hparams, batch_size)
@@ -276,7 +277,8 @@ class NNClassifier(MyKerasModel):
                 action_t = index_time(example, self.action_keys + self.pred_state_keys, t)
                 self.scenario.plot_state_rviz(numpify(pred_t), label='predicted', color='#0000ffff')
                 if action_t is not None:
-                    self.scenario.plot_action_rviz(numpify(pred_t), numpify(action_t), label='action', color='#0000ffff')
+                    self.scenario.plot_action_rviz(numpify(pred_t), numpify(action_t), label='action',
+                                                   color='#0000ffff')
                 # # Ground-Truth
                 # true_t = index_time_with_metadata({}, example, self.true_state_keys, t)
                 # self.scenario.plot_state_rviz(numpify(true_t), label='actual', color='#ff0000ff', scale=1.1)
@@ -331,7 +333,16 @@ class NNClassifierWrapper(BaseConstraintChecker):
             self.pred_state_keys = net.pred_state_keys
 
     def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
-        # TODO: make the classifier faster
+        from moonshine.moonshine_utils import numpify
+        from link_bot_pycommon.serialization import my_hdump
+        with open("debugging2.hjson", 'w') as f:
+            example_b = {
+                add_predicted('link_bot'): example[add_predicted('link_bot')][0],
+                add_predicted('gripper'):  example[add_predicted('gripper')][0],
+                'gripper_position':        example['gripper_position'][0],
+            }
+            my_hdump(numpify(example_b), f)
+
         predictions = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_predictions = {k: tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}

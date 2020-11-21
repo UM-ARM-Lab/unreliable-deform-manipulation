@@ -21,7 +21,7 @@ from link_bot_pycommon.pycommon import paths_from_json
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import listify, numpify, remove_batch
-from state_space_dynamics import model_utils
+from state_space_dynamics import dynamics_utils
 
 limit_gpu_mem(8.5)
 
@@ -31,7 +31,7 @@ def load_dataset_and_models(args):
     models = {}
     for name, model_info in comparison_info.items():
         model_dir = paths_from_json(model_info['model_dir'])
-        model, _ = model_utils.load_generic_model(model_dir)
+        model, _ = dynamics_utils.load_generic_model(model_dir)
         models[name] = model
 
     dataset = DynamicsDatasetLoader(args.dataset_dirs)

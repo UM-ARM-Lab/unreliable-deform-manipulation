@@ -16,7 +16,7 @@ from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
 from merrrt_visualization.rviz_animation_controller import RvizAnimationController
 from moonshine.gpu_config import limit_gpu_mem
 from moonshine.moonshine_utils import numpify
-from state_space_dynamics import model_utils
+from state_space_dynamics import dynamics_utils
 
 limit_gpu_mem(1)
 
@@ -44,7 +44,7 @@ def main():
     n_actions = len(actions)
     time_steps = np.arange(n_actions + 1)
 
-    fwd_model, _ = model_utils.load_generic_model(args.fwd_model_dir)
+    fwd_model, _ = dynamics_utils.load_generic_model(args.fwd_model_dir)
 
     service_provider = GazeboServices()
     service_provider.setup_env(verbose=0, real_time_rate=0,

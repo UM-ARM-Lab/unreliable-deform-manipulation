@@ -166,6 +166,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
         }
 
         tts = TestThresholdSensitivity(log, threshold)
+        rospy.logerr("No need to remake dataset to test a different threshold!!!!")
         tts.make_classifier_dataset(regenerate=args.regenerate,
                                     labeling_params=labeling_params,
                                     take=args.take)

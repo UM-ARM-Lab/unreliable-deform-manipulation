@@ -14,7 +14,7 @@
 
 using namespace gazebo;
 
-const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{-10000};
+const sdf_tools::COLLISION_CELL CollisionMapPlugin::oob_value{0};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::occupied_value{1};
 const sdf_tools::COLLISION_CELL CollisionMapPlugin::unoccupied_value{0};
 
