@@ -324,7 +324,7 @@ class NNClassifierWrapper(BaseConstraintChecker):
                 if manager.latest_checkpoint:
                     status.assert_existing_objects_matched()
             else:
-                raise RuntimeError("Failed to restore!!!")
+                raise RuntimeError(f"Failed to restore {manager.latest_checkpoint}!!!")
 
             self.nets.append(net)
 
