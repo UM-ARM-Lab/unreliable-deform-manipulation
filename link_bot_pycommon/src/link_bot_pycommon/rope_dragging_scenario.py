@@ -284,7 +284,7 @@ class RopeDraggingScenario(Base3DScenario):
     def sample_tailpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         # add more inflating to reduce the number of truly unacheivable gols
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=2 * planner_params['goal_params']['threshold'],
+                                     radius_m=3 * planner_params['goal_params']['threshold'],
                                      res=environment['res'])
         goal_extent = planner_params['goal_params']['extent']
 

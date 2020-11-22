@@ -14,7 +14,7 @@ import rospy
 from link_bot_planning.results_utils import labeling_params_from_planner_params
 from link_bot_pycommon.args import my_formatter, int_range_arg
 from link_bot_pycommon.get_scenario import get_scenario
-from merrrt_visualization.rviz_animation_controller import RvizAnimationController
+from merrrt_visualization.rviz_animation_controller import RvizAnimationController, RvizAnimation
 from moonshine.moonshine_utils import numpify
 
 
@@ -24,8 +24,6 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument("results_dir", type=pathlib.Path, help='directory containing metrics.json')
     parser.add_argument("trial_idx", type=int_range_arg, help='which plan to show')
-    parser.add_argument("fallback_labeling_params", type=pathlib.Path,
-                        help='labeling params to use in case none can be found automatically')
     parser.add_argument("--save", action='store_true')
     parser.add_argument("--filter-by-status", type=str, nargs="+")
     parser.add_argument("--show-tree", action="store_true")
@@ -39,16 +37,13 @@ def main():
         metadata = json.loads(metadata_str)
     scenario = get_scenario(metadata['scenario'])
 
-    with args.fallback_labeling_params.open("r") as fallback_labeling_params_file:
-        fallback_labeing_params = json.load(fallback_labeling_params_file)
-
     for trial_idx in args.trial_idx:
         with gzip.open(args.results_dir / f'{trial_idx}_metrics.json.gz', 'rb') as metrics_file:
             metrics_str = metrics_file.read()
         datum = json.loads(metrics_str.decode("utf-8"))
 
         if if_filter_with_status(datum, args.filter_by_status):
-            plot_steps(args, scenario, datum, metadata, fallback_labeing_params)
+            plot_steps(args, scenario, datum, metadata, {})
 
         print(f"Trial {trial_idx} complete with status {datum['trial_status']}")
 
@@ -145,6 +140,12 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
             actions = [step['recovery_action']]
             actual_states = step['execution_result']['path']
             predicted_states = [None, None]
+        else:
+            raise NotImplementedError(f"invalid step type {step['type']}")
+
+        actions = numpify(actions)
+        actual_states = numpify(actual_states)
+        predicted_states = numpify(predicted_states)
 
         all_actions.extend(actions)
         types.extend([step['type']] * len(actions))
@@ -166,8 +167,6 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     all_actual_states.append(actual_states[-1])
     all_predicted_states.append(predicted_states[-1])
 
-    scenario.plot_environment_rviz(environment)
-
     anim = RvizAnimationController(n_time_steps=len(all_actual_states))
 
     def _type_action_color(type_t: str):
@@ -179,6 +178,7 @@ def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     scenario.reset_planning_viz()
     dist_to_goal = np.inf
     while not anim.done:
+        scenario.plot_environment_rviz(environment)
         t = anim.t()
         s_t = all_actual_states[t]
         s_t_pred = all_predicted_states[t]
