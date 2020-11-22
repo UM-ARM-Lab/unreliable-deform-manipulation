@@ -12,7 +12,7 @@ LinkPosition3dPIDController::LinkPosition3dPIDController(char const *plugin_name
                                                          double const max_force,
                                                          double const max_vel,
                                                          bool const grav_comp) :
-    BaseLinkPositionController(plugin_name, link, "kinematic"),
+    BaseLinkPositionController(plugin_name, link, "pid"),
     kP_pos_(kp_pos),
     kP_vel_(kp_vel),
     max_force_(max_force),
@@ -51,7 +51,10 @@ void LinkPosition3dPIDController::Update(ignition::math::Vector3d const &setpoin
   auto const vel_ = link_->WorldLinearVel();
 
   pos_error_ = pos - setpoint;
-  auto const target_vel = pos_error_.Normalized() * pos_pid_.Update(pos_error_.Length(), dt);
+  auto target_vel = pos_error_.Normalized() * pos_pid_.Update(pos_error_.Length(), dt);
+  target_vel.X(ignition::math::clamp(target_vel.X(), -speed_mps_, speed_mps_));
+  target_vel.Y(ignition::math::clamp(target_vel.Y(), -speed_mps_, speed_mps_));
+  target_vel.Z(ignition::math::clamp(target_vel.Z(), -speed_mps_, speed_mps_));
 
   auto const vel_error = vel_ - target_vel;
   auto force = vel_error.Normalized() * vel_pid_.Update(vel_error.Length(), dt);

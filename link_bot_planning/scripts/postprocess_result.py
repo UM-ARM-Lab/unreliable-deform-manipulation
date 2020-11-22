@@ -151,7 +151,7 @@ def postprocess_step(scenario, fwd_model, classifier, environment, step, goal, p
     #     sleep(0.02)
 
     final_final_state = final_states[-1]
-    goal_threshold = planner_params['goal_threshold']
+    goal_threshold = planner_params['goal_params']['threshold']
     still_reaches_goal = scenario.distance_to_goal(final_final_state, goal) < goal_threshold + 1e-3
     print(f"Still near goal? {still_reaches_goal}")
 

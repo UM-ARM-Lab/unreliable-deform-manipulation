@@ -35,8 +35,8 @@ class Position3D:
     def wait(self, msg: Position3DWaitRequest) -> Position3DWaitResponse:
         return self.wait_srv(msg)
 
-    def get(self, msg: GetPosition3DRequest) -> GetPosition3DResponse:
-        return self.get_srv(msg)
+    def get(self, scoped_link_name: str) -> GetPosition3DResponse:
+        return self.get_srv(GetPosition3DRequest(scoped_link_name=scoped_link_name))
 
     def exists(self, name: str):
         res = self.list()

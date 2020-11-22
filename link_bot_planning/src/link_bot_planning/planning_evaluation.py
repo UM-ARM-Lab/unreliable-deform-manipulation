@@ -73,14 +73,20 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         self.final_execution_to_goal_errors = []
 
     def randomize_environment(self):
+        if self.verbose >= 1:
+            rospy.loginfo("Randomizing env")
+        self.service_provider.play()
         super().randomize_environment()
+        self.service_provider.pause()
+        if self.verbose >= 1:
+            rospy.loginfo("End randomizing env")
 
     def on_start_trial(self, trial_idx: int):
         if self.record:
             filename = self.root.absolute() / 'plan-{}.avi'.format(trial_idx)
             self.service_provider.start_record_trial(str(filename))
             bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{trial_idx}.bag"
-            rospy.loginfo(Fore.YELLOW + f"Bag file name: {bagname.as_posix()}" + Fore.RESET)
+            rospy.loginfo(Fore.YELLOW + f"Saving bag file name: {bagname.as_posix()}" + Fore.RESET)
             self.bag = rosbag.Bag(bagname, 'w')
 
     def follow_joint_trajectory_goal_callback(self, goal_msg):
@@ -110,7 +116,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         final_actual_state = numpify(trial_data['end_state'])
         final_execution_to_goal_error = self.planner.scenario.distance_to_goal(final_actual_state, goal)
         self.final_execution_to_goal_errors.append(final_execution_to_goal_error)
-        goal_threshold = self.planner_params['goal_threshold']
+        goal_threshold = self.planner_params['goal_params']['threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
         update_msg = f"[{self.subfolder}] Current average success rate {success_percentage:.2f}%"
@@ -136,12 +142,16 @@ def evaluate_planning_method(comparison_idx: int,
 
     # Start Services
     service_provider = gazebo_services.GazeboServices()
-    planner = get_planner(planner_params=planner_params,
-                          verbose=verbose)
+    planner = get_planner(planner_params=planner_params, verbose=verbose)
 
     service_provider.setup_env(verbose=verbose,
                                real_time_rate=planner_params['real_time_rate'],
-                               max_step_size=planner.fwd_model.max_step_size)
+                               max_step_size=planner.fwd_model.max_step_size,
+                               play=False)
+
+    # FIXME: RAII -- you should not be able to call get_state on a scenario until this method has been called
+    #  which could be done by making a type, something like "EmbodiedScenario" which has get_state and execute_action,
+    planner.scenario.on_before_get_state_or_execute_action()
 
     runner = EvalPlannerConfigs(
         planner=planner,
@@ -205,6 +215,7 @@ def planning_evaluation(root: pathlib.Path,
                                      trials=trials,
                                      planner_config_name=planner_config_name,
                                      verbose=verbose,
+                                     timeout=timeout,
                                      common_output_directory=common_output_directory,
                                      test_scenes_dir=test_scenes_dir,
                                      save_test_scenes_dir=save_test_scenes_dir,

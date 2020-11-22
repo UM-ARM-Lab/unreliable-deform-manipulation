@@ -20,7 +20,7 @@ def get_planner(planner_params: Dict, verbose: int):
         from link_bot_classifiers import classifier_utils
 
         fwd_model = load_fwd_model(planner_params)
-        filter_model = filter_utils.load_filter(paths_from_json(planner_params['filter_model_dir']))
+        filter_model = filter_utils.load_filter(paths_from_json(planner_params['filter_model_dir']), scenario)
 
         classifier_model_dir = paths_from_json(planner_params['classifier_model_dir'])
         classifier_model = classifier_utils.load_generic_model(classifier_model_dir, scenario=scenario)

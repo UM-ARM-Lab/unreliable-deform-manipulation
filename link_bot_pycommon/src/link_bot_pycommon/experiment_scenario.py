@@ -6,6 +6,7 @@ import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Vector3
 from link_bot_data.dataset_utils import add_predicted
+from link_bot_pycommon.sample_object_positions import sample_object_position, sample_object_positions
 from moonshine.indexing import index_dict_of_batched_tensors_tf
 from peter_msgs.srv import GetPosition3DRequest, Position3DEnableRequest, Position3DActionRequest
 from std_msgs.msg import Int64, Float32
@@ -321,18 +322,3 @@ class ExperimentScenario:
         raise NotImplementedError()
 
 
-def sample_object_position(env_rng, xyz_range: Dict):
-    x_range = xyz_range['x']
-    y_range = xyz_range['y']
-    z_range = xyz_range['z']
-    position = Vector3()
-    position.x = env_rng.uniform(*x_range)
-    position.y = env_rng.uniform(*y_range)
-    position.z = env_rng.uniform(*z_range)
-    return position
-
-
-def sample_object_positions(env_rng, movable_objects: Dict) -> Dict[str, Dict]:
-    random_object_positions = {name: sample_object_position(
-        env_rng, xyz_range) for name, xyz_range in movable_objects.items()}
-    return random_object_positions

@@ -89,7 +89,7 @@ def plot_plan(args, scenario, step, metadata, fallback_labeing_params: Dict):
                                         predicted_states=planned_path,
                                         actions=planned_actions,
                                         goal=goal,
-                                        goal_threshold=planner_params['goal_threshold'],
+                                        goal_threshold=planner_params['goal_params']['threshold'],
                                         labeling_params=labeling_params,
                                         accept_probabilities=None,
                                         horizon=metadata['horizon'])
@@ -111,7 +111,7 @@ def if_filter_with_status(datum, filter_by_status):
 
 def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     planner_params = metadata['planner_params']
-    goal_threshold = planner_params['goal_threshold']
+    goal_threshold = planner_params['goal_params']['threshold']
 
     labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeing_params)
 

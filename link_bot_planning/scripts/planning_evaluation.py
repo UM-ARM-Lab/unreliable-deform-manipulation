@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 import argparse
-import json
+import logging
 import pathlib
 
 import colorama
 import hjson
+import tensorflow as tf
 
 import rospy
 from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.args import my_formatter, int_range_arg
-from moonshine.gpu_config import limit_gpu_mem
-
-limit_gpu_mem(7.5)
 
 
 def main():
     colorama.init(autoreset=True)
+    tf.get_logger().setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('planners_params', type=pathlib.Path, nargs='+',
@@ -38,9 +37,13 @@ def main():
 
     planners_params = []
     for planner_params_filename in args.planners_params:
+        planners_params_common_filename = planner_params_filename.parent / 'common.hjson'
+        with planners_params_common_filename.open('r') as planners_params_common_file:
+            planner_params_common_str = planners_params_common_file.read()
+        planner_params = hjson.loads(planner_params_common_str)
         with planner_params_filename.open('r') as planner_params_file:
             planner_params_str = planner_params_file.read()
-        planner_params = hjson.loads(planner_params_str)
+        planner_params.update(hjson.loads(planner_params_str))
         planners_params.append((planner_params_filename.stem, planner_params))
 
     return planning_evaluation(root=root,

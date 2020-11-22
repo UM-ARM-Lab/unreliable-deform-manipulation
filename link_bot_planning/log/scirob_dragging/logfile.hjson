@@ -22,4 +22,12 @@
       dy_trials/scirob_dragging_7
     ]
   }
+  learn_classifier:
+  {
+    model_dir: cl_trials/scirob_dragging/November_19_02-08-37_d31d770277/
+  }
+  learn_recovery:
+  {
+    model_dir: recovery_trials/none
+  }
 }

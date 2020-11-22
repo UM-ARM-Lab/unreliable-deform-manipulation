@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--gui", action='store_true')
     parser.add_argument("--launch", action='store_true')
     parser.add_argument("--steps", help="a comma separated list of steps to explicitly include, regardless of logfile")
+    parser.add_argument('--verbose', '-v', action='count', default=0)
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--nickname', type=str)
@@ -55,7 +56,8 @@ def main():
     fsr = FullStackRunner(nickname=nickname,
                           unique_nickname=unique_nickname,
                           full_stack_params=full_stack_params,
-                          launch=args.launch)
+                          launch=args.launch,
+                          verbose=args.verbose)
     fsr.gui = args.gui
     if args.steps is not None:
         included_steps = args.steps.split(",")

@@ -61,3 +61,9 @@ class BaseServices:
         step = WorldControlRequest()
         step.steps = steps
         self.world_control(step)
+
+    def pause(self):
+        pass
+
+    def play(self):
+        pass

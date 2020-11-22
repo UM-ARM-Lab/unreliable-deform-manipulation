@@ -92,7 +92,7 @@ class Base3DScenario(ExperimentScenario):
         grid_utils.send_occupancy_tf(self.tf.tf_broadcaster, environment)
 
     def plot_sampled_goal_state(self, state: Dict):
-        self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal sample", color='#EB322F')
+        self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal_sample", color='#EB322F')
         self.sampled_goal_marker_idx += 1
 
     def plot_start_state(self, state: Dict):
@@ -111,7 +111,7 @@ class Base3DScenario(ExperimentScenario):
         self.maybe_rejected_state_idx += 1
 
     def plot_current_tree_state(self, state: Dict, horizon: int, **kwargs):
-        self.plot_state_rviz(state, idx=1, label='current tree state', **kwargs)
+        self.plot_state_rviz(state, idx=1, label='current_tree_state', **kwargs)
 
     def plot_tree_state(self, state: Dict, color='#777777'):
         self.plot_state_rviz(state, idx=self.tree_state_idx, label='tree', color=color)
@@ -247,8 +247,8 @@ class Base3DScenario(ExperimentScenario):
             'extent': example['extent'],
         }
 
-    def random_new_object_poses(self, env_rng: np.random.RandomState, objects_params: Dict):
-        random_object_poses = {k: self.random_object_pose(env_rng, objects_params) for k in objects_params['objects']}
+    def random_new_object_poses(self, env_rng: np.random.RandomState, params: Dict):
+        random_object_poses = {k: self.random_object_pose(env_rng, params) for k in params['objects']}
         return random_object_poses
 
     def random_pose_in_extents(self, env_rng: np.random.RandomState, extent):

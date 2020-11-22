@@ -19,8 +19,8 @@ from link_bot_classifiers import recovery_policy_utils
 from link_bot_data.dynamics_dataset import DynamicsDatasetLoader
 from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
 from link_bot_pycommon.base_services import BaseServices
-from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.bbox_visualization import extent_to_bbox
+from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.moonshine_utils import numpify, remove_batch, add_batch
 
 
@@ -68,6 +68,7 @@ class PlanAndExecute:
                  ):
         self.planner = planner
         self.scenario = self.planner.scenario
+        self.scenario.on_before_get_state_or_execute_action()
         self.trials = trials
         self.planner_params = planner_params
         self.verbose = verbose
@@ -94,17 +95,17 @@ class PlanAndExecute:
         # Debugging
         if self.verbose >= 2:
             self.goal_bbox_pub = rospy.Publisher('goal_bbox', BoundingBox, queue_size=10, latch=True)
-            bbox_msg = extent_to_bbox(planner_params['goal_extent'])
+            bbox_msg = extent_to_bbox(planner_params['goal_params']['extent'])
             bbox_msg.header.frame_id = 'world'
             self.goal_bbox_pub.publish(bbox_msg)
 
         goal_params = self.planner_params['goal_params']
         if goal_params['type'] == 'fixed':
-            self.generator = lambda e: numpify(goal_params['goal_fixed'])
+            self.goal_generator = lambda e: numpify(goal_params['goal_fixed'])
         elif goal_params['type'] == 'random':
-            self.generator = lambda e: self.scenario.sample_goal(environment=e,
-                                                                 rng=self.goal_rng,
-                                                                 planner_params=self.planner_params)
+            self.goal_generator = lambda e: self.scenario.sample_goal(environment=e,
+                                                                      rng=self.goal_rng,
+                                                                      planner_params=self.planner_params)
         elif goal_params['type'] == 'dataset':
             test_dataset = DynamicsDatasetLoader([pathlib.Path(goal_params['goals_dataset'])])
             test_tf_dataset = test_dataset.get_datasets(mode='val')
@@ -140,11 +141,10 @@ class PlanAndExecute:
                 rospy.loginfo(Fore.GREEN + f"Randomizing Environment")
             if self.save_test_scenes_dir is not None:
                 # Gazebo specific
-                self.service_provider.step(10)
                 links_states = self.link_states_listener.get()
                 self.save_test_scenes_dir.mkdir(exist_ok=True, parents=True)
                 bagfile_name = self.save_test_scenes_dir / f'scene_{trial_idx:04d}.bag'
-                rospy.loginfo(bagfile_name)
+                rospy.loginfo(f"Saving scene to {bagfile_name}")
                 with rosbag.Bag(bagfile_name, 'w') as bag:
                     bag.write('links_states', links_states)
 
@@ -174,11 +174,14 @@ class PlanAndExecute:
         else:
             if self.verbose >= 2 and not self.no_execution:
                 rospy.loginfo(Fore.CYAN + "Executing Plan" + Fore.RESET)
+            self.service_provider.play()
             actual_path = execute_actions(self.service_provider,
                                           self.scenario,
                                           planning_query.start,
                                           planning_result.actions,
                                           plot=True)
+            self.service_provider.pause()
+
         # post-execution callback
         execution_result = ExecutionResult(path=actual_path)
         return execution_result
@@ -188,7 +191,9 @@ class PlanAndExecute:
             actual_path = []
         else:
             before_state = self.scenario.get_state()
+            self.service_provider.play()
             self.scenario.execute_action(action)
+            self.service_provider.pause()
             after_state = self.scenario.get_state()
             actual_path = [before_state, after_state]
         execution_result = ExecutionResult(path=actual_path)
@@ -281,7 +286,7 @@ class PlanAndExecute:
             end_state = self.scenario.get_state()
             d = self.scenario.distance_to_goal(end_state, planning_query.goal)
             rospy.loginfo(f"distance to goal after execution is {d:.3f}")
-            reached_goal = (d <= self.planner_params['goal_threshold'] + 1e-6)
+            reached_goal = (d <= self.planner_params['goal_params']['threshold'] + 1e-6)
 
             if reached_goal or time_since_start > total_timeout:
                 if reached_goal:

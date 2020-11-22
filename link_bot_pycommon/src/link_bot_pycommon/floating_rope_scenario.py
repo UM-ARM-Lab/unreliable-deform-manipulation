@@ -129,12 +129,15 @@ class FloatingRopeScenario(Base3DScenario):
 
     def execute_action(self, action: Dict):
         speed_mps = action.get('speed', 0.1)
-        left_req = self.pos_set_req(action['left_gripper_position'], speed_mps, 'left_gripper')
-        right_req = self.pos_set_req(action['right_gripper_position'], speed_mps, 'right_gripper')
-        self.pos3d.move(left_req)
-        self.pos3d.move(right_req)
+        left_req = Position3DActionRequest(speed_mps=speed_mps,
+                                           scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'),
+                                           position=ros_numpy.msgify(Point, action['left_gripper_position']))
+        right_req = Position3DActionRequest(speed_mps=speed_mps,
+                                            scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'),
+                                            position=ros_numpy.msgify(Point, action['right_gripper_position']))
+        self.pos3d.set(left_req)
+        self.pos3d.set(right_req)
 
-        # FIXME: get ride of this wait and set timeout above, I think "move" waits?
         wait_req = Position3DWaitRequest()
         wait_req.timeout_s = 10.0
         wait_req.scoped_link_names.append(gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
@@ -143,21 +146,6 @@ class FloatingRopeScenario(Base3DScenario):
 
         rope_settling_time = action.get('settling_time', 1.0)
         rospy.sleep(rope_settling_time)
-
-    def pos_set_req(self, position, speed_mps: float, link_name: str):
-        req = Position3DActionRequest()
-        req.speed_mps = speed_mps
-        req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, link_name)
-        req.position = ros_numpy.msgify(Point, position)
-        return req
-
-    def pos_move_req(self, position, speed_mps: float, link_name: str):
-        req = Position3DActionRequest()
-        req.speed_mps = speed_mps
-        req.scoped_link_name = gz_scope(self.ROPE_NAMESPACE, link_name)
-        req.position = ros_numpy.msgify(Point, position)
-        req.timeout_s = 10.0
-        return req
 
     def reset_rope(self, action_params: Dict):
         reset = SetRopeStateRequest()
@@ -417,11 +405,9 @@ class FloatingRopeScenario(Base3DScenario):
     def get_rope_point_positions(self):
         # NOTE: consider getting rid of this message type/service just use rope state [0] and rope state [-1]
         #  although that looses semantic meaning and means hard-coding indices a lot...
-        left_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
-        left_res: GetPosition3DResponse = self.pos3d.get(left_req)
+        left_res: GetPosition3DResponse = self.pos3d.get(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
         left_rope_point_position = ros_numpy.numpify(left_res.pos)
-        right_req = GetPosition3DRequest(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
-        right_res: GetPosition3DResponse = self.pos3d.get(right_req)
+        right_res: GetPosition3DResponse = self.pos3d.get(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
         right_rope_point_position = ros_numpy.numpify(right_res.pos)
         return left_rope_point_position, right_rope_point_position
 
@@ -512,7 +498,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def sample_gripper_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+                                     radius_m=planner_params['goal_params']['threshold'], res=environment['res'])
         goal_extent = planner_params['goal_extent']
 
         while True:
@@ -558,7 +544,7 @@ class FloatingRopeScenario(Base3DScenario):
             return goal
 
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=planner_params['goal_threshold'], res=environment['res'])
+                                     radius_m=planner_params['goal_params']['threshold'], res=environment['res'])
         # DEBUG visualize the inflated env
         # from copy import deepcopy
         # environment_ = deepcopy(environment)

@@ -29,7 +29,9 @@ class FullStackRunner:
                  full_stack_params: Dict,
                  launch: Optional[bool] = False,
                  gui: Optional[bool] = False,
+                 verbose: Optional[int] = 0,
                  ):
+        self.verbose = verbose
         self.launch = launch
         self.gui = gui
         self.full_stack_params = full_stack_params
@@ -56,7 +58,7 @@ class FullStackRunner:
                                          service_provider=self.service_provider,
                                          params=collect_dynamics_data_params,
                                          seed=seed,
-                                         verbose=0)
+                                         verbose=self.verbose)
         dynamics_data_1_nickname = self.nickname + '_phase1'
         # this function will add a time stamp/git hash to the nickname
         files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_1['robot_namespace'],
@@ -88,7 +90,7 @@ class FullStackRunner:
                                          service_provider=self.service_provider,
                                          params=collect_dynamics_data_params,
                                          seed=seed,
-                                         verbose=0)
+                                         verbose=self.verbose)
         dynamics_data_2_nickname = self.nickname + '_phase2'
         files_dataset = data_collector.collect_data(robot_namespace=collect_dynamics_2['robot_namespace'],
                                                     n_trajs=collect_dynamics_2['n_trajs'],
@@ -273,7 +275,10 @@ class FullStackRunner:
         recovery_model_dir = pathlib.Path(log['learn_recovery']['model_dir'])
         planning_module_path = pathlib.Path(r.get_path('link_bot_planning'))
         planning_evaluation_params = self.full_stack_params["planning_evaluation"]
-        test_scenes_dir = pathlib.Path(planning_evaluation_params["test_scenes_dir"])
+        if "test_scenes_dir" in planning_evaluation_params:
+            test_scenes_dir = pathlib.Path(planning_evaluation_params["test_scenes_dir"])
+        else:
+            test_scenes_dir = None
         n_trials = planning_evaluation_params['n_trials']
         trials = list(range(n_trials))
         planners_params_common_filename = pathlib.Path(planning_evaluation_params['planners_params_common'])
@@ -291,6 +296,7 @@ class FullStackRunner:
                                      planners_params=planners_params,
                                      trials=trials,
                                      test_scenes_dir=test_scenes_dir,
+                                     verbose=self.verbose,
                                      skip_on_exception=False)
 
         if self.launch:

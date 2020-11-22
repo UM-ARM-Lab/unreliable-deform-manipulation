@@ -83,6 +83,7 @@ class NNClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
+    @tf.function
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
         # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment
         pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)
@@ -333,16 +334,6 @@ class NNClassifierWrapper(BaseConstraintChecker):
             self.pred_state_keys = net.pred_state_keys
 
     def check_constraint_from_example(self, example: Dict, training: Optional[bool] = False):
-        from moonshine.moonshine_utils import numpify
-        from link_bot_pycommon.serialization import my_hdump
-        with open("debugging2.hjson", 'w') as f:
-            example_b = {
-                add_predicted('link_bot'): example[add_predicted('link_bot')][0],
-                add_predicted('gripper'):  example[add_predicted('gripper')][0],
-                'gripper_position':        example['gripper_position'][0],
-            }
-            my_hdump(numpify(example_b), f)
-
         predictions = [net(net.preprocess_no_gradient(example, training), training=training) for net in self.nets]
         predictions_dict = sequence_of_dicts_to_dict_of_tensors(predictions)
         mean_predictions = {k: tf.math.reduce_mean(v, axis=0) for k, v in predictions_dict.items()}

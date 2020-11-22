@@ -7,6 +7,8 @@ import numpy as np
 from matplotlib import cm
 
 from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
+from link_bot_pycommon.rope_dragging_ompl import RopeDraggingOmpl
+from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
 from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 with warnings.catch_warnings():
@@ -22,6 +24,11 @@ from link_bot_planning.timeout_or_not_progressing import TimeoutOrNotProgressing
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from moonshine.tests.testing_utils import are_dicts_close_np
 from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
+
+
+def get_ompl_scenario(scenario):
+    if isinstance(scenario, RopeDraggingScenario):
+        return RopeDraggingOmpl(scenario)
 
 
 class RRT(MyPlanner):
@@ -48,14 +55,15 @@ class RRT(MyPlanner):
         self.goal_sampler_rng = np.random.RandomState(0)
         self.control_sampler_rng = np.random.RandomState(0)
         self.scenario = scenario
+        self.scenario_ompl = get_ompl_scenario(self.scenario)
 
-        self.state_space = self.scenario.make_ompl_state_space(planner_params=self.params,
-                                                               state_sampler_rng=self.state_sampler_rng,
-                                                               plot=self.verbose >= 2)
+        self.state_space = self.scenario_ompl.make_ompl_state_space(planner_params=self.params,
+                                                                    state_sampler_rng=self.state_sampler_rng,
+                                                                    plot=self.verbose >= 2)
         # self.state_space.sanityChecks()
-        self.control_space = self.scenario.make_ompl_control_space(self.state_space,
-                                                                   self.control_sampler_rng,
-                                                                   action_params=self.action_params)
+        self.control_space = self.scenario_ompl.make_ompl_control_space(self.state_space,
+                                                                        self.control_sampler_rng,
+                                                                        action_params=self.action_params)
 
         self.ss = oc.SimpleSetup(self.control_space)
 
@@ -100,7 +108,7 @@ class RRT(MyPlanner):
 
     def motions_valid(self, motions):
         print(".", end='', flush=True)
-        final_state = self.scenario.ompl_state_to_numpy(motions[-1].getState())
+        final_state = self.scenario_ompl.ompl_state_to_numpy(motions[-1].getState())
 
         motions_valid = final_state['num_diverged'] < self.classifier_model.horizon - 1  # yes, minus 1
         motions_valid = bool(np.squeeze(motions_valid))
@@ -128,10 +136,10 @@ class RRT(MyPlanner):
             # motions is a vector of oc.Motion, which has a state, parent, and control
             state = motion.getState()
             control = motion.getControl()
-            state_t = self.scenario.ompl_state_to_numpy(state)
+            state_t = self.scenario_ompl.ompl_state_to_numpy(state)
             states_sequence.append(state_t)
             if t > 0:  # skip the first (null) action, because that would represent the action that brings us to the first state
-                actions.append(self.scenario.ompl_control_to_numpy(state, control))
+                actions.append(self.scenario_ompl.ompl_control_to_numpy(state, control))
         actions = np.array(actions)
         return states_sequence, actions
 
@@ -186,11 +194,11 @@ class RRT(MyPlanner):
         previous_states, previous_actions = self.motions_to_numpy(motions)
         previous_state = previous_states[-1]
         previous_ompl_state = motions[-1].getState()
-        new_action = self.scenario.ompl_control_to_numpy(previous_ompl_state, control)
+        new_action = self.scenario_ompl.ompl_control_to_numpy(previous_ompl_state, control)
         np_final_state, final_classifier_probability = self.predict(previous_states, previous_actions, new_action)
 
         # Convert back Numpy -> OMPL
-        self.scenario.numpy_to_ompl_state(np_final_state, state_out)
+        self.scenario_ompl.numpy_to_ompl_state(np_final_state, state_out)
 
         if self.verbose >= 2:
             alpha = final_classifier_probability * 0.8 + 0.2
@@ -227,11 +235,11 @@ class RRT(MyPlanner):
         self.cleanup_before_plan(planning_query.seed)
 
         self.environment = planning_query.environment
-        self.goal_region = self.scenario.make_goal_region(self.si,
-                                                          rng=self.goal_sampler_rng,
-                                                          params=self.params,
-                                                          goal=planning_query.goal,
-                                                          plot=self.verbose >= 2)
+        self.goal_region = self.scenario_ompl.make_goal_region(self.si,
+                                                               rng=self.goal_sampler_rng,
+                                                               params=self.params,
+                                                               goal=planning_query.goal,
+                                                               plot=self.verbose >= 2)
 
         # create start and goal states
         start_state = planning_query.start
@@ -239,13 +247,13 @@ class RRT(MyPlanner):
         start_state['num_diverged'] = np.array([0.0])
         self.start_state = start_state
         ompl_start_scoped = ob.State(self.state_space)
-        self.scenario.numpy_to_ompl_state(start_state, ompl_start_scoped())
+        self.scenario_ompl.numpy_to_ompl_state(start_state, ompl_start_scoped())
 
         # visualization
         self.scenario.reset_planning_viz()
         self.scenario.plot_environment_rviz(planning_query.environment)
         self.scenario.plot_start_state(start_state)
-        self.scenario.plot_goal_rviz(planning_query.goal, self.params['goal_threshold'])
+        self.scenario.plot_goal_rviz(planning_query.goal, self.params['goal_params']['threshold'])
 
         self.ss.clear()
         self.ss.setStartState(ompl_start_scoped)
@@ -270,7 +278,7 @@ class RRT(MyPlanner):
             actions, planned_path = self.convert_path(ompl_path)
             planner_data = ob.PlannerData(self.si)
             self.rrt.getPlannerData(planner_data)
-            tree = planner_data_to_json(planner_data, self.scenario)
+            tree = planner_data_to_json(planner_data, self.scenario_ompl)
         elif planner_status == MyPlannerStatus.Timeout:
             # Use the approximate solution, since it's usually pretty darn close, and sometimes
             # our goals are impossible to reach so this is important to have
@@ -286,7 +294,7 @@ class RRT(MyPlanner):
             else:  # if no exception was raised
                 planner_data = ob.PlannerData(self.si)
                 self.rrt.getPlannerData(planner_data)
-                tree = planner_data_to_json(planner_data, self.scenario)
+                tree = planner_data_to_json(planner_data, self.scenario_ompl)
         elif planner_status == MyPlannerStatus.Failure:
             rospy.logerr(f"Failed at starting state: {start_state}")
             tree = {}
@@ -305,11 +313,11 @@ class RRT(MyPlanner):
         actions = []
         n_actions = ompl_path.getControlCount()
         for time_idx, state in enumerate(ompl_path.getStates()):
-            np_state = self.scenario.ompl_state_to_numpy(state)
+            np_state = self.scenario_ompl.ompl_state_to_numpy(state)
             planned_path.append(np_state)
             if time_idx < n_actions:
                 action = ompl_path.getControl(time_idx)
-                action_np = self.scenario.ompl_control_to_numpy(state, action)
+                action_np = self.scenario_ompl.ompl_control_to_numpy(state, action)
                 actions.append(action_np)
 
         return actions, planned_path

@@ -116,7 +116,7 @@ class FinalExecutionToGoalError(ResultsMetric):
     def setup_method(self, method_name: str, metadata: Dict):
         super().setup_method(method_name, metadata)
         planner_params = metadata['planner_params']
-        self.goal_threshold = planner_params['goal_threshold']
+        self.goal_threshold = planner_params['goal_params']['threshold']
 
     def add_to_figure(self, method_name: str, values: List, color):
         success_rate_at_thresholds = []

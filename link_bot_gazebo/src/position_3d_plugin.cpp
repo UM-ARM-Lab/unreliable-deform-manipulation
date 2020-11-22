@@ -258,22 +258,24 @@ bool Position3dPlugin::OnList(peter_msgs::Position3DListRequest &req, peter_msgs
 bool Position3dPlugin::OnWait(peter_msgs::Position3DWaitRequest &req, peter_msgs::Position3DWaitResponse &res)
 {
   (void) res;
+
+  // Block, waiting until set point is reached or timeout occurs
+  auto const t0 = ros::Time::now();
+
   for (auto const scoped_link_name  : req.scoped_link_names)
   {
     auto const it = controllers_map_.find(scoped_link_name);
     if (it != controllers_map_.cend())
     {
       auto const &controller = it->second;
-
-      // Block, waiting until set point is reached or timeout occurs
-      auto const t0 = ros::Time::now();
       while (true)
       {
         auto const dt = ros::Time::now() - t0;
         auto const error = controller->setpoint_.Distance(*controller->Get());
         ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME,
                                "Controller " << controller->scoped_link_name_ << " error " << error << " dt " << dt);
-        if (dt.toSec() >= req.timeout_s or error < 1e-4)
+        auto const tolerance_m = std::fmax(req.tolerance_m, 1e-4);
+        if (dt.toSec() >= req.timeout_s or error < tolerance_m)
         {
           break;
         }
@@ -303,7 +305,9 @@ bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_ms
       auto const error = controller->setpoint_.Distance(*controller->Get());
       ROS_DEBUG_STREAM_NAMED(PLUGIN_NAME,
                              "Controller " << controller->scoped_link_name_ << " error " << error << " dt " << dt);
-      if (dt.toSec() >= req.timeout_s or error < 1e-4)
+      // if you user forgets to set tolerance_m it will default to 0 which is bad
+      auto const tolerance_m = std::fmax(req.tolerance_m, 1e-4);
+      if (dt.toSec() >= req.timeout_s or error < tolerance_m)
       {
         break;
       }
@@ -319,6 +323,7 @@ bool Position3dPlugin::OnMove(peter_msgs::Position3DActionRequest &req, peter_ms
 
 bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs::GetPosition3DResponse &res)
 {
+  res.success = false;
   auto const it = controllers_map_.find(req.scoped_link_name);
   if (it != controllers_map_.cend())
   {
@@ -326,6 +331,7 @@ bool Position3dPlugin::GetPos(peter_msgs::GetPosition3DRequest &req, peter_msgs:
     if (pos)
     {
       res.pos = ign_vector_3d_to_point(*pos);
+      res.success = true;
     }
   } else
   {
