@@ -136,7 +136,8 @@ class RopeDraggingScenario(Base3DScenario):
         action = None
         for _ in range(self.max_action_attempts):
             # sample the previous action with 80% probability, this improves exploration
-            if self.last_action is not None and action_rng.uniform(0, 1) < 0.80 and not stateless:
+            repeat_probability = action_params.get('repeat_delta_gripper_motion_probability', 0.8)
+            if self.last_action is not None and action_rng.uniform(0, 1) < repeat_probability and not stateless:
                 gripper_delta_position = self.last_action['gripper_delta_position']
             else:
                 theta = action_rng.uniform(-np.pi, np.pi)
@@ -361,12 +362,15 @@ class RopeDraggingScenario(Base3DScenario):
 
     def slide_obstacles(self, env_rng, params: Dict):
         # set random positions for all the objects
-        random_object_poses = self.random_new_object_poses(env_rng, params)
-        for object_name, (position, orientation) in random_object_poses.items():
+        for object_name in params['objects']:
             scoped_link_name = gz_scope(object_name, 'link_1')
-            pos_msg: Point = ros_numpy.msgify(Point, position)
             get_res = self.pos3d.get(scoped_link_name=scoped_link_name)
-            pos_msg.z = get_res.pos.z
+            pos_msg = get_res.pos
+
+            pos_msg.x = pos_msg.x + env_rng.uniform(-0.2, 0.2)
+            pos_msg.y = pos_msg.y + env_rng.uniform(-0.2, 0.2)
+            pos_msg.z = pos_msg.z + env_rng.uniform(-0.2, 0.2)
+
             self.register_movable_object(scoped_link_name)
             req = Position3DActionRequest(speed_mps=0.1,
                                           scoped_link_name=scoped_link_name,
@@ -376,12 +380,12 @@ class RopeDraggingScenario(Base3DScenario):
 
         wait_req = Position3DWaitRequest()
         wait_req.timeout_s = 0.1
-        for object_name in random_object_poses.keys():
+        for object_name in params['objects']:
             scoped_link_name = gz_scope(object_name, 'link_1')
             wait_req.scoped_link_names.append(scoped_link_name)
         self.pos3d.wait(wait_req)
 
-        for object_name in random_object_poses.keys():
+        for object_name in params['objects']:
             scoped_link_name = gz_scope(object_name, 'link_1')
             self.pos3d.enable(Position3DEnableRequest(scoped_link_name=scoped_link_name, enable=False))
 

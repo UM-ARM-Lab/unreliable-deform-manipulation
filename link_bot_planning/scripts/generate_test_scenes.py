@@ -56,8 +56,9 @@ def generate_test_scenes(scenario: str,
     action_rng = np.random.RandomState(0)
 
     params = {
-        'objects_extent':                [-0.7, 0.7, -0.7, 0.7, 0, 0],
-        'objects':                       [
+        'repeat_delta_gripper_motion_probability': 0.9,
+        'objects_extent':                          [-0.7, 0.7, -0.7, 0.7, 0, 0],
+        'objects':                                 [
             'small_box1',
             'small_box2',
             'small_box3',
@@ -68,10 +69,10 @@ def generate_test_scenes(scenario: str,
             'small_box8',
             'small_box9',
         ],
-        'max_distance_gripper_can_move': 0.15,
-        'extent':                        [-1.2, 1.2, -1.2, 1.2, 0, 0.04],
-        'dt':                            1.0,
-        "gripper_action_sample_extent":  [-1.2, 1.2, -1.2, 1.2, 0, 0.04],
+        'max_distance_gripper_can_move':           0.15,
+        'extent':                                  [-1.2, 1.2, -1.2, 1.2, 0, 0.04],
+        'dt':                                      1.0,
+        "gripper_action_sample_extent":            [-0.6, 0.6, -0.6, 0.6, 0, 0.04],
     }
 
     for trial_idx in range(n_trials):
