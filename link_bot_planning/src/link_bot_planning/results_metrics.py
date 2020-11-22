@@ -127,7 +127,7 @@ class FinalExecutionToGoalError(ResultsMetric):
         self.ax.axvline(self.goal_threshold, color='#aaaaaa', linestyle='--')
 
     def get_table_header(self):
-        return ["Name", "Dynamics", "Classifier", "min", "max", "mean", "median", "std"]
+        return ["Name",  "min", "max", "mean", "median", "std"]
 
     def make_row(self, method_name: str, values_for_method: np.array, table_format: str):
         row = [

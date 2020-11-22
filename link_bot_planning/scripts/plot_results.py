@@ -79,15 +79,24 @@ def plot_plan(args, scenario, step, metadata, fallback_labeing_params: Dict):
         tree_thread = threading.Thread(target=_draw_tree_function, args=(scenario, step['tree_json'],))
         tree_thread.start()
 
+    goal_threshold = get_goal_threshold(planner_params)
     scenario.animate_evaluation_results(environment=environment,
                                         actual_states=actual_path,
                                         predicted_states=planned_path,
                                         actions=planned_actions,
                                         goal=goal,
-                                        goal_threshold=planner_params['goal_params']['threshold'],
+                                        goal_threshold=goal_threshold,
                                         labeling_params=labeling_params,
                                         accept_probabilities=None,
                                         horizon=metadata['horizon'])
+
+
+def get_goal_threshold(planner_params):
+    if 'goal_params' in planner_params:
+        goal_threshold = planner_params['goal_params']['threshold']
+    else:
+        goal_threshold = planner_params['goal_threshold']
+    return goal_threshold
 
 
 def if_filter_with_status(datum, filter_by_status):
@@ -106,7 +115,7 @@ def if_filter_with_status(datum, filter_by_status):
 
 def plot_steps(args, scenario, datum, metadata, fallback_labeing_params: Dict):
     planner_params = metadata['planner_params']
-    goal_threshold = planner_params['goal_params']['threshold']
+    goal_threshold = get_goal_threshold(planner_params)
 
     labeling_params = labeling_params_from_planner_params(planner_params, fallback_labeing_params)
 

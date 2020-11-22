@@ -1,23 +1,23 @@
 import pathlib
-import traceback
+import tempfile
 import uuid
 from time import time, sleep
 from typing import Optional, Dict, List, Tuple
 
+import hjson
 import numpy as np
 from colorama import Fore
 from ompl import util as ou
 
 import rosbag
 import rospy
-from control_msgs.msg import FollowJointTrajectoryActionGoal
-from link_bot_data.dataset_utils import data_directory
+from arc_utilities.conditional_try import conditional_try
 from link_bot_gazebo_python import gazebo_services
 from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import BaseServices
-from link_bot_pycommon.serialization import dummy_proof_write, my_dump
+from link_bot_pycommon.serialization import dummy_proof_write, my_dump, my_hdump
 from moonshine.moonshine_utils import numpify
 
 
@@ -26,11 +26,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def __init__(self,
                  planner: MyPlanner,
                  service_provider: BaseServices,
-                 planner_config_name: str,
                  trials: List[int],
                  verbose: int,
                  planner_params: Dict,
-                 comparison_item_idx: int,
                  outdir: pathlib.Path,
                  record: Optional[bool] = False,
                  no_execution: Optional[bool] = False,
@@ -46,15 +44,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          save_test_scenes_dir=save_test_scenes_dir,
                          no_execution=no_execution)
         self.record = record
-        self.planner_config_name = planner_config_name
-        self.comparison_item_idx = comparison_item_idx
         self.outdir = outdir
 
-        self.subfolder = "{}_{}".format(
-            self.planner_config_name, comparison_item_idx)
-        self.root = self.outdir / self.subfolder
-        self.root.mkdir(parents=True)
-        rospy.loginfo(Fore.CYAN + f"Root Directory: {self.root.as_posix()}" + Fore.RESET)
+        self.outdir.mkdir(parents=True, exist_ok=True)
+        rospy.loginfo(Fore.BLUE + f"Output directory: {self.outdir.as_posix()}")
 
         metadata = {
             "trials":         self.trials,
@@ -62,13 +55,9 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             "scenario":       self.planner.scenario.simple_name(),
         }
         metadata.update(self.planner.get_metadata())
-        with (self.root / 'metadata.json').open("w") as metadata_file:
+        with (self.outdir / 'metadata.json').open("w") as metadata_file:
             my_dump(metadata, metadata_file, indent=2)
 
-        self.joint_goal_sub = rospy.Subscriber("/both_arms_controller/follow_joint_trajectory/goal",
-                                               FollowJointTrajectoryActionGoal,
-                                               self.follow_joint_trajectory_goal_callback,
-                                               queue_size=10)
         self.bag = None
         self.final_execution_to_goal_errors = []
 
@@ -83,10 +72,10 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def on_start_trial(self, trial_idx: int):
         if self.record:
-            filename = self.root.absolute() / 'plan-{}.avi'.format(trial_idx)
+            filename = self.outdir.absolute() / 'plan-{}.avi'.format(trial_idx)
             self.service_provider.start_record_trial(str(filename))
-            bagname = self.root.absolute() / f"follow_joint_trajectory_goal_{trial_idx}.bag"
-            rospy.loginfo(Fore.YELLOW + f"Saving bag file name: {bagname.as_posix()}" + Fore.RESET)
+            bagname = self.outdir.absolute() / f"follow_joint_trajectory_goal_{trial_idx}.bag"
+            rospy.loginfo(Fore.YELLOW + f"Saving bag file name: {bagname.as_posix()}")
             self.bag = rosbag.Bag(bagname, 'w')
 
     def follow_joint_trajectory_goal_callback(self, goal_msg):
@@ -102,7 +91,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
             'uuid':           uuid.uuid4(),
         }
         trial_data.update(extra_trial_data)
-        data_filename = self.root / f'{trial_idx}_metrics.json.gz'
+        data_filename = self.outdir / f'{trial_idx}_metrics.json.gz'
         dummy_proof_write(trial_data, data_filename)
 
         if self.record:
@@ -119,15 +108,13 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         goal_threshold = self.planner_params['goal_params']['threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
-        update_msg = f"[{self.subfolder}] Current average success rate {success_percentage:.2f}%"
-        rospy.loginfo(Fore.CYAN + update_msg)
+        update_msg = f"[{self.outdir.stem}] Current average success rate {success_percentage:.2f}%"
+        rospy.loginfo(Fore.LIGHTBLUE_EX + update_msg)
 
 
-def evaluate_planning_method(comparison_idx: int,
-                             planner_params: Dict,
+def evaluate_planning_method(planner_params: Dict,
                              trials: List[int],
-                             planner_config_name: str,
-                             common_output_directory: pathlib.Path,
+                             comparison_root_dir: pathlib.Path,
                              verbose: int = 0,
                              record: bool = False,
                              no_execution: bool = False,
@@ -156,12 +143,10 @@ def evaluate_planning_method(comparison_idx: int,
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
-        planner_config_name=planner_config_name,
         trials=trials,
         verbose=verbose,
         planner_params=planner_params,
-        outdir=common_output_directory,
-        comparison_item_idx=comparison_idx,
+        outdir=comparison_root_dir,
         test_scenes_dir=test_scenes_dir,
         save_test_scenes_dir=save_test_scenes_dir,
         record=record,
@@ -170,9 +155,22 @@ def evaluate_planning_method(comparison_idx: int,
     runner.run()
 
 
-def planning_evaluation(root: pathlib.Path,
+def read_logfile(logfile_name):
+    with logfile_name.open("r") as logfile:
+        log = hjson.load(logfile)
+    return log
+
+
+def write_logfile(log, logfile_name):
+    with logfile_name.open("w") as logfile:
+        my_hdump(log, logfile)
+    return log
+
+
+def planning_evaluation(outdir: pathlib.Path,
                         planners_params: List[Tuple[str, Dict]],
                         trials: List[int],
+                        logfile_name: Optional[str],
                         skip_on_exception: Optional[bool] = False,
                         verbose: int = 0,
                         record: bool = False,
@@ -183,43 +181,39 @@ def planning_evaluation(root: pathlib.Path,
                         ):
     ou.setLogLevel(ou.LOG_ERROR)
 
-    common_output_directory = data_directory(root)
-    common_output_directory = pathlib.Path(common_output_directory)
-    rospy.loginfo(Fore.CYAN + "common output directory: {}".format(common_output_directory) + Fore.RESET)
-    if not common_output_directory.is_dir():
-        rospy.loginfo(Fore.YELLOW + "Creating output directory: {}".format(common_output_directory) + Fore.RESET)
-        common_output_directory.mkdir(parents=True)
+    if logfile_name is None:
+        logfile_name = pathlib.Path(tempfile.gettempdir()) / f'planning-evaluation-log-file-{time()}'
+
+    log = read_logfile(logfile_name)
+
+    rospy.loginfo(Fore.CYAN + "common output directory: {}".format(outdir))
+    if not outdir.is_dir():
+        rospy.loginfo(Fore.YELLOW + "Creating output directory: {}".format(outdir))
+        outdir.mkdir(parents=True)
 
     for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
-        rospy.loginfo(Fore.GREEN + f"Running method {planner_config_name}" + Fore.RESET)
-        if skip_on_exception:
-            try:
-                evaluate_planning_method(comparison_idx=comparison_idx,
-                                         planner_params=planner_params,
-                                         trials=trials,
-                                         planner_config_name=planner_config_name,
-                                         common_output_directory=common_output_directory,
-                                         verbose=verbose,
-                                         record=record,
-                                         no_execution=no_execution,
-                                         timeout=timeout,
-                                         test_scenes_dir=test_scenes_dir,
-                                         save_test_scenes_dir=save_test_scenes_dir,
-                                         )
-            except Exception as e:
-                traceback.print_exc()
-                print()
-        else:
-            evaluate_planning_method(comparison_idx=comparison_idx,
-                                     planner_params=planner_params,
-                                     trials=trials,
-                                     planner_config_name=planner_config_name,
-                                     verbose=verbose,
-                                     timeout=timeout,
-                                     common_output_directory=common_output_directory,
-                                     test_scenes_dir=test_scenes_dir,
-                                     save_test_scenes_dir=save_test_scenes_dir,
-                                     )
-        rospy.loginfo(f"Results written to {common_output_directory}")
+        log[comparison_idx] = outdir
 
-    return common_output_directory
+        rospy.loginfo(Fore.GREEN + f"Running method {planner_config_name}")
+        subfolder = f"{planner_config_name}_{comparison_idx}"
+        comparison_root_dir = outdir / subfolder
+
+        conditional_try(skip_on_exception,
+                        evaluate_planning_method,
+                        planner_params=planner_params,
+                        trials=trials,
+                        comparison_root_dir=comparison_root_dir,
+                        verbose=verbose,
+                        record=record,
+                        no_execution=no_execution,
+                        timeout=timeout,
+                        test_scenes_dir=test_scenes_dir,
+                        save_test_scenes_dir=save_test_scenes_dir,
+                        )
+
+        rospy.loginfo(f"Results written to {outdir}")
+        log[comparison_idx] = outdir
+
+        write_logfile(log, logfile_name)
+
+    return outdir

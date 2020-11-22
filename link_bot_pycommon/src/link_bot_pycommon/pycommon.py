@@ -226,6 +226,8 @@ def paths_from_json(model_dirs):
         return [pathlib.Path(s) for s in model_dirs]
     elif isinstance(model_dirs, str):
         return [pathlib.Path(model_dirs)]
+    elif isinstance(model_dirs, pathlib.Path):
+        return [model_dirs]
     elif model_dirs is None:
         return None
     else:

@@ -7,10 +7,7 @@
                 <pose>0 0 -0.1 0 0 0</pose>
                 <inertia>
                     <ixx>0.104</ixx>
-                    <ixy>0</ixy>
-                    <ixz>0</ixz>
                     <iyy>0.104</iyy>
-                    <iyz>0</iyz>
                     <izz>0.104</izz>
                 </inertia>
                 <mass>10</mass>
@@ -41,6 +38,12 @@
                             <mu2>0.20</mu2>
                         </ode>
                     </friction>
+                    <contact>
+                        <ode>
+                            <kp>1e15</kp>
+                            <kd>1e12</kd>
+                        </ode>
+                    </contact>
                 </surface>
             </collision>
         </link>

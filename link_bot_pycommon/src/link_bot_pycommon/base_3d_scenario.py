@@ -91,6 +91,9 @@ class Base3DScenario(ExperimentScenario):
     def send_occupancy_tf(self, environment: Dict):
         grid_utils.send_occupancy_tf(self.tf.tf_broadcaster, environment)
 
+    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
+        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
+
     def plot_sampled_goal_state(self, state: Dict):
         self.plot_state_rviz(state, idx=self.sampled_goal_marker_idx, label="goal_sample", color='#EB322F')
         self.sampled_goal_marker_idx += 1

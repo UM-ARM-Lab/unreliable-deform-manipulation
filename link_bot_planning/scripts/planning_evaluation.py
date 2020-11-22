@@ -8,6 +8,7 @@ import hjson
 import tensorflow as tf
 
 import rospy
+from link_bot_data.dataset_utils import data_directory
 from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.args import my_formatter, int_range_arg
 
@@ -33,7 +34,7 @@ def main():
 
     rospy.init_node("planning_evaluation")
 
-    root = pathlib.Path('results') / f"{args.nickname}-compare"
+    root = data_directory(pathlib.Path('results') / f"{args.nickname}-compare")
 
     planners_params = []
     for planner_params_filename in args.planners_params:
@@ -46,7 +47,7 @@ def main():
         planner_params.update(hjson.loads(planner_params_str))
         planners_params.append((planner_params_filename.stem, planner_params))
 
-    return planning_evaluation(root=root,
+    return planning_evaluation(outdir=root,
                                planners_params=planners_params,
                                trials=args.trials,
                                skip_on_exception=args.skip_on_exception,
@@ -55,6 +56,7 @@ def main():
                                test_scenes_dir=args.test_scenes_dir,
                                save_test_scenes_dir=args.save_scenes_to,
                                no_execution=args.no_execution,
+                               logfile_name=None,
                                record=args.record)
 
 

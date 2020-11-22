@@ -36,11 +36,12 @@ class ExecutionResult:
     path: List[Dict]
 
 
-def execute_actions(service_provider: BaseServices,
-                    scenario: ExperimentScenario,
-                    start_state: Dict,
-                    actions: List[Dict],
-                    plot: bool = False):
+def execute_actions(
+        scenario: ExperimentScenario,
+        environment: Dict,
+        start_state: Dict,
+        actions: List[Dict],
+        plot: bool = False):
     pre_action_state = start_state
     actual_path = [pre_action_state]
     for action in actions:
@@ -48,6 +49,7 @@ def execute_actions(service_provider: BaseServices,
         state_t = scenario.get_state()
         actual_path.append(state_t)
         if plot:
+            scenario.plot_environment_rviz(environment)
             scenario.plot_executed_action(pre_action_state, action)
             scenario.plot_state_rviz(state_t, label='actual')
         pre_action_state = state_t
@@ -107,13 +109,14 @@ class PlanAndExecute:
                                                                       rng=self.goal_rng,
                                                                       planner_params=self.planner_params)
         elif goal_params['type'] == 'dataset':
-            test_dataset = DynamicsDatasetLoader([pathlib.Path(goal_params['goals_dataset'])])
-            test_tf_dataset = test_dataset.get_datasets(mode='val')
-            goal_dataset_iterator = iter(test_tf_dataset)
+            dataset = DynamicsDatasetLoader([pathlib.Path(goal_params['goals_dataset'])])
+            tf_dataset = dataset.get_datasets(mode='val')
+            goal_dataset_iterator = iter(tf_dataset)
 
             def _gen(e):
                 example = next(goal_dataset_iterator)
-                goal = remove_batch(self.scenario.index_time_batched_predicted(add_batch(example), 1))
+                example_t = dataset.index_time_batched(example_batched=add_batch(example), t=1)
+                goal = remove_batch(example_t)
                 return goal
 
             self.goal_generator = _gen
@@ -175,10 +178,10 @@ class PlanAndExecute:
             if self.verbose >= 2 and not self.no_execution:
                 rospy.loginfo(Fore.CYAN + "Executing Plan" + Fore.RESET)
             self.service_provider.play()
-            actual_path = execute_actions(self.service_provider,
-                                          self.scenario,
-                                          planning_query.start,
-                                          planning_result.actions,
+            actual_path = execute_actions(scenario=self.scenario,
+                                          environment=planning_query.environment,
+                                          start_state=planning_query.start,
+                                          actions=planning_result.actions,
                                           plot=True)
             self.service_provider.pause()
 

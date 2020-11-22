@@ -796,9 +796,6 @@ class FloatingRopeScenario(Base3DScenario):
         self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
         self.tree_action_idx += 1
 
-    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
-        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
-
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "r"))
         idx = kwargs.get("idx", 0)

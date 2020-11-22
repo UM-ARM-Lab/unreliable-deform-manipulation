@@ -284,7 +284,7 @@ class RopeDraggingScenario(Base3DScenario):
     def sample_tailpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         # add more inflating to reduce the number of truly unacheivable gols
         env_inflated = inflate_tf_3d(env=environment['env'],
-                                     radius_m=3 * planner_params['goal_params']['threshold'],
+                                     radius_m=2 * planner_params['goal_params']['threshold'],
                                      res=environment['res'])
         goal_extent = planner_params['goal_params']['extent']
 
@@ -414,9 +414,6 @@ class RopeDraggingScenario(Base3DScenario):
         idx2 = next(ig)
         self.plot_action_rviz(state, action, label='tree', color=[r, g, b, a], idx1=idx1, idx2=idx2, **kwargs)
         self.tree_action_idx += 1
-
-    def plot_executed_action(self, state: Dict, action: Dict, **kwargs):
-        self.plot_action_rviz(state, action, label='executed action', color="#3876EB", idx1=1, idx2=1, **kwargs)
 
     def plot_goal_rviz(self, goal: Dict, goal_threshold: float, actually_at_goal: Optional[bool] = None):
         goal_marker_msg = MarkerArray()

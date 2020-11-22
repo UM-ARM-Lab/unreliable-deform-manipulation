@@ -22,6 +22,8 @@ from link_bot_pycommon.pycommon import paths_from_json
 from link_bot_pycommon.serialization import my_hdumps
 from moonshine.moonshine_utils import numpify
 
+thresholds = [0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105]
+
 
 class TestThresholdSensitivity:
 
@@ -156,7 +158,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
     else:
         trial_dirs = {}
 
-    for threshold in [0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105]:
+    for threshold in thresholds:
         labeling_params = {
             # TODO: line search over thresholds
             'threshold':                     threshold,

@@ -11,6 +11,7 @@ import rospy
 from link_bot_classifiers import train_test_classifier, train_test_recovery
 from link_bot_data.base_collect_dynamics_data import TfDataCollector
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
+from link_bot_data.dataset_utils import data_directory
 from link_bot_data.recovery_dataset_utils import make_recovery_dataset_from_params_dict
 from link_bot_planning.planning_evaluation import planning_evaluation
 from link_bot_pycommon.get_service_provider import get_service_provider
@@ -291,12 +292,13 @@ class FullStackRunner:
                                          gui=self.gui,
                                          world=planning_evaluation_params['world'])
 
-        root = planning_module_path / 'results' / self.nickname
-        outdir = planning_evaluation(root=root,
+        root = data_directory(planning_module_path / 'results' / self.nickname)
+        outdir = planning_evaluation(outdir=root,
                                      planners_params=planners_params,
                                      trials=trials,
                                      test_scenes_dir=test_scenes_dir,
                                      verbose=self.verbose,
+                                     logfile_name=None,
                                      skip_on_exception=False)
 
         if self.launch:
