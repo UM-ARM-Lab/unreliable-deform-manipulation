@@ -1,4 +1,230 @@
 {
-  0: results/dragging-test-threshold-sensitivity
-  1: results/dragging-test-threshold-sensitivity
+  classifier_0:
+  {
+    0:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/0_metrics.json.gz
+    }
+    1:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/1_metrics.json.gz
+    }
+    2:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/2_metrics.json.gz
+    }
+    3:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/3_metrics.json.gz
+    }
+    4:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/4_metrics.json.gz
+    }
+    5:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/5_metrics.json.gz
+    }
+    6:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/6_metrics.json.gz
+    }
+    7:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/7_metrics.json.gz
+    }
+    8:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/8_metrics.json.gz
+    }
+    9:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/9_metrics.json.gz
+    }
+    10:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/10_metrics.json.gz
+    }
+    11:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/11_metrics.json.gz
+    }
+    12:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/12_metrics.json.gz
+    }
+    13:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/13_metrics.json.gz
+    }
+    14:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/14_metrics.json.gz
+    }
+    15:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/15_metrics.json.gz
+    }
+    16:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/16_metrics.json.gz
+    }
+    17:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/17_metrics.json.gz
+    }
+    18:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/18_metrics.json.gz
+    }
+    19:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/19_metrics.json.gz
+    }
+    20:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/20_metrics.json.gz
+    }
+    21:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/21_metrics.json.gz
+    }
+    22:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/22_metrics.json.gz
+    }
+    23:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/23_metrics.json.gz
+    }
+    24:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/24_metrics.json.gz
+    }
+    25:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/25_metrics.json.gz
+    }
+    26:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/26_metrics.json.gz
+    }
+    27:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/27_metrics.json.gz
+    }
+    28:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/28_metrics.json.gz
+    }
+    29:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/29_metrics.json.gz
+    }
+    30:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/30_metrics.json.gz
+    }
+    31:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/31_metrics.json.gz
+    }
+    32:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/32_metrics.json.gz
+    }
+    33:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/33_metrics.json.gz
+    }
+    34:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/34_metrics.json.gz
+    }
+    35:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/35_metrics.json.gz
+    }
+    36:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/36_metrics.json.gz
+    }
+    37:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/37_metrics.json.gz
+    }
+    38:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/38_metrics.json.gz
+    }
+    39:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/39_metrics.json.gz
+    }
+    40:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/40_metrics.json.gz
+    }
+    41:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/41_metrics.json.gz
+    }
+    42:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/42_metrics.json.gz
+    }
+    43:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/43_metrics.json.gz
+    }
+    44:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/44_metrics.json.gz
+    }
+    45:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/45_metrics.json.gz
+    }
+    46:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_0/46_metrics.json.gz
+    }
+  }
+  classifier_1:
+  {
+    0:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_1/0_metrics.json.gz
+    }
+    1:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_1/1_metrics.json.gz
+    }
+    2:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_1/2_metrics.json.gz
+    }
+  }
+  classifier_2:
+  {
+    0:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_2/0_metrics.json.gz
+    }
+    1:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_2/1_metrics.json.gz
+    }
+    2:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_2/2_metrics.json.gz
+    }
+  }
+  classifier_3:
+  {
+    0:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_3/0_metrics.json.gz
+    }
+  }
 }

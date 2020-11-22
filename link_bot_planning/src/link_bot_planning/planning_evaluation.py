@@ -17,6 +17,7 @@ from link_bot_planning import plan_and_execute
 from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import BaseServices
+from link_bot_pycommon.job_chunking import JobChunker
 from link_bot_pycommon.serialization import dummy_proof_write, my_dump, my_hdump
 from moonshine.moonshine_utils import numpify
 
@@ -26,6 +27,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
     def __init__(self,
                  planner: MyPlanner,
                  service_provider: BaseServices,
+                 job_chunker: JobChunker,
                  trials: List[int],
                  verbose: int,
                  planner_params: Dict,
@@ -45,6 +47,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
                          no_execution=no_execution)
         self.record = record
         self.outdir = outdir
+        self.job_chunker = job_chunker
 
         self.outdir.mkdir(parents=True, exist_ok=True)
         rospy.loginfo(Fore.BLUE + f"Output directory: {self.outdir.as_posix()}")
@@ -111,8 +114,24 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         update_msg = f"[{self.outdir.stem}] Current average success rate {success_percentage:.2f}%"
         rospy.loginfo(Fore.LIGHTBLUE_EX + update_msg)
 
+        jobkey = self.jobkey(trial_idx)
+        self.job_chunker.store_result(jobkey, {'data_filename': data_filename})
+
+    @staticmethod
+    def jobkey(trial_idx):
+        jobkey = f'{trial_idx}'
+        return jobkey
+
+    def plan_and_execute(self, trial_idx: int):
+        jobkey = self.jobkey(trial_idx)
+        if self.job_chunker.already_exists(jobkey):
+            rospy.loginfo(f"Found existing trial {jobkey}, skipping.")
+            return
+        super().plan_and_execute(trial_idx=trial_idx)
+
 
 def evaluate_planning_method(planner_params: Dict,
+                             job_chunker: JobChunker,
                              trials: List[int],
                              comparison_root_dir: pathlib.Path,
                              verbose: int = 0,
@@ -143,6 +162,7 @@ def evaluate_planning_method(planner_params: Dict,
     runner = EvalPlannerConfigs(
         planner=planner,
         service_provider=service_provider,
+        job_chunker=job_chunker,
         trials=trials,
         verbose=verbose,
         planner_params=planner_params,
@@ -150,9 +170,9 @@ def evaluate_planning_method(planner_params: Dict,
         test_scenes_dir=test_scenes_dir,
         save_test_scenes_dir=save_test_scenes_dir,
         record=record,
-        no_execution=no_execution
+        no_execution=no_execution,
     )
-    runner.run()
+    return runner.run()
 
 
 def read_logfile(logfile_name):
@@ -184,7 +204,7 @@ def planning_evaluation(outdir: pathlib.Path,
     if logfile_name is None:
         logfile_name = pathlib.Path(tempfile.gettempdir()) / f'planning-evaluation-log-file-{time()}'
 
-    log = read_logfile(logfile_name)
+    job_chunker = JobChunker(logfile_name=logfile_name)
 
     rospy.loginfo(Fore.CYAN + "common output directory: {}".format(outdir))
     if not outdir.is_dir():
@@ -192,15 +212,17 @@ def planning_evaluation(outdir: pathlib.Path,
         outdir.mkdir(parents=True)
 
     for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
-        log[comparison_idx] = outdir
+        subfolder = f"{planner_config_name}_{comparison_idx}"
+        job_chunker.setup_key(subfolder)
+        sub_job_chunker = job_chunker.sub_chunker(subfolder)
 
         rospy.loginfo(Fore.GREEN + f"Running method {planner_config_name}")
-        subfolder = f"{planner_config_name}_{comparison_idx}"
         comparison_root_dir = outdir / subfolder
 
         conditional_try(skip_on_exception,
                         evaluate_planning_method,
                         planner_params=planner_params,
+                        job_chunker=sub_job_chunker,
                         trials=trials,
                         comparison_root_dir=comparison_root_dir,
                         verbose=verbose,
@@ -212,8 +234,5 @@ def planning_evaluation(outdir: pathlib.Path,
                         )
 
         rospy.loginfo(f"Results written to {outdir}")
-        log[comparison_idx] = outdir
-
-        write_logfile(log, logfile_name)
 
     return outdir

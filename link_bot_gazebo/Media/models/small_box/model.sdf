@@ -40,8 +40,8 @@
                     </friction>
                     <contact>
                         <ode>
-                            <kp>1e15</kp>
-                            <kd>1e12</kd>
+                            <kp>1e10</kp>
+                            <kd>1e10</kd>
                         </ode>
                     </contact>
                 </surface>

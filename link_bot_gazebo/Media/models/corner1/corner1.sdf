@@ -3,7 +3,7 @@
         <allow_auto_disable>true</allow_auto_disable>
         <link name="link_1">
             <inertial>
-                <pose>0 0.0 -0.15 0 0 0</pose>
+                <pose>0 0.0 0.05 0 0 0</pose>
                 <inertia>
                     <ixx>0.104</ixx>
                     <iyy>0.104</iyy>
@@ -51,8 +51,8 @@
                     </friction>
                     <contact>
                         <ode>
-                            <kp>1e15</kp>
-                            <kd>1e12</kd>
+                            <kp>1e10</kp>
+                            <kd>1e10</kd>
                         </ode>
                     </contact>
                 </surface>
@@ -73,8 +73,8 @@
                     </friction>
                     <contact>
                         <ode>
-                            <kp>1e15</kp>
-                            <kd>1e12</kd>
+                            <kp>1e10</kp>
+                            <kd>1e10</kd>
                         </ode>
                     </contact>
                 </surface>

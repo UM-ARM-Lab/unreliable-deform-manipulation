@@ -46,7 +46,7 @@ def main():
             planner_params.update(hjson.loads(planner_params_str))
 
             classifiers_dir = pathlib.Path('cl_trials/scirob_dragging_test_threshold_sensitivity')
-            classifier_model_dir = classifiers_dir / classifier_model_dir / 'best_checkpoint'
+            classifier_model_dir = classifiers_dir / classifier_model_dir / 'besud_checkpoint'
             planner_params['classifier_model_dir'] = classifier_model_dir
 
             planners_params.append((args.planner_params.stem, planner_params))
