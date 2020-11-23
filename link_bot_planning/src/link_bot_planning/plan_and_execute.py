@@ -126,31 +126,6 @@ class PlanAndExecute:
     def run(self):
         self.scenario.randomization_initialization()
         for trial_idx in self.trials:
-            self.env_rng.seed(trial_idx)
-            self.recovery_rng.seed(trial_idx)
-            self.goal_rng.seed(trial_idx)
-            # NOTE: ompl SetSeed can only be called once which is why we don't bother doing it here
-            # FIXME: we should not be relying on this...
-            np.random.seed(trial_idx)
-            tf.random.set_seed(trial_idx)
-
-            if self.test_scenes_dir is not None:
-                # Gazebo specific
-                bagfile_name = self.test_scenes_dir / f'scene_{trial_idx:04d}.bag'
-                rospy.loginfo(Fore.GREEN + f"Restoring scene {bagfile_name}")
-                self.service_provider.restore_from_bag(bagfile_name)
-            else:
-                self.randomize_environment()
-                rospy.loginfo(Fore.GREEN + f"Randomizing Environment")
-            if self.save_test_scenes_dir is not None:
-                # Gazebo specific
-                links_states = self.link_states_listener.get()
-                self.save_test_scenes_dir.mkdir(exist_ok=True, parents=True)
-                bagfile_name = self.save_test_scenes_dir / f'scene_{trial_idx:04d}.bag'
-                rospy.loginfo(f"Saving scene to {bagfile_name}")
-                with rosbag.Bag(bagfile_name, 'w') as bag:
-                    bag.write('links_states', links_states)
-
             self.plan_and_execute(trial_idx)
 
         self.on_complete()
@@ -207,6 +182,10 @@ class PlanAndExecute:
         return self.scenario.get_environment(self.planner_params)
 
     def plan_and_execute(self, trial_idx: int):
+        self.set_random_seeds_for_trial(trial_idx)
+
+        self.save_or_restore_test_scene(trial_idx)
+
         self.on_start_trial(trial_idx)
 
         start_time = time.perf_counter()
@@ -309,6 +288,34 @@ class PlanAndExecute:
                 }
                 self.on_trial_complete(trial_data_dict, trial_idx)
                 return
+
+    def save_or_restore_test_scene(self, trial_idx):
+        if self.test_scenes_dir is not None:
+            # Gazebo specific
+            bagfile_name = self.test_scenes_dir / f'scene_{trial_idx:04d}.bag'
+            rospy.loginfo(Fore.GREEN + f"Restoring scene {bagfile_name}")
+            self.service_provider.restore_from_bag(bagfile_name)
+        else:
+            self.randomize_environment()
+            rospy.loginfo(Fore.GREEN + f"Randomizing Environment")
+        if self.save_test_scenes_dir is not None:
+            # Gazebo specific
+            links_states = self.link_states_listener.get()
+            self.save_test_scenes_dir.mkdir(exist_ok=True, parents=True)
+            bagfile_name = self.save_test_scenes_dir / f'scene_{trial_idx:04d}.bag'
+            rospy.loginfo(f"Saving scene to {bagfile_name}")
+            with rosbag.Bag(bagfile_name, 'w') as bag:
+                bag.write('links_states', links_states)
+
+    def set_random_seeds_for_trial(self, trial_idx):
+        self.env_rng.seed(trial_idx)
+        self.recovery_rng.seed(trial_idx)
+        self.goal_rng.seed(trial_idx)
+
+        # NOTE: ompl SetSeed can only be called once which is why we don't bother doing it here
+        # FIXME: we should not be relying on this...
+        np.random.seed(trial_idx)
+        tf.random.set_seed(trial_idx)
 
     def on_trial_complete(self, trial_data, trial_idx: int):
         pass

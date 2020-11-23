@@ -9,9 +9,10 @@ from arc_utilities.listener import Listener
 from arm_robots.get_moveit_robot import get_moveit_robot
 from gazebo_ros_link_attacher.srv import Attach
 from geometry_msgs.msg import PoseStamped
+from link_bot_gazebo_python.gazebo_utils import get_gazebo_kinect_pose
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.floating_rope_scenario import FloatingRopeScenario
-from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d
+from link_bot_pycommon.ros_pycommon import get_environment_for_extents_3d, get_camera_params
 from peter_msgs.srv import ExcludeModels, ExcludeModelsRequest, ExcludeModelsResponse, GetOverstretchingResponse, \
     GetOverstretchingRequest
 from rosgraph.names import ns_join
@@ -91,7 +92,7 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
         # Set the preferred tool orientations
         down = quaternion_from_euler(np.pi, 0, 0)
         self.robot.store_tool_orientations({
-            self.robot.left_tool_name: down,
+            self.robot.left_tool_name:  down,
             self.robot.right_tool_name: down,
         })
 
@@ -109,29 +110,29 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
 
         return {
             'joint_positions': np.array(joint_state.position),
-            'joint_names': np.array(joint_state.name),
-            'left_gripper': ros_numpy.numpify(left_gripper_position),
-            'right_gripper': ros_numpy.numpify(right_gripper_position),
-            'rope': np.array(cdcpd_vector, np.float32),
-            'rgbd': color_depth_cropped,
-            'gt_rope': np.array(rope_state_vector, np.float32),
+            'joint_names':     np.array(joint_state.name),
+            'left_gripper':    ros_numpy.numpify(left_gripper_position),
+            'right_gripper':   ros_numpy.numpify(right_gripper_position),
+            'rope':            np.array(cdcpd_vector, np.float32),
+            'rgbd':            color_depth_cropped,
+            'gt_rope':         np.array(rope_state_vector, np.float32),
         }
 
     def states_description(self) -> Dict:
         n_joints = self.robot.get_n_joints()
         return {
-            'left_gripper': 3,
-            'right_gripper': 3,
-            'rope': FloatingRopeScenario.n_links * 3,
+            'left_gripper':    3,
+            'right_gripper':   3,
+            'rope':            FloatingRopeScenario.n_links * 3,
             'joint_positions': n_joints,
-            'rgbd': self.IMAGE_H * self.IMAGE_W * 4,
+            'rgbd':            self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     def observations_description(self) -> Dict:
         return {
-            'left_gripper': 3,
+            'left_gripper':  3,
             'right_gripper': 3,
-            'rgbd': self.IMAGE_H * self.IMAGE_W * 4,
+            'rgbd':          self.IMAGE_H * self.IMAGE_W * 4,
         }
 
     def plot_state_rviz(self, state: Dict, label: str, **kwargs):
@@ -151,8 +152,12 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
 
     def dynamics_dataset_metadata(self):
         joint_state: JointState = self.robot.joint_state_listener.get()
+        kinect_pose = get_gazebo_kinect_pose()
+        kinect_params = get_camera_params(self.KINECT_NAME)
         return {
-            'joint_names': joint_state.name
+            'joint_names':   joint_state.name,
+            'kinect_pose':   ros_numpy.numpify(kinect_pose),
+            'kinect_params': kinect_params,
         }
 
     def simple_name(self):

@@ -46,8 +46,9 @@ class FloatingRopeScenario(Base3DScenario):
     IMAGE_H = 90
     IMAGE_W = 160
     n_links = 25
-    COLOR_IMAGE_TOPIC = "/kinect2/qhd/image_color_rect"
-    DEPTH_IMAGE_TOPIC = "/kinect2/qhd/image_depth_rect"
+    KINECT_NAME = "kinect2"
+    COLOR_IMAGE_TOPIC = ns_join(KINECT_NAME, "qhd/image_color_rect")
+    DEPTH_IMAGE_TOPIC = ns_join(KINECT_NAME, "qhd/image_depth_rect")
     crop_region = {
         'min_y': 0,
         'min_x': 0,
@@ -407,7 +408,8 @@ class FloatingRopeScenario(Base3DScenario):
         #  although that looses semantic meaning and means hard-coding indices a lot...
         left_res: GetPosition3DResponse = self.pos3d.get(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'left_gripper'))
         left_rope_point_position = ros_numpy.numpify(left_res.pos)
-        right_res: GetPosition3DResponse = self.pos3d.get(scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
+        right_res: GetPosition3DResponse = self.pos3d.get(
+            scoped_link_name=gz_scope(self.ROPE_NAMESPACE, 'right_gripper'))
         right_rope_point_position = ros_numpy.numpify(right_res.pos)
         return left_rope_point_position, right_rope_point_position
 
