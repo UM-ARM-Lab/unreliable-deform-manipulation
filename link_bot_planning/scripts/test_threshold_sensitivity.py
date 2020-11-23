@@ -50,6 +50,7 @@ def main():
             classifiers_dir = pathlib.Path('cl_trials/scirob_dragging_test_threshold_sensitivity')
             classifier_model_dir = classifiers_dir / classifier_model_dir / 'best_checkpoint'
             planner_params['classifier_model_dir'] = classifier_model_dir
+            planner_params['method_name'] = f"threshold={threshold}"
 
             planners_params.append((args.planner_params.stem, planner_params))
 

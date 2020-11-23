@@ -26,11 +26,15 @@ class ResultsMetric:
         raise NotImplementedError()
 
     def aggregate_trial(self, method_name: str, scenario: ExperimentScenario, trial_datum: Dict):
-        self.values[method_name].append(self.get_metric(scenario, trial_datum))
+        metric_value = self.get_metric(scenario, trial_datum)
+        self.values[method_name].append(metric_value)
+
+    def aggregate_metric_values(self, method_name: str, metric_values):
+        self.values[method_name].append(metric_values)
 
     def convert_to_numpy_arrays(self):
-        for k, v in self.values.items():
-            self.values[k] = np.array(v)
+        for method_name, metric_values in self.values.items():
+            self.values[method_name] = np.array(metric_values)
 
     def make_table(self, table_format):
         table_data = []
@@ -51,7 +55,8 @@ class ResultsMetric:
     def make_figure(self):
         # Methods need to have consistent colors across different plots
         for method_name, values_for_method in self.values.items():
-            color = self.params["colors"][method_name]
+            colors = self.params["colors"]
+            color = colors.get(method_name, None)
             self.add_to_figure(method_name=method_name, values=values_for_method, color=color)
 
     def add_to_figure(self, method_name: str, values: List, color):
@@ -66,6 +71,11 @@ class ResultsMetric:
     def enumerate_methods(self):
         for i, k in enumerate(self.values):
             self.method_indices[k] = i
+
+    def sort_methods(self, sort_order: Dict):
+        sorted_values = dict(sorted(self.values.items(), key=lambda kv: sort_order[kv[0]]))
+        self.values = sorted_values
+        self.enumerate_methods()
 
 
 class BoxplotOverTrialsPerMethod(ResultsMetric):
@@ -127,7 +137,7 @@ class FinalExecutionToGoalError(ResultsMetric):
         self.ax.axvline(self.goal_threshold, color='#aaaaaa', linestyle='--')
 
     def get_table_header(self):
-        return ["Name",  "min", "max", "mean", "median", "std"]
+        return ["Name", "min", "max", "mean", "median", "std"]
 
     def make_row(self, method_name: str, values_for_method: np.array, table_format: str):
         row = [

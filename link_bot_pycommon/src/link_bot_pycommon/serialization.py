@@ -78,3 +78,10 @@ def dummy_proof_write(data, filename):
             return
         except KeyboardInterrupt:
             pass
+
+class MyHJsonSerializer:
+
+    @staticmethod
+    def dump(data, fp):
+        hjson.dump(data, fp, cls=MyHjsonEncoder)
+

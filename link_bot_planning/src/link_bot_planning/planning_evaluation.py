@@ -123,7 +123,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
 
     def plan_and_execute(self, trial_idx: int):
         jobkey = self.jobkey(trial_idx)
-        if self.job_chunker.already_exists(jobkey):
+        if self.job_chunker.result_exists(jobkey):
             rospy.loginfo(f"Found existing trial {jobkey}, skipping.")
             return
         super().plan_and_execute(trial_idx=trial_idx)
@@ -133,6 +133,7 @@ def evaluate_planning_method(planner_params: Dict,
                              job_chunker: JobChunker,
                              trials: List[int],
                              comparison_root_dir: pathlib.Path,
+                             method_name: str,
                              verbose: int = 0,
                              record: bool = False,
                              no_execution: bool = False,

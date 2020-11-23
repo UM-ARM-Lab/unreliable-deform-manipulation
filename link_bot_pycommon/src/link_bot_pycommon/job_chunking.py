@@ -3,19 +3,18 @@ from typing import Dict, Any, Optional
 
 import hjson
 
-from link_bot_pycommon.serialization import my_hdump
+from link_bot_pycommon.serialization import MyHJsonSerializer
 
 
-def read_logfile(logfile_name: pathlib.Path):
+def read_logfile(logfile_name: pathlib.Path, serializer=hjson):
     with logfile_name.open("r") as logfile:
-        log = hjson.load(logfile)
+        log = serializer.load(logfile)
     return log
 
 
-def write_logfile(log: Dict, logfile_name: pathlib.Path):
+def write_logfile(log: Dict, logfile_name: pathlib.Path, serializer=MyHJsonSerializer):
     with logfile_name.open("w") as logfile:
-        my_hdump(log, logfile)
-    return log
+        serializer.dump(log, logfile)
 
 
 class JobChunker:
@@ -42,7 +41,7 @@ class JobChunker:
     def save(self):
         write_logfile(self.root_log, self.logfile_name)
 
-    def already_exists(self, key: str):
+    def result_exists(self, key: str):
         return key in self.log
 
     def setup_key(self, key: str):
@@ -53,3 +52,6 @@ class JobChunker:
     def sub_chunker(self, key: str):
         sub_chunker = JobChunker(self.logfile_name, root_log=self.root_log, log=self.root_log[key])
         return sub_chunker
+
+    def get(self, key: str):
+        return self.log[key]

@@ -3,6 +3,8 @@ import argparse
 import gzip
 import json
 import pathlib
+import pickle
+from typing import List
 
 import colorama
 import hjson
@@ -13,9 +15,10 @@ from colorama import Style, Fore
 from tabulate import tabulate
 
 import rospy
-from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime
-from link_bot_pycommon.args import my_formatter
 from arc_utilities.filesystem_utils import get_all_subfolders
+from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime, \
+    ResultsMetric
+from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import dict_to_pvalue_table
 
@@ -25,18 +28,11 @@ def metrics_main(args):
         analysis_params = hjson.load(analysis_params_file)
 
     # The default for where we write results
-    first_results_dir = args.results_dirs[0]
-    print(f"Writing analysis to {first_results_dir}")
+    out_dir = args.results_dirs[0]
+    print(f"Writing analysis to {out_dir}")
 
     # For saving metrics since this script is kind of slow
-    table_outfile = open(first_results_dir / 'tables.txt', 'w')
-
-    metrics = [
-        FinalExecutionToGoalError(args, analysis_params, first_results_dir),
-        NRecoveryActions(args, analysis_params, first_results_dir),
-        TotalTime(args, analysis_params, first_results_dir),
-        NPlanningAttempts(args, analysis_params, first_results_dir),
-    ]
+    table_outfile = open(out_dir / 'tables.txt', 'w')
 
     subfolders = get_all_subfolders(args)
 
@@ -51,38 +47,29 @@ def metrics_main(args):
         subfolders_ordered = subfolders
 
     legend_names = []
-    for subfolder in subfolders_ordered:
-        metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
 
-        with (subfolder / 'metadata.json').open('r') as metadata_file:
-            metadata_str = metadata_file.read()
-        metadata = json.loads(metadata_str)
-        scenario = get_scenario(metadata['scenario'])
-        method_name = metadata['method_name']
-        legend_method_name = ""  # FIXME: how to specify this?
-        legend_names.append(legend_method_name)
+    pickle_filename = out_dir / "metrics.pkl"
+    if pickle_filename.exists():
+        rospy.loginfo(Fore.GREEN + f"Loading existing metrics from {pickle_filename}")
+        with pickle_filename.open("rb") as pickle_file:
+            metrics: List[ResultsMetric] = pickle.load(pickle_file)
 
-        for metric in metrics:
-            metric.setup_method(method_name, metadata)
-
-        # TODO: make this faster
-        datums = []
-        for plan_idx, metrics_filename in enumerate(metrics_filenames):
-            if args.debug and plan_idx > 3:
-                break
-            with gzip.open(metrics_filename, 'rb') as metrics_file:
-                data_str = metrics_file.read()
-            # orjson is twice as fast, and yes it really matters here.
-            datum = orjson.loads(data_str.decode("utf-8"))
-            datums.append(datum)
-
-        # NOTE: even though this is slow, parallelizing is not easy because "scenario" cannot be pickled
-        for datum in datums:
-            for metric in metrics:
-                metric.aggregate_trial(method_name, scenario, datum)
+        sort_order_dict = {}
+        for sort_idx, subfolder in enumerate(subfolders_ordered):
+            with (subfolder / 'metadata.json').open('r') as metadata_file:
+                metadata = json.load(metadata_file)
+            method_name = metadata['planner_params']['method_name']
+            sort_order_dict[method_name] = sort_idx
 
         for metric in metrics:
-            metric.convert_to_numpy_arrays()
+            metric.sort_methods(sort_order_dict)
+    else:
+        rospy.loginfo(Fore.GREEN + f"Generating metrics")
+        metrics = generate_metrics(analysis_params, args, legend_names, out_dir, subfolders_ordered)
+
+        with pickle_filename.open("wb") as pickle_file:
+            pickle.dump(metrics, pickle_file)
+        rospy.loginfo(Fore.GREEN + f"Pickling metrics to {pickle_filename}")
 
     for metric in metrics:
         metric.enumerate_methods()
@@ -120,6 +107,47 @@ def metrics_main(args):
 
     if not args.no_plot:
         plt.show()
+
+
+def generate_metrics(analysis_params, args, legend_names, out_dir, subfolders_ordered):
+    metrics = [
+        FinalExecutionToGoalError(args, analysis_params, out_dir),
+        NRecoveryActions(args, analysis_params, out_dir),
+        TotalTime(args, analysis_params, out_dir),
+        NPlanningAttempts(args, analysis_params, out_dir),
+    ]
+    for subfolder in subfolders_ordered:
+        metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
+
+        with (subfolder / 'metadata.json').open('r') as metadata_file:
+            metadata_str = metadata_file.read()
+        metadata = json.loads(metadata_str)
+        method_name = metadata['planner_params']['method_name']
+        scenario = get_scenario(metadata['scenario'])
+        legend_method_name = ""  # FIXME: how to specify this?
+        legend_names.append(legend_method_name)
+
+        for metric in metrics:
+            metric.setup_method(method_name, metadata)
+
+        datums = []
+        for plan_idx, metrics_filename in enumerate(metrics_filenames):
+            if args.debug and plan_idx > 3:
+                break
+            with gzip.open(metrics_filename, 'rb') as metrics_file:
+                data_str = metrics_file.read()
+            # orjson is twice as fast, and yes it really matters here.
+            datum = orjson.loads(data_str.decode("utf-8"))
+            datums.append(datum)
+
+        # NOTE: even though this is slow, parallelizing is not easy because "scenario" cannot be pickled
+        for metric in metrics:
+            for datum in datums:
+                metric.aggregate_trial(method_name, scenario, datum)
+
+        for metric in metrics:
+            metric.convert_to_numpy_arrays()
+    return metrics
 
 
 def main():
