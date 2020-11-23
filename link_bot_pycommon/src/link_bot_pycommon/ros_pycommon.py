@@ -2,11 +2,13 @@ import numpy as np
 
 import ros_numpy
 import rospy
+from arc_utilities.listener import Listener
 from link_bot_pycommon import grid_utils
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.grid_utils import extent_to_center, extent_to_env_shape
 from peter_msgs.srv import ComputeOccupancyRequest, Position3DEnable, GetPosition3D, Position3DAction
-from sensor_msgs.msg import Image
+from rosgraph.names import ns_join
+from sensor_msgs.msg import Image, CameraInfo
 from std_srvs.srv import Empty
 
 
@@ -122,3 +124,9 @@ def publish_color_image(pub: rospy.Publisher, x):
 def publish_depth_image(pub: rospy.Publisher, x):
     depth_viz_msg = ros_numpy.msgify(Image, x, encoding="32FC1")
     pub.publish(depth_viz_msg)
+
+
+def get_camera_params(camera_name: str):
+    camera_params_listener = Listener(ns_join(camera_name, "camera_info"), CameraInfo)
+    camera_params: CameraInfo = camera_params_listener.get()
+    return camera_params
