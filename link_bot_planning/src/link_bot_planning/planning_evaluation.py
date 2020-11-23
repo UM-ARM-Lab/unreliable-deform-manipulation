@@ -4,7 +4,6 @@ import uuid
 from time import time, sleep
 from typing import Optional, Dict, List, Tuple
 
-import hjson
 import numpy as np
 from colorama import Fore
 from ompl import util as ou
@@ -18,7 +17,7 @@ from link_bot_planning.get_planner import get_planner
 from link_bot_planning.my_planner import MyPlanner
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.job_chunking import JobChunker
-from link_bot_pycommon.serialization import dummy_proof_write, my_dump, my_hdump
+from link_bot_pycommon.serialization import dummy_proof_write, my_dump
 from moonshine.moonshine_utils import numpify
 
 
@@ -173,18 +172,6 @@ def evaluate_planning_method(planner_params: Dict,
         no_execution=no_execution,
     )
     return runner.run()
-
-
-def read_logfile(logfile_name):
-    with logfile_name.open("r") as logfile:
-        log = hjson.load(logfile)
-    return log
-
-
-def write_logfile(log, logfile_name):
-    with logfile_name.open("w") as logfile:
-        my_hdump(log, logfile)
-    return log
 
 
 def planning_evaluation(outdir: pathlib.Path,
