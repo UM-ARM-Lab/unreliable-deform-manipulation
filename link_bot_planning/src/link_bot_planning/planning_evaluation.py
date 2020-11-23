@@ -191,6 +191,8 @@ def planning_evaluation(outdir: pathlib.Path,
                         planners_params: List[Tuple[str, Dict]],
                         trials: List[int],
                         logfile_name: Optional[str],
+                        start_idx: int = 0,
+                        stop_idx: int = -1,
                         skip_on_exception: Optional[bool] = False,
                         verbose: int = 0,
                         record: bool = False,
@@ -212,6 +214,10 @@ def planning_evaluation(outdir: pathlib.Path,
         outdir.mkdir(parents=True)
 
     for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
+        if comparison_idx < start_idx:
+            continue
+        if stop_idx != -1 and comparison_idx >= stop_idx:
+            break
         subfolder = f"{planner_config_name}_{comparison_idx}"
         job_chunker.setup_key(subfolder)
         sub_job_chunker = job_chunker.sub_chunker(subfolder)

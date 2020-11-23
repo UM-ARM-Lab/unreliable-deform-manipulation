@@ -53,12 +53,11 @@ def main():
 
             planners_params.append((args.planner_params.stem, planner_params))
 
-    planners_params_subset = planners_params[args.start_at:args.stop_at]
-    rospy.loginfo(f"Running params {args.start_at} through {args.stop_at}. "
-                  f"Running {len(planners_params_subset)}/{len(planners_params)}")
     return planning_evaluation(outdir=root,
-                               planners_params=planners_params_subset,
+                               planners_params=planners_params,
                                trials=args.trials,
+                               start_idx=args.start_at,
+                               stop_idx=args.stop_at,
                                verbose=args.verbose,
                                timeout=args.timeout,
                                test_scenes_dir=args.test_scenes_dir,
