@@ -46,10 +46,8 @@ def metrics_main(args):
         table_format = 'fancy_grid'
         subfolders_ordered = subfolders
 
-    legend_names = []
-
     pickle_filename = out_dir / "metrics.pkl"
-    if pickle_filename.exists():
+    if pickle_filename.exists() and not args.regenerate:
         rospy.loginfo(Fore.GREEN + f"Loading existing metrics from {pickle_filename}")
         with pickle_filename.open("rb") as pickle_file:
             metrics: List[ResultsMetric] = pickle.load(pickle_file)
@@ -63,9 +61,13 @@ def metrics_main(args):
 
         for metric in metrics:
             metric.sort_methods(sort_order_dict)
+
+        with pickle_filename.open("wb") as pickle_file:
+            pickle.dump(metrics, pickle_file)
+        rospy.loginfo(Fore.GREEN + f"Pickling metrics to {pickle_filename}")
     else:
         rospy.loginfo(Fore.GREEN + f"Generating metrics")
-        metrics = generate_metrics(analysis_params, args, legend_names, out_dir, subfolders_ordered)
+        metrics = generate_metrics(analysis_params, args, out_dir, subfolders_ordered)
 
         with pickle_filename.open("wb") as pickle_file:
             pickle.dump(metrics, pickle_file)
@@ -109,7 +111,7 @@ def metrics_main(args):
         plt.show()
 
 
-def generate_metrics(analysis_params, args, legend_names, out_dir, subfolders_ordered):
+def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
     metrics = [
         FinalExecutionToGoalError(args, analysis_params, out_dir),
         NRecoveryActions(args, analysis_params, out_dir),
@@ -124,8 +126,6 @@ def generate_metrics(analysis_params, args, legend_names, out_dir, subfolders_or
         metadata = json.loads(metadata_str)
         method_name = metadata['planner_params']['method_name']
         scenario = get_scenario(metadata['scenario'])
-        legend_method_name = ""  # FIXME: how to specify this?
-        legend_names.append(legend_method_name)
 
         for metric in metrics:
             metric.setup_method(method_name, metadata)
@@ -162,6 +162,7 @@ def main():
     parser.add_argument('analysis_params', type=pathlib.Path)
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--final', action='store_true')
+    parser.add_argument('--regenerate', action='store_true')
     parser.add_argument('--debug', action='store_true', help='will only run on a few examples to speed up debugging')
     parser.set_defaults(func=metrics_main)
 

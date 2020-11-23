@@ -84,12 +84,15 @@ class BoxplotOverTrialsPerMethod(ResultsMetric):
         self.fig, self.ax = plt.subplots(figsize=(26, 20))
         self.ax.set_xlabel("Method")
         self.ax.set_ylabel(self.name)
+        self.trendline = self.params.get('trendline', False)
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return trial_datum['total_time']
 
     def add_to_figure(self, values: List, method_name: str, color):
         x = self.method_indices[method_name]
+        if self.trendline:
+            self.ax.plot(x, np.mean(values, axis=0), c=color, zorder=2)
         self.ax.boxplot(values,
                         positions=[x],
                         patch_artist=True,
@@ -97,6 +100,7 @@ class BoxplotOverTrialsPerMethod(ResultsMetric):
                         capprops=dict(color=color),
                         whiskerprops=dict(color=color),
                         medianprops=dict(color=color))
+        plt.setp(self.ax.get_xticklabels(), rotation=20, horizontalalignment='right')
 
     def get_table_header(self):
         return ["Name", self.name]

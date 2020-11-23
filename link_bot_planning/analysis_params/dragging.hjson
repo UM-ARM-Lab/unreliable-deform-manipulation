@@ -1,5 +1,5 @@
 {
-  max_error: 0.25,
+  max_error: 0.25
   n_error_bins: 49
   colors: {
     "Collision Checking": "#C36F00"

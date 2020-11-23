@@ -1,0 +1,16 @@
+{
+  max_error: 0.25
+  n_error_bins: 49
+  trendline: true
+  colors: {
+    "threshold=0.025": "#00ff00"
+    "threshold=0.035": "#11ff00"
+    "threshold=0.045": "#22ff00"
+    "threshold=0.055": "#33ff00"
+    "threshold=0.065": "#44ff00"
+    "threshold=0.075": "#55ff00"
+    "threshold=0.085": "#66ff00"
+    "threshold=0.095": "#77ff00"
+    "threshold=0.0105": "#88ff00"
+  }
+}
