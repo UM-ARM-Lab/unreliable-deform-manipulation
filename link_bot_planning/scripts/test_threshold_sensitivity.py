@@ -24,6 +24,8 @@ def main():
     parser.add_argument("logfile", type=pathlib.Path)
     parser.add_argument("--timeout", type=int, help='timeout to override what is in the planner config file')
     parser.add_argument('--verbose', '-v', action='count', default=0, help="use more v's for more verbose, like -vvv")
+    parser.add_argument('--start-at', type=int, default=0)
+    parser.add_argument('--stop-at', type=int, default=-1)
 
     args = parser.parse_args()
 
@@ -51,8 +53,11 @@ def main():
 
             planners_params.append((args.planner_params.stem, planner_params))
 
+    planners_params_subset = planners_params[args.start_at:args.stop_at]
+    rospy.loginfo(f"Running params {args.start_at} through {args.stop_at}. "
+                  f"Running {len(planners_params_subset)}/{len(planners_params)}")
     return planning_evaluation(outdir=root,
-                               planners_params=planners_params,
+                               planners_params=planners_params_subset,
                                trials=args.trials,
                                verbose=args.verbose,
                                timeout=args.timeout,

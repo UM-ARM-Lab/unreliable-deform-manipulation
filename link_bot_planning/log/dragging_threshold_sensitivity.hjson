@@ -424,6 +424,10 @@
     {
       data_filename: results/dragging-test-threshold-sensitivity/classifier_1/4_metrics.json.gz
     }
+    5:
+    {
+      data_filename: results/dragging-test-threshold-sensitivity/classifier_1/5_metrics.json.gz
+    }
   }
   classifier_2:
   {
