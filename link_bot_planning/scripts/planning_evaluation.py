@@ -45,7 +45,7 @@ def main():
         with planner_params_filename.open('r') as planner_params_file:
             planner_params_str = planner_params_file.read()
         planner_params.update(hjson.loads(planner_params_str))
-        planners_params.append((planner_params_filename.stem, planner_params))
+        planners_params.append((planner_params_filename.name, planner_params))
 
     return planning_evaluation(outdir=root,
                                planners_params=planners_params,

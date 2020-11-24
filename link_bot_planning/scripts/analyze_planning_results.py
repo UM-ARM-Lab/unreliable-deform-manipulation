@@ -32,7 +32,7 @@ def metrics_main(args):
     out_dir = args.results_dirs[0]
     print(f"Writing analysis to {out_dir}")
 
-    unique_comparison_name = "-".join([p.stem for p in args.results_dirs])
+    unique_comparison_name = "-".join([p.name for p in args.results_dirs])
 
     # For saving metrics since this script is kind of slow
     table_outfile = open(out_dir / 'tables.txt', 'w')
@@ -59,7 +59,7 @@ def metrics_main(args):
         for sort_idx, subfolder in enumerate(subfolders_ordered):
             with (subfolder / 'metadata.json').open('r') as metadata_file:
                 metadata = json.load(metadata_file)
-            method_name = metadata['planner_params'].get('method_name', subfolder.stem)
+            method_name = metadata['planner_params'].get('method_name', subfolder.name)
             sort_order_dict[method_name] = sort_idx
 
         for metric in metrics:
@@ -126,7 +126,7 @@ def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
             metadata = json.load(metadata_file)
-        method_name = metadata['planner_params'].get('method_name', subfolder.stem)
+        method_name = metadata['planner_params'].get('method_name', subfolder.name)
         scenario = get_scenario(metadata['scenario'])
 
         for metric in metrics:

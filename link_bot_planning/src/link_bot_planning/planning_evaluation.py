@@ -111,7 +111,7 @@ class EvalPlannerConfigs(plan_and_execute.PlanAndExecute):
         goal_threshold = self.planner_params['goal_params']['threshold']
         n = len(self.final_execution_to_goal_errors)
         success_percentage = np.count_nonzero(np.array(self.final_execution_to_goal_errors) < goal_threshold) / n * 100
-        update_msg = f"[{self.outdir.stem}] Current average success rate {success_percentage:.2f}%"
+        update_msg = f"[{self.outdir.name}] Current average success rate {success_percentage:.2f}%"
         rospy.loginfo(Fore.LIGHTBLUE_EX + update_msg)
 
         jobkey = self.jobkey(trial_idx)
