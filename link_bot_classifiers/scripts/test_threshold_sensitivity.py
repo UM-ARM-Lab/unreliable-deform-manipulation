@@ -22,7 +22,8 @@ from link_bot_pycommon.pycommon import paths_from_json
 from link_bot_pycommon.serialization import my_hdumps
 from moonshine.moonshine_utils import numpify
 
-thresholds = [0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105]
+thresholds = [0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105, 0.125, 0.145, 0.165, 0.185, 0.205]
+seeds = [0]
 
 
 class TestThresholdSensitivity:
@@ -177,7 +178,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
         if threshold_key not in trial_dirs:
             trial_dirs[threshold_key] = {}
 
-        for seed in range(3):
+        for seed in seeds:
             seed_key = str(seed)
             if seed_key not in trial_dirs[threshold_key]:
                 trial_dir_for_seed = tts.learn_classifier(classifier_hparams_filename,
