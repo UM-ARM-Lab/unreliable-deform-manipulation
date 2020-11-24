@@ -109,6 +109,7 @@ def plot(outputs: Dict, results_dir: pathlib.Path):
         val_accuracy = [m['accuracy'] for m in output['validation_metrics']]
         val_accuracies.append(val_accuracy)
 
+    thresholds = np.array(thresholds)
     train_accuracies = np.array(train_accuracies).T
     val_accuracies = np.array(val_accuracies).T
 
