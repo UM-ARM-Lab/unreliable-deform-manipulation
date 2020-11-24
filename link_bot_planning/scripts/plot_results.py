@@ -43,7 +43,7 @@ def main():
         datum = json.loads(metrics_str.decode("utf-8"))
 
         if if_filter_with_status(datum, args.filter_by_status):
-            plot_steps(args, scenario, datum, metadata, {})
+            plot_steps(args, scenario, datum, metadata, {'threshold': 0.065})
 
         print(f"Trial {trial_idx} complete with status {datum['trial_status']}")
 

@@ -100,7 +100,7 @@ class BoxplotOverTrialsPerMethod(ResultsMetric):
                         capprops=dict(color=color),
                         whiskerprops=dict(color=color),
                         medianprops=dict(color=color))
-        plt.setp(self.ax.get_xticklabels(), rotation=20, horizontalalignment='right')
+        plt.setp(self.ax.get_xticklabels(), rotation=15, horizontalalignment='right')
 
     def get_table_header(self):
         return ["Name", self.name]
@@ -130,7 +130,10 @@ class FinalExecutionToGoalError(ResultsMetric):
     def setup_method(self, method_name: str, metadata: Dict):
         super().setup_method(method_name, metadata)
         planner_params = metadata['planner_params']
-        self.goal_threshold = planner_params['goal_params']['threshold']
+        if 'goal_params' in planner_params:
+            self.goal_threshold = planner_params['goal_params']['threshold']
+        else:
+            self.goal_threshold = planner_params['goal_threshold']
 
     def add_to_figure(self, method_name: str, values: List, color):
         success_rate_at_thresholds = []
@@ -165,6 +168,9 @@ class NRecoveryActions(BoxplotOverTrialsPerMethod):
                 n_recovery += 1
         return n_recovery
 
+    def get_table_header(self):
+        return ["Name", "min", "max", "mean", "median", "std"]
+
 
 class NPlanningAttempts(BoxplotOverTrialsPerMethod):
     def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
@@ -172,6 +178,9 @@ class NPlanningAttempts(BoxplotOverTrialsPerMethod):
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return len(trial_datum['steps'])
+
+    def get_table_header(self):
+        return ["Name", "min", "max", "mean", "median", "std"]
 
 
 class TotalTime(BoxplotOverTrialsPerMethod):
@@ -181,3 +190,6 @@ class TotalTime(BoxplotOverTrialsPerMethod):
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return trial_datum['total_time']
+
+    def get_table_header(self):
+        return ["Name", "min", "max", "mean", "median", "std"]

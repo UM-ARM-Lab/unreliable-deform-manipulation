@@ -4,6 +4,7 @@ import gzip
 import json
 import pathlib
 import pickle
+import time
 from typing import List
 
 import colorama
@@ -31,6 +32,8 @@ def metrics_main(args):
     out_dir = args.results_dirs[0]
     print(f"Writing analysis to {out_dir}")
 
+    unique_comparison_name = "-".join([p.stem for p in args.results_dirs])
+
     # For saving metrics since this script is kind of slow
     table_outfile = open(out_dir / 'tables.txt', 'w')
 
@@ -46,7 +49,7 @@ def metrics_main(args):
         table_format = 'fancy_grid'
         subfolders_ordered = subfolders
 
-    pickle_filename = out_dir / "metrics.pkl"
+    pickle_filename = out_dir / f"{unique_comparison_name}-metrics.pkl"
     if pickle_filename.exists() and not args.regenerate:
         rospy.loginfo(Fore.GREEN + f"Loading existing metrics from {pickle_filename}")
         with pickle_filename.open("rb") as pickle_file:
@@ -56,7 +59,7 @@ def metrics_main(args):
         for sort_idx, subfolder in enumerate(subfolders_ordered):
             with (subfolder / 'metadata.json').open('r') as metadata_file:
                 metadata = json.load(metadata_file)
-            method_name = metadata['planner_params']['method_name']
+            method_name = metadata['planner_params'].get('method_name', subfolder.stem)
             sort_order_dict[method_name] = sort_idx
 
         for metric in metrics:
@@ -122,9 +125,8 @@ def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
 
         with (subfolder / 'metadata.json').open('r') as metadata_file:
-            metadata_str = metadata_file.read()
-        metadata = json.loads(metadata_str)
-        method_name = metadata['planner_params']['method_name']
+            metadata = json.load(metadata_file)
+        method_name = metadata['planner_params'].get('method_name', subfolder.stem)
         scenario = get_scenario(metadata['scenario'])
 
         for metric in metrics:

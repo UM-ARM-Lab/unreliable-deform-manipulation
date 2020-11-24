@@ -1,4 +1,5 @@
 {
+  "method_name": "No Classifier",
   "total_timeout": 180,
   "termination_criteria": {
     "attempted_extensions_threshold": 32,
