@@ -13,14 +13,12 @@ from colorama import Fore
 
 from arc_utilities import ros_init, dict_tools
 from link_bot_classifiers import train_test_classifier
+from link_bot_classifiers.constants import thresholds, seeds
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.matplotlib_utils import save_unconstrained_layout
 from link_bot_pycommon.pycommon import paths_from_json
 from link_bot_pycommon.serialization import my_hdumps
 from moonshine.moonshine_utils import numpify
-
-thresholds = [0.025, 0.035, 0.045, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105, 0.125, 0.145, 0.165, 0.185, 0.205]
-seeds = [0]
 
 
 class TestThresholdSensitivity:

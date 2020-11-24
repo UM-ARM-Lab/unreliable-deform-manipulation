@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import pathlib
-import re
 from typing import Dict, List, Optional
 
 import hjson
@@ -8,6 +7,7 @@ import rospkg
 from colorama import Fore
 
 import rospy
+from arc_utilities.algorithms import is_list_unique
 from link_bot_classifiers import train_test_classifier, train_test_recovery
 from link_bot_data.base_collect_dynamics_data import TfDataCollector
 from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
@@ -314,6 +314,8 @@ class FullStackRunner:
                              planners_params_common_filename: pathlib.Path,
                              planning_evaluation_params: Dict,
                              recovery_model_dir: pathlib.Path):
+        # NOTE: the order of planner_params is going to affect the name of the subfolder that results are put in.
+        #  this was only done because if you compare multiple methods with the same "method name"
         planners_params = []
         for method_name in planning_evaluation_params['methods']:
             with planners_params_common_filename.open('r') as planners_params_common_file:
@@ -358,15 +360,7 @@ class FullStackRunner:
             planner_params['fwd_model_dir'] = method_fwd_model_dirs
             planner_params['classifier_model_dir'] = method_classifier_model_dir
             planner_params['recovery'] = recovery
-            table_nickname = re.split(r'[_\-\s]', method_name)
-            # TODO: bad API design
-            table_config = {
-                "nickname":   table_nickname,
-                "classifier": 'TODO',
-                "recovery":   'TODO',
-                "dynamics":   'TODO',
-            }
-            planner_params['table_config'] = table_config
+            planner_params['method_name'] = method_name
             planners_params.append((method_name, planner_params))
         return planners_params
 

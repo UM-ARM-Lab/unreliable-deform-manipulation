@@ -10,6 +10,7 @@ from ompl import util as ou
 
 import rosbag
 import rospy
+from arc_utilities.algorithms import is_list_unique
 from arc_utilities.conditional_try import conditional_try
 from link_bot_gazebo_python import gazebo_services
 from link_bot_planning import plan_and_execute
@@ -133,7 +134,6 @@ def evaluate_planning_method(planner_params: Dict,
                              job_chunker: JobChunker,
                              trials: List[int],
                              comparison_root_dir: pathlib.Path,
-                             method_name: str,
                              verbose: int = 0,
                              record: bool = False,
                              no_execution: bool = False,
@@ -201,17 +201,20 @@ def planning_evaluation(outdir: pathlib.Path,
         rospy.loginfo(Fore.YELLOW + "Creating output directory: {}".format(outdir))
         outdir.mkdir(parents=True)
 
-    for comparison_idx, (planner_config_name, planner_params) in enumerate(planners_params):
+    # NOTE: if method names are not unique, we would overwrite results. Very bad!
+    assert_method_names_are_unique(planners_params)
+
+    for comparison_idx, (method_name, planner_params) in enumerate(planners_params):
         if comparison_idx < start_idx:
             continue
         if stop_idx != -1 and comparison_idx >= stop_idx:
             break
-        subfolder = f"{planner_config_name}_{comparison_idx}"
-        job_chunker.setup_key(subfolder)
-        sub_job_chunker = job_chunker.sub_chunker(subfolder)
 
-        rospy.loginfo(Fore.GREEN + f"Running method {planner_config_name}")
-        comparison_root_dir = outdir / subfolder
+        job_chunker.setup_key(method_name)
+        sub_job_chunker = job_chunker.sub_chunker(method_name)
+
+        rospy.loginfo(Fore.GREEN + f"Running method {method_name}")
+        comparison_root_dir = outdir / method_name
 
         conditional_try(skip_on_exception,
                         evaluate_planning_method,
@@ -230,3 +233,9 @@ def planning_evaluation(outdir: pathlib.Path,
         rospy.loginfo(f"Results written to {outdir}")
 
     return outdir
+
+
+def assert_method_names_are_unique(planners_params):
+    method_names = [method_name for method_name, _ in planners_params]
+    method_names_are_unique = is_list_unique(method_names)
+    assert method_names_are_unique, f"Method names must be unique, but are {method_names}"
