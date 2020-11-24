@@ -68,6 +68,10 @@
       1: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.105_1/November_19_18-53-53_090abaf8ae
       2: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.105_2/November_19_19-53-17_090abaf8ae
     }
+    0.125:
+    {
+      0: trials/scirob_dragging_test_threshold_sensitivity/threshold=0.125_0/November_24_11-28-26_a75327235f
+    }
   }
   output_filename: results/scirob_dragging_threshold_sensitivity/metrics.hjson
 }

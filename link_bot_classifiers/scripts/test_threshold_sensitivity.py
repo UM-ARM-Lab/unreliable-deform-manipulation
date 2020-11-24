@@ -36,7 +36,6 @@ class TestThresholdSensitivity:
 
     def learn_classifier(self,
                          classifier_hparams_filename: pathlib.Path,
-                         threshold: float,
                          batch_size: int,
                          epochs: int,
                          seed: int,
@@ -52,7 +51,7 @@ class TestThresholdSensitivity:
                                                          trials_directory=self.trials_directory,
                                                          checkpoint=None,
                                                          validate=False,
-                                                         threshold=threshold,
+                                                         threshold=self.threshold,
                                                          batch_size=batch_size,
                                                          epochs=epochs,
                                                          use_gt_rope=False,
@@ -65,6 +64,7 @@ class TestThresholdSensitivity:
         train_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_dir],
                                                         checkpoint=trial_path / 'best_checkpoint',
                                                         mode='train',
+                                                        threshold=self.threshold,
                                                         trials_directory=self.trials_directory,
                                                         batch_size=batch_size,
                                                         use_gt_rope=False,
@@ -73,6 +73,7 @@ class TestThresholdSensitivity:
         val_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_dir],
                                                       checkpoint=trial_path / 'best_checkpoint',
                                                       mode='val',
+                                                      threshold=self.threshold,
                                                       trials_directory=self.trials_directory,
                                                       batch_size=batch_size,
                                                       use_gt_rope=False,
@@ -151,7 +152,6 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
                                                           batch_size=args.batch_size,
                                                           epochs=args.epochs,
                                                           seed=seed,
-                                                          threshold=threshold,
                                                           take=args.take,
                                                           retrain=args.retrain,
                                                           )
@@ -220,7 +220,7 @@ def main():
 
     classifier_hparams_filename = pathlib.Path('hparams/classifier/scirob_dragging_threshold_sensitivity.hjson')
     results_dir = pathlib.Path("results") / 'scirob_dragging_threshold_sensitivity'
-    results_dir.mkdir(exist_ok=True)
+    results_dir.mkdir(exist_ok=True, parents=True)
     output_filename = results_dir / 'metrics.hjson'
 
     if 'output_filename' in log:

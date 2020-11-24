@@ -129,6 +129,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
               mode: str,
               batch_size: int,
               use_gt_rope: bool,
+              threshold: Optional[float] = None,
               old_compat: bool = False,
               take: Optional[int] = None,
               checkpoint: Optional[pathlib.Path] = None,
@@ -147,7 +148,8 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     dataset = ClassifierDatasetLoader(dataset_dirs,
                                       load_true_states=True,
                                       use_gt_rope=use_gt_rope,
-                                      old_compat=old_compat)
+                                      old_compat=old_compat,
+                                      threshold=threshold)
     tf_dataset = dataset.get_datasets(mode=mode, take=take)
     tf_dataset = balance(tf_dataset)
 
@@ -196,9 +198,9 @@ def viz_main(dataset_dirs: List[pathlib.Path],
     # Dataset
     ###############
     dataset = ClassifierDatasetLoader(dataset_dirs,
-                                           load_true_states=True,
-                                           use_gt_rope=use_gt_rope,
-                                           old_compat=old_compat)
+                                      load_true_states=True,
+                                      use_gt_rope=use_gt_rope,
+                                      old_compat=old_compat)
     tf_dataset = dataset.get_datasets(mode=mode)
     scenario = dataset.scenario
 
