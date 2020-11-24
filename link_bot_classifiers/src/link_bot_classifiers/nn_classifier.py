@@ -83,7 +83,6 @@ class NNClassifier(MyKerasModel):
         self.output_layer = layers.Dense(1, activation=None)
         self.sigmoid = layers.Activation("sigmoid")
 
-    @tf.function
     def make_traj_voxel_grids_from_input_dict(self, input_dict: Dict, batch_size, time: int):
         # Construct a [b, h, w, c, 3] grid of the indices which make up the local environment
         pixel_row_indices = tf.range(0, self.local_env_h_rows, dtype=tf.float32)

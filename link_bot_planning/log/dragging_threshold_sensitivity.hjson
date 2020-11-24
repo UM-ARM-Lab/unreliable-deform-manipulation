@@ -1,4 +1,5 @@
 {
+  classifier_dataset_dir: classifier_data/dragging-new
   classifier_0:
   {
     0:

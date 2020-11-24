@@ -11,11 +11,8 @@ import numpy as np
 import tensorflow as tf
 from colorama import Fore
 
-import rospy
 from arc_utilities import ros_init, dict_tools
-from arc_utilities.path_utils import rm_tree
 from link_bot_classifiers import train_test_classifier
-from link_bot_data.classifier_dataset_utils import make_classifier_dataset_from_params_dict
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.matplotlib_utils import save_unconstrained_layout
 from link_bot_pycommon.pycommon import paths_from_json
@@ -34,32 +31,12 @@ class TestThresholdSensitivity:
         self.phase2_dataset_dir = pathlib.Path(self.log['phase_2_datset_dir'])
         self.udnn_model_dirs = paths_from_json(self.log['udnn_model_dirs'])
         subdir_name = 'scirob_dragging_test_threshold_sensitivity'
-        self.classifier_dataset_base_dir = pathlib.Path('classifier_data') / subdir_name
-        self.classifier_dataset_outdir = self.classifier_dataset_base_dir / f"threshold={self.threshold}"
+        self.classifier_dataset_dir = pathlib.Path(log['classifier_dataset_dir'])
         self.trials_directory = pathlib.Path('trials') / subdir_name
-
-    def make_classifier_dataset(self, regenerate: bool, labeling_params: Dict, take: int):
-        if 'classifier_dataset_dirs' in self.log:
-            classifier_dataset_dirs = self.log['classifier_dataset_dirs']
-            if self.classifier_dataset_outdir.as_posix() in classifier_dataset_dirs and not regenerate:
-                print(Fore.YELLOW + f"dataset {self.classifier_dataset_outdir.as_posix()} already exists")
-                return
-
-        # we have to delete, otherwise if the new dataset is smaller, there will be old files left around
-        if self.classifier_dataset_outdir.exists():
-            rm_tree(self.classifier_dataset_outdir)
-        self.classifier_dataset_outdir.mkdir(exist_ok=True, parents=True)
-        make_classifier_dataset_from_params_dict(dataset_dir=self.phase2_dataset_dir,
-                                                 fwd_model_dir=self.udnn_model_dirs,
-                                                 batch_size=16,
-                                                 labeling_params=labeling_params, outdir=self.classifier_dataset_outdir,
-                                                 use_gt_rope=False, visualize=False, take=take)
-
-        self.log['classifier_dataset_dirs'].append(self.classifier_dataset_outdir)
-        rospy.loginfo(Fore.GREEN + self.classifier_dataset_outdir.as_posix())
 
     def learn_classifier(self,
                          classifier_hparams_filename: pathlib.Path,
+                         threshold: float,
                          batch_size: int,
                          epochs: int,
                          seed: int,
@@ -69,12 +46,13 @@ class TestThresholdSensitivity:
         group_name = f"threshold={self.threshold}_{seed}"
 
         print(Fore.GREEN + f"Training {group_name}")
-        trial_path, _ = train_test_classifier.train_main(dataset_dirs=[self.classifier_dataset_outdir],
+        trial_path, _ = train_test_classifier.train_main(dataset_dirs=[self.classifier_dataset_dir],
                                                          model_hparams=classifier_hparams_filename,
                                                          log=group_name,
                                                          trials_directory=self.trials_directory,
                                                          checkpoint=None,
                                                          validate=False,
+                                                         threshold=threshold,
                                                          batch_size=batch_size,
                                                          epochs=epochs,
                                                          use_gt_rope=False,
@@ -84,7 +62,7 @@ class TestThresholdSensitivity:
 
     def evaluate(self, batch_size: int, trial_path: pathlib.Path, take: int):
         print(Fore.GREEN + f"Evaluating {trial_path.as_posix()}")
-        train_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_outdir],
+        train_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_dir],
                                                         checkpoint=trial_path / 'best_checkpoint',
                                                         mode='train',
                                                         trials_directory=self.trials_directory,
@@ -92,7 +70,7 @@ class TestThresholdSensitivity:
                                                         use_gt_rope=False,
                                                         take=take,
                                                         )
-        val_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_outdir],
+        val_metrics = train_test_classifier.eval_main(dataset_dirs=[self.classifier_dataset_dir],
                                                       checkpoint=trial_path / 'best_checkpoint',
                                                       mode='val',
                                                       trials_directory=self.trials_directory,
@@ -160,19 +138,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
         trial_dirs = {}
 
     for threshold in thresholds:
-        labeling_params = {
-            # TODO: line search over thresholds
-            'threshold':                     threshold,
-            'classifier_horizon':            2,
-            'start_step':                    4,
-            'perception_reliability_method': 'gt',
-        }
-
         tts = TestThresholdSensitivity(log, threshold)
-        rospy.logerr("No need to remake dataset to test a different threshold!!!!")
-        tts.make_classifier_dataset(regenerate=args.regenerate,
-                                    labeling_params=labeling_params,
-                                    take=args.take)
 
         threshold_key = str(threshold)
         if threshold_key not in trial_dirs:
@@ -185,6 +151,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
                                                           batch_size=args.batch_size,
                                                           epochs=args.epochs,
                                                           seed=seed,
+                                                          threshold=threshold,
                                                           take=args.take,
                                                           retrain=args.retrain,
                                                           )
@@ -206,7 +173,7 @@ def generate_outputs(args, classifier_hparams_filename, log, output_filename, ou
 
             output = {
                 'threshold':              tts.threshold,
-                'classifier_dataset_dir': tts.classifier_dataset_outdir,
+                'classifier_dataset_dir': tts.classifier_dataset_dir,
                 'udnn_model_dirs':        tts.udnn_model_dirs,
                 'train_metrics':          train_metrics,
                 'validation_metrics':     val_metrics,
