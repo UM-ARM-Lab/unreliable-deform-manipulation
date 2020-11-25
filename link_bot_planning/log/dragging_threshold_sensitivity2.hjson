@@ -1210,7 +1210,7 @@
   }
   threshold=0.055:
   {
-    1:
+    0:
     {
       data_filename: results/dragging-test-threshold-sensitivity/threshold=0.055/0_metrics.json.gz
     }
@@ -3627,4 +3627,6 @@
     }
   }
   threshold=0.125: {}
+  threshold=0.205: {}
+  threshold=0.185: {}
 }
