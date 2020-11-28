@@ -42,7 +42,7 @@
 
         <include>
             <pose>0.8 0 0.625 0 0 0</pose>
-            <uri>model://table</uri>
+            <uri>model://victor_table</uri>
         </include>
 
         <include>
