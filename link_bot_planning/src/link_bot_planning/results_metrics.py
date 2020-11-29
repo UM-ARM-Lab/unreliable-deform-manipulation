@@ -58,6 +58,7 @@ class ResultsMetric:
             colors = self.params["colors"]
             color = colors.get(method_name, None)
             self.add_to_figure(method_name=method_name, values=values_for_method, color=color)
+        self.finish_figure()
 
     def add_to_figure(self, method_name: str, values: List, color):
         raise NotImplementedError()
@@ -89,18 +90,19 @@ class BoxplotOverTrialsPerMethod(ResultsMetric):
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return trial_datum['total_time']
 
-    def add_to_figure(self, values: List, method_name: str, color):
+    def add_to_figure(self, method_name: str, values: List, color):
         x = self.method_indices[method_name]
         if self.trendline:
             self.ax.plot(x, np.mean(values, axis=0), c=color, zorder=2)
         self.ax.boxplot(values,
                         positions=[x],
+                        widths=0.9,
                         patch_artist=True,
-                        boxprops=dict(facecolor=color, color=color),
+                        boxprops=dict(facecolor='#00000000', color=color),
                         capprops=dict(color=color),
                         whiskerprops=dict(color=color),
                         medianprops=dict(color=color))
-        plt.setp(self.ax.get_xticklabels(), rotation=15, horizontalalignment='right')
+        plt.setp(self.ax.get_xticklabels(), rotation=18, horizontalalignment='right')
 
     def get_table_header(self):
         return ["Name", self.name]
@@ -193,3 +195,32 @@ class TotalTime(BoxplotOverTrialsPerMethod):
 
     def get_table_header(self):
         return ["Name", "min", "max", "mean", "median", "std"]
+
+
+class TaskErrorBoxplot(BoxplotOverTrialsPerMethod):
+    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
+        super().__init__(args, analysis_params, results_dir, "Task Error Boxplot")
+        self.ax.set_ylabel("Task Error")
+
+    def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
+        goal = trial_datum['goal']
+        final_actual_state = trial_datum['end_state']
+        import ipdb;
+        ipdb.set_trace()
+        self.thresholds = trial_datum['planner_params']
+        final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
+        return final_execution_to_goal_error
+
+    def add_to_figure(self, method_name: str, values: List, color):
+        super().add_to_figure(method_name, values, color)
+
+    def finish_figure(self):
+        values = np.array(list(self.values.values()))
+        print(self.values.keys())
+        self.ax.plot(range(len(self.values)), np.mean(values, axis=1), c='b', zorder=2)
+        # don't a legend for these plots
+        self.ax.set_ylim([0, self.params['max_error']])
+        self.ax.set_xticklabels(self.values.keys())
+
+    def make_table(self, table_format):
+        return None, None

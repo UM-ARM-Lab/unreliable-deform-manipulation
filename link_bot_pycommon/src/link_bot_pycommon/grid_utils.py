@@ -114,7 +114,7 @@ def extent_to_center(extent_3d):
 def environment_to_occupancy_msg(environment: Dict, frame: str = 'occupancy') -> OccupancyStamped:
     occupancy = Float32MultiArray()
     env = environment['env']
-    # NOTE: The plugin assumes data is ordered [x,y,z] so tranpose here
+    # NOTE: The plugin assumes data is ordered [x,y,z] so transpose here
     env = np.transpose(env, [1, 0, 2])
     occupancy.data = env.astype(np.float32).flatten().tolist()
     x_shape, y_shape, z_shape = env.shape

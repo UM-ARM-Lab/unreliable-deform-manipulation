@@ -4,7 +4,6 @@ import gzip
 import json
 import pathlib
 import pickle
-import time
 from typing import List
 
 import colorama
@@ -18,10 +17,28 @@ from tabulate import tabulate
 import rospy
 from arc_utilities.filesystem_utils import get_all_subfolders
 from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime, \
-    ResultsMetric
+    ResultsMetric, TaskErrorBoxplot
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import dict_to_pvalue_table
+from link_bot_pycommon.pycommon import paths_from_json
+from link_bot_pycommon.serialization import my_hdump
+
+
+def save_order(outdir: pathlib.Path, subfolders_ordered: List[pathlib.Path]):
+    sort_order_filename = outdir / 'sort_order.txt'
+    with sort_order_filename.open("w") as sort_order_file:
+        my_hdump(subfolders_ordered, sort_order_file)
+
+
+def load_sort_order(outdir: pathlib.Path, unsorted_dirs: List[pathlib.Path]):
+    sort_order_filename = outdir / 'sort_order.txt'
+    if sort_order_filename.exists():
+        with sort_order_filename.open("r") as sort_order_file:
+            subfolders_ordered = hjson.load(sort_order_file)
+        subfolders_ordered = paths_from_json(subfolders_ordered)
+        return subfolders_ordered
+    return unsorted_dirs
 
 
 def metrics_main(args):
@@ -45,9 +62,11 @@ def metrics_main(args):
             print("{}) {}".format(subfolder_idx, subfolder))
         sort_order = input(Fore.CYAN + "Enter the desired table order:\n" + Fore.RESET)
         subfolders_ordered = [subfolders[int(i)] for i in sort_order.split(' ')]
+        save_order(out_dir, subfolders_ordered)
     else:
+
         table_format = 'fancy_grid'
-        subfolders_ordered = subfolders
+        subfolders_ordered = load_sort_order(out_dir, subfolders)
 
     pickle_filename = out_dir / f"{unique_comparison_name}-metrics.pkl"
     if pickle_filename.exists() and not args.regenerate:
@@ -63,6 +82,7 @@ def metrics_main(args):
             sort_order_dict[method_name] = sort_idx
 
         for metric in metrics:
+            metric.params = analysis_params
             metric.sort_methods(sort_order_dict)
 
         with pickle_filename.open("wb") as pickle_file:
@@ -81,6 +101,8 @@ def metrics_main(args):
 
     for metric in metrics:
         table_header, table_data = metric.make_table(table_format)
+        if table_data is None:
+            continue
         print(Style.BRIGHT + metric.name + Style.NORMAL)
         table = tabulate(table_data,
                          headers=table_header,
@@ -107,7 +129,6 @@ def metrics_main(args):
 
     for metric in metrics:
         metric.make_figure()
-        metric.finish_figure()
         metric.save_figure()
 
     if not args.no_plot:
@@ -120,6 +141,7 @@ def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
         NRecoveryActions(args, analysis_params, out_dir),
         TotalTime(args, analysis_params, out_dir),
         NPlanningAttempts(args, analysis_params, out_dir),
+        TaskErrorBoxplot(args, analysis_params, out_dir),
     ]
     for subfolder in subfolders_ordered:
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
