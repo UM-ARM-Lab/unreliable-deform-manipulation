@@ -9,6 +9,9 @@ import numpy as np
 import tensorflow as tf
 from dataclasses_json import DataClassJsonMixin
 
+from rospy_message_converter import message_converter
+from sensor_msgs.msg import genpy
+
 
 class MyHjsonEncoder(hjson.HjsonEncoder):
     def default(self, obj):
@@ -26,6 +29,8 @@ class MyHjsonEncoder(hjson.HjsonEncoder):
             return obj.numpy().tolist()
         elif isinstance(obj, uuid.UUID):
             return str(obj)
+        elif isinstance(obj, genpy.Message):
+            return message_converter.convert_ros_message_to_dictionary(obj)
         return hjson.HjsonEncoder.default(self, obj)
 
 
@@ -79,9 +84,9 @@ def dummy_proof_write(data, filename):
         except KeyboardInterrupt:
             pass
 
+
 class MyHJsonSerializer:
 
     @staticmethod
     def dump(data, fp):
         hjson.dump(data, fp, cls=MyHjsonEncoder)
-

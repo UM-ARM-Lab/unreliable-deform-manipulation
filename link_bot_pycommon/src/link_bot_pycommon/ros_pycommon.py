@@ -64,8 +64,8 @@ def get_environment_for_extents_3d(extent,
     origin_channel = -z_min / res
     origin = np.array([origin_row, origin_col, origin_channel], np.int32)
     return {
-        'env': grid,
-        'res': res,
+        'env':    grid,
+        'res':    res,
         'origin': origin,
         'extent': extent,
     }
@@ -98,7 +98,8 @@ def get_occupancy_data(env_h_m: float,
                                    res=res,
                                    center_x=0,
                                    center_y=0,
-                                   center_z=res,  # we want to do a little off the ground because grid cells are centered
+                                   center_z=res,
+                                   # we want to do a little off the ground because grid cells are centered
                                    excluded_models=[robot_name])
     origin = np.array(response.origin)
     full_env_data = grid_utils.OccupancyData(data=grid, resolution=res, origin=origin)
@@ -107,11 +108,11 @@ def get_occupancy_data(env_h_m: float,
 
 def make_movable_object_services(object_name):
     return {
-        'enable': rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
+        'enable':       rospy.ServiceProxy(f'{object_name}/enable', Position3DEnable),
         'get_position': rospy.ServiceProxy(f'{object_name}/get', GetPosition3D),
-        'set': rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
-        'move': rospy.ServiceProxy(f'{object_name}/move', Position3DAction),
-        'stop': rospy.ServiceProxy(f'{object_name}/stop', Empty),
+        'set':          rospy.ServiceProxy(f'{object_name}/set', Position3DAction),
+        'move':         rospy.ServiceProxy(f'{object_name}/move', Position3DAction),
+        'stop':         rospy.ServiceProxy(f'{object_name}/stop', Empty),
     }
 
 
@@ -127,6 +128,7 @@ def publish_depth_image(pub: rospy.Publisher, x):
 
 
 def get_camera_params(camera_name: str):
-    camera_params_listener = Listener(ns_join(camera_name, "camera_info"), CameraInfo)
+    camera_params_topic_name = ns_join(ns_join(camera_name, 'qhd'), "camera_info")
+    camera_params_listener = Listener(camera_params_topic_name, CameraInfo)
     camera_params: CameraInfo = camera_params_listener.get()
     return camera_params

@@ -48,7 +48,7 @@ def main():
         logfile_dir = pathlib.Path("log") / unique_nickname
         logfile_dir.mkdir(parents=True)
         logfile_name = logfile_dir / "logfile.hjson"
-        log = {}
+        log = {'nickname': nickname}
 
     with args.full_stack_param.open('r') as f:
         full_stack_params = hjson.load(f)

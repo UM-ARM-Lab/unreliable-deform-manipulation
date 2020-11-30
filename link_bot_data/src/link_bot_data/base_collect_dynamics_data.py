@@ -13,6 +13,7 @@ from link_bot_data.files_dataset import FilesDataset
 from link_bot_pycommon.base_services import BaseServices
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.grid_utils import extent_to_env_shape
+from link_bot_pycommon.serialization import my_hdump
 
 
 class BaseDataCollector:
@@ -127,25 +128,28 @@ class BaseDataCollector:
         print(Fore.GREEN + full_output_directory.as_posix() + Fore.RESET)
 
         s_for_size = self.scenario.get_state()
-        a_for_size = self.scenario.sample_action(action_rng=np.random.RandomState(0), environment={}, state=s_for_size,
-                                                 action_params=self.params, validate=True)
+        a_for_size = self.scenario.sample_action(action_rng=np.random.RandomState(0),
+                                                 environment={},
+                                                 state=s_for_size,
+                                                 action_params=self.params,
+                                                 validate=False)
         state_description = {k: v.shape[0] for k, v in s_for_size.items()}
         action_description = {k: v.shape[0] for k, v in a_for_size.items()}
 
         dataset_hparams = {
-            'nickname': nickname,
-            'robot_namespace': robot_namespace,
-            'seed': self.seed,
-            'n_trajs': n_trajs,
+            'nickname':               nickname,
+            'robot_namespace':        robot_namespace,
+            'seed':                   self.seed,
+            'n_trajs':                n_trajs,
             'data_collection_params': self.params,
-            'scenario': self.scenario_name,
+            'scenario':               self.scenario_name,
             # FIXME: rename this key?
-            'scenario_metadata': self.scenario.dynamics_dataset_metadata(),
-            'state_description': state_description,
-            'action_description': action_description,
+            'scenario_metadata':      self.scenario.dynamics_dataset_metadata(),
+            'state_description':      state_description,
+            'action_description':     action_description,
         }
         with (full_output_directory / 'hparams.hjson').open('w') as dataset_hparams_file:
-            hjson.dump(dataset_hparams, dataset_hparams_file, indent=2)
+            my_hdump(dataset_hparams, dataset_hparams_file, indent=2)
 
         self.scenario.randomization_initialization()
         self.scenario.on_before_data_collection(self.params)
