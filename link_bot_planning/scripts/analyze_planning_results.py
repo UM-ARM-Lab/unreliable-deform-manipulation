@@ -137,11 +137,11 @@ def metrics_main(args):
 
 def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
     metrics = [
-        FinalExecutionToGoalError(args, analysis_params, out_dir),
-        NRecoveryActions(args, analysis_params, out_dir),
-        TotalTime(args, analysis_params, out_dir),
-        NPlanningAttempts(args, analysis_params, out_dir),
-        TaskErrorBoxplot(args, analysis_params, out_dir),
+        FinalExecutionToGoalError(args, analysis_params, results_dir=out_dir),
+        NRecoveryActions(args, analysis_params, results_dir=out_dir),
+        TotalTime(args, analysis_params, results_dir=out_dir),
+        NPlanningAttempts(args, analysis_params, results_dir=out_dir),
+        TaskErrorBoxplot(args, analysis_params, results_dir=out_dir),
     ]
     for subfolder in subfolders_ordered:
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))

@@ -3,11 +3,13 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+from colorama import Fore
 
 from link_bot_pycommon.experiment_scenario import ExperimentScenario
 from link_bot_pycommon.latex_utils import make_cell
 from link_bot_pycommon.matplotlib_utils import save_unconstrained_layout
 from link_bot_pycommon.metric_utils import row_stats
+
 
 
 class ResultsMetric:
@@ -67,14 +69,16 @@ class ResultsMetric:
         self.ax.legend()
 
     def save_figure(self):
-        save_unconstrained_layout(self.fig, self.results_dir / (self.name + ".png"))
+        filename = self.results_dir / (self.name + ".tiff")
+        print(Fore.GREEN + f"Saving {filename}")
+        save_unconstrained_layout(self.fig, filename, dpi=300)
 
     def enumerate_methods(self):
         for i, k in enumerate(self.values):
             self.method_indices[k] = i
 
     def sort_methods(self, sort_order: Dict):
-        sorted_values = dict(sorted(self.values.items(), key=lambda kv: sort_order[kv[0]]))
+        sorted_values = {k: self.values[k] for k in sort_order.keys()}
         self.values = sorted_values
         self.enumerate_methods()
 
@@ -205,8 +209,6 @@ class TaskErrorBoxplot(BoxplotOverTrialsPerMethod):
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         goal = trial_datum['goal']
         final_actual_state = trial_datum['end_state']
-        import ipdb;
-        ipdb.set_trace()
         self.thresholds = trial_datum['planner_params']
         final_execution_to_goal_error = scenario.distance_to_goal(final_actual_state, goal)
         return final_execution_to_goal_error
@@ -216,7 +218,9 @@ class TaskErrorBoxplot(BoxplotOverTrialsPerMethod):
 
     def finish_figure(self):
         values = np.array(list(self.values.values()))
-        print(self.values.keys())
+        if values.ndim < 2:
+            return
+
         self.ax.plot(range(len(self.values)), np.mean(values, axis=1), c='b', zorder=2)
         # don't a legend for these plots
         self.ax.set_ylim([0, self.params['max_error']])
