@@ -56,7 +56,8 @@
     n_trials: 100
     planners_params_common: planner_configs/victor_dual/common.json
     test_scenes_dir: test_scenes/dual_1599931915/
-    launch: victor_tabletop.launch
+    launch: main.launch
+    world: tabletop_rope_obstacles2.world
     methods: [
      learned_recovery
 #      no_classifier

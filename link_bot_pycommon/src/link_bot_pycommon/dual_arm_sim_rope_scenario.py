@@ -40,14 +40,15 @@ class SimDualArmRopeScenario(BaseDualArmRopeScenario):
         # Grasp the rope again
         self.grasp_rope_endpoints()
 
+    def on_before_get_state_or_execute_action(self):
+        self.robot.connect()
+
     def randomize_environment(self, env_rng: np.random.RandomState, params: Dict):
         # teleport movable objects out of the way
         self.move_objects_out_of_scene(params)
 
         # release the rope
         self.robot.open_left_gripper()
-        self.robot.open_right_gripper()
-        # self.detach_rope_from_grippers()
         self.detach_rope_from_gripper('left_gripper')
 
         # plan to reset joint config, we assume this will always work

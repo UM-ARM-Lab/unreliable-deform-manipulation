@@ -39,7 +39,7 @@ try:
 except ImportError:
     rospy.logwarn("ignoring failed import of BBox message")
 
-rope_key_name = 'rope'
+rope_key_name = 'link_bot'
 
 
 class FloatingRopeScenario(Base3DScenario):
@@ -285,7 +285,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def put_state_robot_frame(state: Dict):
-        rope = state['rope']
+        rope = state[rope_key_name]
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)
 
@@ -300,12 +300,12 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper':  left_gripper_robot,
             'right_gripper': right_gripper_robot,
-            'rope':          rope_robot,
+            rope_key_name:          rope_robot,
         }
 
     @staticmethod
     def put_state_local_frame(state: Dict):
-        rope = state['rope']
+        rope = state[rope_key_name]
         rope_points_shape = rope.shape[:-1].as_list() + [-1, 3]
         rope_points = tf.reshape(rope, rope_points_shape)
 
@@ -320,12 +320,12 @@ class FloatingRopeScenario(Base3DScenario):
         return {
             'left_gripper':  left_gripper_local,
             'right_gripper': right_gripper_local,
-            'rope':          rope_local,
+            rope_key_name:          rope_local,
         }
 
     @staticmethod
     def local_environment_center_differentiable(state):
-        rope_vector = state['rope']
+        rope_vector = state[rope_key_name]
         rope_points = tf.reshape(rope_vector, [rope_vector.shape[0], -1, 3])
         center = tf.reduce_mean(rope_points, axis=1)
         return center
@@ -424,7 +424,7 @@ class FloatingRopeScenario(Base3DScenario):
             'left_gripper':  left_rope_point_position,
             'right_gripper': right_rope_point_position,
             'gt_rope':       np.array(rope_state_vector, np.float32),
-            'rope':          np.array(cdcpd_vector, np.float32),
+            rope_key_name:          np.array(cdcpd_vector, np.float32),
             'rgbd':          color_depth_cropped,
         }
 
@@ -475,7 +475,7 @@ class FloatingRopeScenario(Base3DScenario):
     @staticmethod
     def observation_features_description() -> Dict:
         return {
-            'rope':  FloatingRopeScenario.n_links * 3,
+            rope_key_name:  FloatingRopeScenario.n_links * 3,
             'cdcpd': FloatingRopeScenario.n_links * 3,
         }
 
@@ -489,7 +489,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def state_to_points_for_cc(state: Dict):
-        return state['rope'].reshape(-1, 3)
+        return state[rope_key_name].reshape(-1, 3)
 
     def __repr__(self):
         return "DualFloatingGripperRope"
@@ -565,7 +565,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_grippers_and_any_point_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['rope'], [-1, 3])
+        rope_points = np.reshape(state[rope_key_name], [-1, 3])
         # well ok not _any_ node, but ones near the middle
         n_from_ends = 5
         distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) -
@@ -580,7 +580,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_any_point_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['rope'], [-1, 3])
+        rope_points = np.reshape(state[rope_key_name], [-1, 3])
         # well ok not _any_ node, but ones near the middle
         n_from_ends = 7
         distances = np.linalg.norm(np.expand_dims(goal['point'], axis=0) -
@@ -590,7 +590,7 @@ class FloatingRopeScenario(Base3DScenario):
 
     @staticmethod
     def distance_to_midpoint_goal(state: Dict, goal: Dict):
-        rope_points = np.reshape(state['rope'], [-1, 3])
+        rope_points = np.reshape(state[rope_key_name], [-1, 3])
         rope_midpoint = rope_points[int(FloatingRopeScenario.n_links / 2)]
         distance = np.linalg.norm(goal['midpoint'] - rope_midpoint)
         return distance

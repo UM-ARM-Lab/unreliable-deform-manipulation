@@ -24,6 +24,7 @@ def main():
 
     gazebo_service_provider = GazeboServices()
     gazebo_service_provider.restore_from_bag(args.bagfile)
+    gazebo_service_provider.play()
 
     rospy.loginfo("done")
 

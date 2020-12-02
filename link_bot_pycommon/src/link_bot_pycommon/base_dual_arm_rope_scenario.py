@@ -85,8 +85,11 @@ class BaseDualArmRopeScenario(FloatingRopeScenario):
             if is_attached and not is_known:
                 break
 
-    def on_before_data_collection(self, params: Dict):
+    def on_before_get_state_or_execute_action(self):
         self.robot.connect()
+
+    def on_before_data_collection(self, params: Dict):
+        self.on_before_get_state_or_execute_action()
         self.add_boxes_around_tools()
 
         # Set the preferred tool orientations

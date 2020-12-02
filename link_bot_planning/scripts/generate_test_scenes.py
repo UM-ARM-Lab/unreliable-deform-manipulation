@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+import hjson
 import pathlib
 from typing import Optional
 
@@ -22,7 +23,8 @@ def main():
     tf.get_logger().setLevel(logging.ERROR)
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
-    parser.add_argument("scenario", type=str)
+    parser.add_argument("scenario", type=str, help='scenario')
+    parser.add_argument("params", type=pathlib.Path, help='the data collection params file should work')
     parser.add_argument("scenes_dir", type=pathlib.Path)
     parser.add_argument("--n-trials", type=int, default=100)
 
@@ -32,11 +34,13 @@ def main():
 
     return generate_test_scenes(scenario=args.scenario,
                                 n_trials=args.n_trials,
+                                params_filename = args.params,
                                 save_test_scenes_dir=args.scenes_dir)
 
 
 def generate_test_scenes(scenario: str,
                          n_trials: int,
+                         params_filename : pathlib.Path,
                          save_test_scenes_dir: Optional[pathlib.Path] = None,
                          ):
     service_provider = gazebo_services.GazeboServices()
@@ -44,36 +48,20 @@ def generate_test_scenes(scenario: str,
 
     service_provider.setup_env(verbose=0,
                                real_time_rate=0.0,
-                               max_step_size=0.001,
+                               max_step_size=0.01,
                                play=True)
 
-    scenario.on_before_get_state_or_execute_action()
-    scenario.randomization_initialization()
 
     link_states_listener = Listener("gazebo/link_states", LinkStates)
 
     env_rng = np.random.RandomState(0)
     action_rng = np.random.RandomState(0)
 
-    params = {
-        'repeat_delta_gripper_motion_probability': 0.9,
-        'objects_extent':                          [-0.7, 0.7, -0.7, 0.7, 0, 0],
-        'objects':                                 [
-            'small_box1',
-            'small_box2',
-            'small_box3',
-            'small_box4',
-            'small_box5',
-            'small_box6',
-            'small_box7',
-            'small_box8',
-            'small_box9',
-        ],
-        'max_distance_gripper_can_move':           0.15,
-        'extent':                                  [-1.2, 1.2, -1.2, 1.2, 0, 0.04],
-        'dt':                                      1.0,
-        "gripper_action_sample_extent":            [-0.6, 0.6, -0.6, 0.6, 0, 0.04],
-    }
+    with params_filename.open("r") as params_file:
+        params = hjson.load(params_file)
+
+    scenario.on_before_data_collection(params)
+    scenario.randomization_initialization()
 
     for trial_idx in range(n_trials):
         environment = scenario.get_environment(params)
