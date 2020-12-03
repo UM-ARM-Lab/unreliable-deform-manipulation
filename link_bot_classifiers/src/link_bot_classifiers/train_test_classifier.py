@@ -8,6 +8,7 @@ import tensorflow as tf
 from progressbar import progressbar
 
 import link_bot_classifiers
+from link_bot_pycommon.get_scenario import get_scenario
 import rospy
 from link_bot_classifiers import classifier_utils
 from link_bot_classifiers.classifier_utils import load_generic_model
@@ -140,7 +141,7 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     trial_path = checkpoint.parent.absolute()
     _, params = filepath_tools.create_or_load_trial(trial_path=trial_path, trials_directory=trials_directory)
-    model = link_bot_classifiers.get_model(params['model_class'])
+    model_class = link_bot_classifiers.get_model(params['model_class'])
 
     ###############
     # Dataset
@@ -158,9 +159,9 @@ def eval_main(dataset_dirs: List[pathlib.Path],
     ###############
     tf_dataset = batch_tf_dataset(tf_dataset, batch_size, drop_remainder=True)
 
-    net = model(hparams=params, batch_size=batch_size, scenario=dataset.scenario)
+    model = model_class(hparams=params, batch_size=batch_size, scenario=dataset.scenario)
     # This call to model runner restores the model
-    runner = ModelRunner(model=net,
+    runner = ModelRunner(model=model,
                          training=False,
                          params=params,
                          checkpoint=checkpoint,
@@ -192,7 +193,7 @@ def viz_main(dataset_dirs: List[pathlib.Path],
     trial_path = checkpoint.parent.absolute()
     _, params = filepath_tools.create_or_load_trial(trial_path=trial_path,
                                                     trials_directory=trials_directory)
-    model = link_bot_classifiers.get_model(params['model_class'])
+    model_class = link_bot_classifiers.get_model(params['model_class'])
 
     ###############
     # Dataset
@@ -200,7 +201,9 @@ def viz_main(dataset_dirs: List[pathlib.Path],
     dataset = ClassifierDatasetLoader(dataset_dirs,
                                       load_true_states=True,
                                       use_gt_rope=use_gt_rope,
+                                      threshold=params['classifier_dataset_hparams']['labeling_params']['threshold'],
                                       old_compat=old_compat)
+    model = model_class(hparams=params, batch_size=batch_size, scenario=dataset.scenario)
     tf_dataset = dataset.get_datasets(mode=mode)
     scenario = dataset.scenario
 

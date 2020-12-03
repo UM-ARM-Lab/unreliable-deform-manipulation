@@ -39,7 +39,7 @@ try:
 except ImportError:
     rospy.logwarn("ignoring failed import of BBox message")
 
-rope_key_name = 'link_bot'
+rope_key_name = 'rope'
 
 
 class FloatingRopeScenario(Base3DScenario):

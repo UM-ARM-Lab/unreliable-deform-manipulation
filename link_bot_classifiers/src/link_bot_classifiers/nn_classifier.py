@@ -26,7 +26,7 @@ from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
-DEBUG_VIZ = False
+DEBUG_VIZ = True
 
 
 class NNClassifier(MyKerasModel):
@@ -36,7 +36,7 @@ class NNClassifier(MyKerasModel):
 
         self.raster_debug_pubs = [
             rospy.Publisher(f'classifier_raster_debug_{i}', OccupancyStamped, queue_size=10, latch=False) for i in
-            range(3)]
+            range(4)]
         self.local_env_bbox_pub = rospy.Publisher('local_env_bbox', BoundingBox, queue_size=10, latch=True)
 
         self.classifier_dataset_hparams = self.hparams['classifier_dataset_hparams']
@@ -274,7 +274,7 @@ class NNClassifier(MyKerasModel):
                 send_occupancy_tf(self.scenario.tf.tf_broadcaster, local_env_dict, frame='local_occupancy')
 
                 pred_t = index_time_with_metadata({}, example, self.pred_state_keys, t)
-                action_t = index_time(example, self.action_keys + self.pred_state_keys, t)
+                action_t = {k: example[k][t] for k in self.action_keys}
                 self.scenario.plot_state_rviz(numpify(pred_t), label='predicted', color='#0000ffff')
                 if action_t is not None:
                     self.scenario.plot_action_rviz(numpify(pred_t), numpify(action_t), label='action',
