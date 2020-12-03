@@ -242,12 +242,20 @@ class NNClassifier(MyKerasModel):
         }
 
     def debug_rviz(self, input_dict: Dict, debug_info_seq: List[Tuple]):
+        import pickle
         from merrrt_visualization.rviz_animation_controller import RvizSimpleStepper
         from link_bot_pycommon.bbox_visualization import grid_to_bbox
         from moonshine.moonshine_utils import numpify
         from moonshine.indexing import index_dict_of_batched_tensors_tf, index_time_with_metadata
         from link_bot_pycommon.grid_utils import environment_to_occupancy_msg, send_occupancy_tf
         import numpy as np
+        from time import time
+
+        debug_filename = f'debug_{int(time())}.pkl'
+        print(f"Saving debug info to {debug_filename}")
+        with open(debug_filename, "wb") as debug_file:
+            pickle.dump({'input_dict': input_dict, 'debug_info': debug_info_seq}, debug_file)
+
         stepper = RvizSimpleStepper()
         batch_size = input_dict.pop("batch_size").numpy().astype(np.int32)
         input_dict.pop("time")
