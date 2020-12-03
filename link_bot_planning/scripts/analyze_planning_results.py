@@ -16,8 +16,7 @@ from tabulate import tabulate
 
 import rospy
 from arc_utilities.filesystem_utils import get_all_subfolders
-from link_bot_planning.results_metrics import FinalExecutionToGoalError, NRecoveryActions, NPlanningAttempts, TotalTime, \
-    ResultsMetric, TaskErrorBoxplot
+from link_bot_planning.results_metrics import *
 from link_bot_pycommon.args import my_formatter
 from link_bot_pycommon.get_scenario import get_scenario
 from link_bot_pycommon.metric_utils import dict_to_pvalue_table
@@ -68,22 +67,18 @@ def metrics_main(args):
         table_format = 'fancy_grid'
         subfolders_ordered = load_sort_order(out_dir, subfolders)
 
+    sort_order_dict = {}
+    for sort_idx, subfolder in enumerate(subfolders_ordered):
+        with (subfolder / 'metadata.json').open('r') as metadata_file:
+            metadata = json.load(metadata_file)
+        method_name = metadata['planner_params'].get('method_name', subfolder.name)
+        sort_order_dict[method_name] = sort_idx
+
     pickle_filename = out_dir / f"{unique_comparison_name}-metrics.pkl"
     if pickle_filename.exists() and not args.regenerate:
         rospy.loginfo(Fore.GREEN + f"Loading existing metrics from {pickle_filename}")
         with pickle_filename.open("rb") as pickle_file:
             metrics: List[ResultsMetric] = pickle.load(pickle_file)
-
-        sort_order_dict = {}
-        for sort_idx, subfolder in enumerate(subfolders_ordered):
-            with (subfolder / 'metadata.json').open('r') as metadata_file:
-                metadata = json.load(metadata_file)
-            method_name = metadata['planner_params'].get('method_name', subfolder.name)
-            sort_order_dict[method_name] = sort_idx
-
-        for metric in metrics:
-            metric.params = analysis_params
-            metric.sort_methods(sort_order_dict)
 
         with pickle_filename.open("wb") as pickle_file:
             pickle.dump(metrics, pickle_file)
@@ -96,14 +91,26 @@ def metrics_main(args):
             pickle.dump(metrics, pickle_file)
         rospy.loginfo(Fore.GREEN + f"Pickling metrics to {pickle_filename}")
 
-    for metric in metrics:
-        metric.enumerate_methods()
+    figures = [
+        FinalExecutionToGoalErrorFigure(metrics[0]),
+        # NRecoveryActions(args, analysis_params, results_dir=out_dir),
+        # TotalTime(args, analysis_params, results_dir=out_dir),
+        # NPlanningAttempts(args, analysis_params, results_dir=out_dir),
+        # TaskErrorBoxplot(args, analysis_params, results_dir=out_dir),
+    ]
 
-    for metric in metrics:
-        table_header, table_data = metric.make_table(table_format)
+    for figure in figures:
+        figure.params = analysis_params
+        figure.sort_methods(sort_order_dict)
+
+    for figure in figures:
+        figure.enumerate_methods()
+
+    for figure in figures:
+        table_header, table_data = figure.make_table(table_format)
         if table_data is None:
             continue
-        print(Style.BRIGHT + metric.name + Style.NORMAL)
+        print(Style.BRIGHT + figure.metric.name + Style.NORMAL)
         table = tabulate(table_data,
                          headers=table_header,
                          tablefmt=table_format,
@@ -112,14 +119,14 @@ def metrics_main(args):
                          stralign='left')
         print(table)
         print()
-        table_outfile.write(metric.name)
+        table_outfile.write(figure.metric.name)
         table_outfile.write('\n')
         table_outfile.write(table)
         table_outfile.write('\n')
 
-    for metric in metrics:
-        pvalue_table_title = f"p-value matrix [{metric.name}]"
-        pvalue_table = dict_to_pvalue_table(metric.values, table_format=table_format)
+    for figure in figures:
+        pvalue_table_title = f"p-value matrix [{figure.metric.name}]"
+        pvalue_table = dict_to_pvalue_table(figure.metric.values, table_format=table_format)
         print(Style.BRIGHT + pvalue_table_title + Style.NORMAL)
         print(pvalue_table)
         table_outfile.write(pvalue_table_title)
@@ -127,9 +134,9 @@ def metrics_main(args):
         table_outfile.write(pvalue_table)
         table_outfile.write('\n')
 
-    for metric in metrics:
-        metric.make_figure()
-        metric.save_figure()
+    for figure in figures:
+        figure.make_figure()
+        figure.save_figure()
 
     if not args.no_plot:
         plt.show()
@@ -138,10 +145,10 @@ def metrics_main(args):
 def generate_metrics(analysis_params, args, out_dir, subfolders_ordered):
     metrics = [
         FinalExecutionToGoalError(args, analysis_params, results_dir=out_dir),
-        NRecoveryActions(args, analysis_params, results_dir=out_dir),
-        TotalTime(args, analysis_params, results_dir=out_dir),
-        NPlanningAttempts(args, analysis_params, results_dir=out_dir),
-        TaskErrorBoxplot(args, analysis_params, results_dir=out_dir),
+        # NRecoveryActions(args, analysis_params, results_dir=out_dir),
+        # TotalTime(args, analysis_params, results_dir=out_dir),
+        # NPlanningAttempts(args, analysis_params, results_dir=out_dir),
+        # TaskErrorBoxplot(args, analysis_params, results_dir=out_dir),
     ]
     for subfolder in subfolders_ordered:
         metrics_filenames = list(subfolder.glob("*_metrics.json.gz"))
@@ -179,7 +186,6 @@ def main():
 
     rospy.init_node("analyse_planning_results")
     np.set_printoptions(suppress=True, precision=4, linewidth=180)
-    plt.style.use('paper')
 
     parser = argparse.ArgumentParser(formatter_class=my_formatter)
     parser.add_argument('results_dirs', help='results directory', type=pathlib.Path, nargs='+')
@@ -188,9 +194,12 @@ def main():
     parser.add_argument('--final', action='store_true')
     parser.add_argument('--regenerate', action='store_true')
     parser.add_argument('--debug', action='store_true', help='will only run on a few examples to speed up debugging')
+    parser.add_argument('--style', default='paper')
     parser.set_defaults(func=metrics_main)
 
     args = parser.parse_args()
+
+    plt.style.use(args.style)
 
     metrics_main(args)
 
