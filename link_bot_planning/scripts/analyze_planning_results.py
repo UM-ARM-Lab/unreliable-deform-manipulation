@@ -80,6 +80,10 @@ def metrics_main(args):
         with pickle_filename.open("rb") as pickle_file:
             metrics: List[ResultsMetric] = pickle.load(pickle_file)
 
+        # update the analysis params so we don't need to regenerate metrics
+        for metric in metrics:
+            metric.params = analysis_params
+
         with pickle_filename.open("wb") as pickle_file:
             pickle.dump(metrics, pickle_file)
         rospy.loginfo(Fore.GREEN + f"Pickling metrics to {pickle_filename}")
@@ -92,11 +96,11 @@ def metrics_main(args):
         rospy.loginfo(Fore.GREEN + f"Pickling metrics to {pickle_filename}")
 
     figures = [
-        FinalExecutionToGoalErrorFigure(metrics[0]),
-        # NRecoveryActions(args, analysis_params, results_dir=out_dir),
-        # TotalTime(args, analysis_params, results_dir=out_dir),
-        # NPlanningAttempts(args, analysis_params, results_dir=out_dir),
-        # TaskErrorBoxplot(args, analysis_params, results_dir=out_dir),
+        # FinalExecutionToGoalErrorFigure(analysis_params, metrics[0]),
+        # NRecoveryActions(analysis_params, metrics[1]),
+        # TotalTime(analysis_params, metrics[2]),
+        # NPlanningAttempts(analysis_params, metrics[3]),
+        TaskErrorBoxplot(analysis_params, metrics[0]),
     ]
 
     for figure in figures:

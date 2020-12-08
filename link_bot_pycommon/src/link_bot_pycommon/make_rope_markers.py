@@ -4,7 +4,7 @@ from link_bot_pycommon.marker_index_generator import marker_index_generator
 from visualization_msgs.msg import Marker
 
 
-def make_gripper_marker(position, id, r, g, b, a, label, type):
+def make_gripper_marker(position, id, r, g, b, a, label, type, s = 0.02):
     gripper_marker = Marker()
     gripper_marker.action = Marker.ADD  # create or modify
     gripper_marker.type = type
@@ -12,9 +12,9 @@ def make_gripper_marker(position, id, r, g, b, a, label, type):
     gripper_marker.header.stamp = rospy.Time.now()
     gripper_marker.ns = label
     gripper_marker.id = id
-    gripper_marker.scale.x = 0.02
-    gripper_marker.scale.y = 0.02
-    gripper_marker.scale.z = 0.02
+    gripper_marker.scale.x = s
+    gripper_marker.scale.y = s
+    gripper_marker.scale.z = s
     gripper_marker.pose.position.x = position[0]
     gripper_marker.pose.position.y = position[1]
     gripper_marker.pose.position.z = position[2]
@@ -26,7 +26,7 @@ def make_gripper_marker(position, id, r, g, b, a, label, type):
     return gripper_marker
 
 
-def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marker_type=Marker.SPHERE_LIST):
+def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, s=0.02, points_marker_type=Marker.SPHERE_LIST):
     ig = marker_index_generator(idx)
     lines = Marker()
     lines.action = Marker.ADD  # create or modify
@@ -42,9 +42,9 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     lines.pose.orientation.y = 0
     lines.pose.orientation.z = 0
     lines.pose.orientation.w = 1
-    lines.scale.x = 0.005
-    lines.scale.y = 0.005
-    lines.scale.z = 0.005
+    lines.scale.x = s
+    lines.scale.y = s
+    lines.scale.z = s
     lines.color.r = r
     lines.color.g = g
     lines.color.b = b
@@ -56,9 +56,9 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     points_marker.header.stamp = rospy.Time.now()
     points_marker.ns = label
     points_marker.id = next(ig)
-    points_marker.scale.x = 0.01
-    points_marker.scale.y = 0.01
-    points_marker.scale.z = 0.01
+    points_marker.scale.x = s
+    points_marker.scale.y = s
+    points_marker.scale.z = s
     points_marker.pose.position.x = 0
     points_marker.pose.position.y = 0
     points_marker.pose.position.z = 0
@@ -85,9 +85,9 @@ def make_rope_marker(rope_points, frame_id, label, idx, r, g, b, a, points_marke
     midpoint_sphere.header.stamp = rospy.Time.now()
     midpoint_sphere.ns = label
     midpoint_sphere.id = next(ig)
-    midpoint_sphere.scale.x = 0.012
-    midpoint_sphere.scale.y = 0.012
-    midpoint_sphere.scale.z = 0.012
+    midpoint_sphere.scale.x = s * 1.2
+    midpoint_sphere.scale.y = s * 1.2
+    midpoint_sphere.scale.z = s * 1.2
     rope_midpoint = rope_points[int(rope_points.shape[0] / 2)]
     midpoint_sphere.pose.position.x = rope_midpoint[0]
     midpoint_sphere.pose.position.y = rope_midpoint[1]

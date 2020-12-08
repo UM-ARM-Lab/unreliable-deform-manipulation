@@ -55,12 +55,15 @@ class RopeDraggingScenario(Base3DScenario):
         msg = MarkerArray()
         if rope_key_name in state:
             rope_points = np.reshape(state[rope_key_name], [-1, 3])
-            markers = make_rope_marker(rope_points, 'world', label + "_gt_" + rope_key_name, next(ig), r, g, b, a)
-            msg.markers.extend(markers)
+            rope_mrkrs = make_rope_marker(rope_points, 'world', label + "_gt_" + rope_key_name, next(ig), r, g, b, a, s=0.04)
+            points_marker, lines, midpoint_sphere, first_point_text = rope_mrkrs
+            msg.markers.append(lines)
+            # msg.markers.append(points_marker)
+            # msg.markers.append(first_point_text)
 
         if 'gripper' in state:
             gripper = state['gripper']
-            gripper_sphere = make_gripper_marker(gripper, next(ig), r, g, b, a, label + '_gt_gripper', Marker.SPHERE)
+            gripper_sphere = make_gripper_marker(gripper, next(ig), r, g, b, a, label + '_gt_gripper', Marker.SPHERE, s=0.04)
             msg.markers.append(gripper_sphere)
 
         if add_predicted(rope_key_name) in state:

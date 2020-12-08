@@ -26,7 +26,7 @@ from mps_shape_completion_msgs.msg import OccupancyStamped
 from shape_completion_training.model.filepath_tools import load_trial
 from shape_completion_training.my_keras_model import MyKerasModel
 
-DEBUG_VIZ = True
+DEBUG_VIZ = False
 
 
 class NNClassifier(MyKerasModel):

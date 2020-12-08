@@ -2,6 +2,7 @@
   max_error: 0.25
   n_error_bins: 49
   trendline: true
+  experiment_name: Classifier Threshold Sensitivity
   colors: {
     "threshold=0.025": '#000080'
     "threshold=0.035": '#0000d6'

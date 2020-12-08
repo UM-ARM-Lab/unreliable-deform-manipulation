@@ -1,14 +1,14 @@
 [
     {
-        gripper_position: [0.6, 0.15, 0]
+        gripper_position: [0.66, 0.15, 0]
     }
     {
-        gripper_position: [0.58, 0.10, 0]
+        gripper_position: [0.62, 0.12, 0]
     }
     {
-        gripper_position: [0.55, 0.05, 0]
+        gripper_position: [0.58, 0.09, 0]
     }
     {
-        gripper_position: [0.53, 0.00, 0]
+        gripper_position: [0.54, 0.06, 0]
     }
 ]
