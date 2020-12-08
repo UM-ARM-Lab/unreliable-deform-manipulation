@@ -95,16 +95,8 @@
   "goal_threshold": 0.05,
   "fixed_goal": null,
   "real_time_rate": 0.0,
-  "table_config": {
-    "nickname": [
-      "Full",
-      "Dynamics"
-    ],
-    "classifier": "None",
-    "recovery": "None",
-    "dynamics": [
-      "Single",
-      "Full"
-    ]
-  }
+  "method_name": "Full Dynamics",
+  "filter_model_dir": [
+    "filter_trials/none/none"
+  ]
 }

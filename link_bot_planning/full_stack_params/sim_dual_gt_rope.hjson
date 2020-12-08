@@ -54,17 +54,17 @@
   }
   planning_evaluation: {
     n_trials: 100
-    planners_params_common: planner_configs/victor_dual/common.json
-    test_scenes_dir: test_scenes/dual_1599931915/
+    planners_params_common: planner_configs/victor_dual/common.hjson
+    test_scenes_dir: test_scenes/dual
     launch: main.launch
     world: tabletop_rope_obstacles2.world
     methods: [
      learned_recovery
-#      no_classifier
-#      classifier
-#      full_dynamics
-#      random_recovery
-      random_recovery_no_classifier
+      # no_classifier
+      # classifier
+      # full_dynamics
+      # random_recovery
+      # random_recovery_no_classifier
     ]
   }
 }

@@ -137,28 +137,28 @@ class FloatingRopeOmpl(ScenarioOmpl):
             return RopeMidpointGoalRegion(si=si,
                                           scenario_ompl=self,
                                           rng=rng,
-                                          threshold=params['goal_threshold'],
+                                          threshold=params['goal_params']['threshold'],
                                           goal=goal,
                                           plot=plot)
         elif goal['type'] == 'any_point':
             return RopeAnyPointGoalRegion(si=si,
                                           scenario_ompl=self,
                                           rng=rng,
-                                          threshold=params['goal_threshold'],
+                                          threshold=params['goal_params']['threshold'],
                                           goal=goal,
                                           plot=plot)
         elif goal['type'] == 'grippers':
             return DualGripperGoalRegion(si=si,
                                          scenario_ompl=self,
                                          rng=rng,
-                                         threshold=params['goal_threshold'],
+                                         threshold=params['goal_params']['threshold'],
                                          goal=goal,
                                          plot=plot)
         elif goal['type'] == 'grippers_and_point':
             return RopeAndGrippersGoalRegion(si=si,
                                              scenario_ompl=self,
                                              rng=rng,
-                                             threshold=params['goal_threshold'],
+                                             threshold=params['goal_params']['threshold'],
                                              goal=goal,
                                              plot=plot)
         else:

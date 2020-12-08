@@ -501,7 +501,7 @@ class FloatingRopeScenario(Base3DScenario):
     def sample_gripper_goal(environment: Dict, rng: np.random.RandomState, planner_params: Dict):
         env_inflated = inflate_tf_3d(env=environment['env'],
                                      radius_m=planner_params['goal_params']['threshold'], res=environment['res'])
-        goal_extent = planner_params['goal_extent']
+        goal_extent = planner_params['goal_params']['extent']
 
         while True:
             extent = np.array(goal_extent).reshape(3, 2)
@@ -521,11 +521,11 @@ class FloatingRopeScenario(Base3DScenario):
                 return goal
 
     def sample_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        goal_type = planner_params['goal_type']
+        goal_type = planner_params['goal_params']['goal_type']
         if goal_type == 'midpoint':
             return self.sample_midpoint_goal(environment, rng, planner_params)
         else:
-            raise NotImplementedError(planner_params['goal_type'])
+            raise NotImplementedError(planner_params['goal_params']['goal_type'])
 
     @staticmethod
     def distance_to_gripper_goal(state: Dict, goal: Dict):
@@ -536,7 +536,7 @@ class FloatingRopeScenario(Base3DScenario):
         return max(distance1, distance2)
 
     def sample_midpoint_goal(self, environment: Dict, rng: np.random.RandomState, planner_params: Dict):
-        goal_extent = planner_params['goal_extent']
+        goal_extent = planner_params['goal_params']['extent']
 
         if environment == {}:
             rospy.loginfo("Assuming no obstacles in the environment")

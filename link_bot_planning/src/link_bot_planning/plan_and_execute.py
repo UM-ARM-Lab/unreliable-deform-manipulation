@@ -179,7 +179,7 @@ class PlanAndExecute:
 
     def get_environment(self):
         # get the environment, which here means anything which is assumed constant during planning
-        return self.scenario.get_environment(self.planner_params)
+        return self.scenario.get_environment(self.planner.fwd_model.data_collection_params)
 
     def plan_and_execute(self, trial_idx: int):
         self.set_random_seeds_for_trial(trial_idx)
@@ -294,7 +294,11 @@ class PlanAndExecute:
             # Gazebo specific
             bagfile_name = self.test_scenes_dir / f'scene_{trial_idx:04d}.bag'
             rospy.loginfo(Fore.GREEN + f"Restoring scene {bagfile_name}")
+            self.scenario.before_restore()
+            self.service_provider.pause()
             self.service_provider.restore_from_bag(bagfile_name)
+            self.scenario.after_restore()
+            self.service_provider.play()
         else:
             self.randomize_environment()
             rospy.loginfo(Fore.GREEN + f"Randomizing Environment")

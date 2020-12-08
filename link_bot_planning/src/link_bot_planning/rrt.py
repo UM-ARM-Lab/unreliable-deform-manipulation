@@ -9,6 +9,8 @@ from matplotlib import cm
 from link_bot_planning.my_planner import MyPlannerStatus, PlanningQuery, PlanningResult, MyPlanner
 from link_bot_pycommon.rope_dragging_ompl import RopeDraggingOmpl
 from link_bot_pycommon.rope_dragging_scenario import RopeDraggingScenario
+from link_bot_pycommon.dual_arm_sim_rope_scenario import SimDualArmRopeScenario
+from link_bot_pycommon.floating_rope_ompl import FloatingRopeOmpl
 from state_space_dynamics.base_filter_function import BaseFilterFunction
 
 with warnings.catch_warnings():
@@ -29,6 +31,10 @@ from state_space_dynamics.base_dynamics_function import BaseDynamicsFunction
 def get_ompl_scenario(scenario):
     if isinstance(scenario, RopeDraggingScenario):
         return RopeDraggingOmpl(scenario)
+    elif isinstance(scenario, SimDualArmRopeScenario):
+        return FloatingRopeOmpl(scenario)
+    else:
+        raise NotImplementedError(f"unimplemented scenario {scenario}")
 
 
 class RRT(MyPlanner):

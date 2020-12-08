@@ -39,8 +39,6 @@ class GazeboServices(BaseServices):
                     set_req.link_state.twist = twist
                     self.set_link_state(set_req)
 
-            self.step()
-
     def launch(self, params, **kwargs):
         gui = kwargs.get("gui", True)
         world = kwargs.get("world", None)

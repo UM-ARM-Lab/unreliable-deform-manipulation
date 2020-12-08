@@ -105,15 +105,8 @@
   "goal_type": "midpoint",
   "fixed_goal": null,
   "real_time_rate": 0.0,
-  "table_config": {
-    "nickname": [
-      "Classifier + Random Recovery"
-    ],
-    "classifier": "Learned",
-    "recovery": "Random",
-    "dynamics": [
-      "Ensemble",
-      "Unconstrained"
-    ]
-  }
+  "method_name": "Classifier + Random Recovery",
+  "filter_model_dir": [
+    "filter_trials/none/none"
+  ]
 }

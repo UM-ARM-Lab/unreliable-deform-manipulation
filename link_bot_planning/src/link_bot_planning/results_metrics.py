@@ -13,12 +13,10 @@ from link_bot_pycommon.metric_utils import row_stats
 
 
 class ResultsMetric:
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path, name: str):
+    def __init__(self, args, results_dir: pathlib.Path):
         super().__init__()
         self.args = args
-        self.params = analysis_params
         self.results_dir = results_dir
-        self.name = name
         self.values = {}
         self.method_indices = {}
 
@@ -41,9 +39,11 @@ class ResultsMetric:
 
 
 class MyFigure:
-    def __init__(self, metric : ResultsMetric):
+    def __init__(self, analysis_params: Dict, metric: ResultsMetric, name: str):
         super().__init__()
         self.metric = metric
+        self.params = analysis_params
+        self.name = name
 
     def make_table(self, table_format):
         table_data = []
@@ -64,7 +64,7 @@ class MyFigure:
     def make_figure(self):
         # Methods need to have consistent colors across different plots
         for method_name, values_for_method in self.metric.values.items():
-            colors = self.metric.params["colors"]
+            colors = self.params["colors"]
             color = colors.get(method_name, None)
             self.add_to_figure(method_name=method_name, values=values_for_method, color=color)
         self.finish_figure()
@@ -76,7 +76,7 @@ class MyFigure:
         self.ax.legend()
 
     def save_figure(self):
-        filename = self.metric.results_dir / (self.metric.name + ".jpeg")
+        filename = self.metric.results_dir / (self.name + ".jpeg")
         print(Fore.GREEN + f"Saving {filename}")
         save_unconstrained_layout(self.fig, filename, dpi=300)
 
@@ -90,22 +90,22 @@ class MyFigure:
         self.enumerate_methods()
 
 class BoxplotOverTrialsPerMethod(ResultsMetric):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path, name: str):
-        super().__init__(args, analysis_params, results_dir, name)
+    def __init__(self, args, results_dir: pathlib.Path):
+        super().__init__(args, results_dir)
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return trial_datum['total_time']
 
 class BoxplotOverTrialsPerMethodFigure(MyFigure):
-    def __init__(self, metric):
-        super().__init__(metric)
-        self.fig, self.ax = plt.subplots(figsize=(7, 4))
+    def __init__(self, analysis_params : Dict, metric, ylabel : str):
+        super().__init__(analysis_params, metric, name="task_error_boxplot")
+        self.fig, self.ax = plt.subplots(figsize=(7.3, 4))
         self.ax.set_xlabel("Method")
-        self.ax.set_ylabel(self.name)
+        self.ax.set_ylabel(ylabel)
         self.trendline = self.params.get('trendline', False)
 
     def add_to_figure(self, method_name: str, values: List, color):
-        x = self.method_indices[method_name]
+        x = self.metric.method_indices[method_name]
         if self.trendline:
             self.ax.plot(x, np.mean(values, axis=0), c=color, zorder=2)
         self.ax.boxplot(values,
@@ -115,7 +115,8 @@ class BoxplotOverTrialsPerMethodFigure(MyFigure):
                         boxprops=dict(facecolor='#00000000', color=color),
                         capprops=dict(color=color),
                         whiskerprops=dict(color=color),
-                        medianprops=dict(color=color))
+                        medianprops=dict(color=color),
+                        showfliers=False)
         plt.setp(self.ax.get_xticklabels(), rotation=18, horizontalalignment='right')
 
     def get_table_header(self):
@@ -127,8 +128,8 @@ class BoxplotOverTrialsPerMethodFigure(MyFigure):
 
 
 class FinalExecutionToGoalError(ResultsMetric):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "Final Execution to Goal Distance")
+    def __init__(self, args, results_dir: pathlib.Path):
+        super().__init__(args, results_dir, "Final Execution to Goal Distance")
         self.goal_threshold = None
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
@@ -147,12 +148,12 @@ class FinalExecutionToGoalError(ResultsMetric):
 
 
 class FinalExecutionToGoalErrorFigure(MyFigure):
-    def __init__(self, metric):
-        super().__init__(metric)
+    def __init__(self, analysis_params : Dict, metric):
+        super().__init__(analysis_params, metric, name="task_error_lineplot")
         self.fig, self.ax = plt.subplots(figsize=(7, 4))
-        self.fig.suptitle(self.metric.params['experiment_name'])
-        max_error = self.metric.params["max_error"]
-        self.errors_thresholds = np.linspace(0.01, max_error, self.metric.params["n_error_bins"])
+        self.fig.suptitle(self.params['experiment_name'])
+        max_error = self.params["max_error"]
+        self.errors_thresholds = np.linspace(0.01, max_error, self.params["n_error_bins"])
         self.ax.set_xlabel("Task Error Threshold (m)")
         self.ax.set_ylabel("Success Rate")
         self.ax.set_ylim([-0.1, 100.5])
@@ -180,8 +181,8 @@ class FinalExecutionToGoalErrorFigure(MyFigure):
 
 
 class NRecoveryActions(BoxplotOverTrialsPerMethod):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "Recovery Actions")
+    def __init__(self, args, results_dir: pathlib.Path):
+        super().__init__(args, results_dir, "Recovery Actions")
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         steps = trial_datum['steps']
@@ -196,8 +197,8 @@ class NRecoveryActions(BoxplotOverTrialsPerMethod):
 
 
 class NPlanningAttempts(BoxplotOverTrialsPerMethod):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "Planning Attempts")
+    def __init__(self, args, results_dir: pathlib.Path):
+        super().__init__(args, results_dir, "Planning Attempts")
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         return len(trial_datum['steps'])
@@ -207,8 +208,8 @@ class NPlanningAttempts(BoxplotOverTrialsPerMethod):
 
 
 class TotalTime(BoxplotOverTrialsPerMethod):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "Total Time")
+    def __init__(self, args, results_dir: pathlib.Path):
+        super().__init__(args, results_dir, "Total Time")
         self.ax.set_ylabel("Total Time")
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
@@ -218,10 +219,11 @@ class TotalTime(BoxplotOverTrialsPerMethod):
         return ["Name", "min", "max", "mean", "median", "std"]
 
 
-class TaskErrorBoxplot(BoxplotOverTrialsPerMethod):
-    def __init__(self, args, analysis_params: Dict, results_dir: pathlib.Path):
-        super().__init__(args, analysis_params, results_dir, "Task Error Boxplot")
-        self.ax.set_ylabel("Task Error")
+class TaskErrorBoxplot(BoxplotOverTrialsPerMethodFigure):
+    def __init__(self, analysis_params: Dict, metric):
+        super().__init__(analysis_params, metric, "Task Error")
+        self.ax.set_ylim([0.0, self.params["max_error"]])
+        self.fig.suptitle(self.params['experiment_name'])
 
     def get_metric(self, scenario: ExperimentScenario, trial_datum: Dict):
         goal = trial_datum['goal']
@@ -232,14 +234,18 @@ class TaskErrorBoxplot(BoxplotOverTrialsPerMethod):
 
     def add_to_figure(self, method_name: str, values: List, color):
         super().add_to_figure(method_name, values, color)
+        x = self.metric.method_indices[method_name]
+        n_values = len(values)
+        xs = [x] * n_values + np.random.RandomState(0).uniform(-0.08, 0.08, size=n_values)
+        self.ax.scatter(xs, values, edgecolors='k', s=5, marker='o', facecolors='none')
 
     def finish_figure(self):
         values = np.array(list(self.metric.values.values()))
         if values.ndim < 2:
             return
 
-        self.ax.plot(range(len(self.values)), np.mean(values, axis=1), c='b', zorder=2)
-        self.ax.set_xticklabels(list(values.keys()))
+        self.ax.plot(range(len(values)), np.mean(values, axis=1), c='b', zorder=2)
+        self.ax.set_xticklabels(list(self.metric.values.keys()))
 
     def make_table(self, table_format):
         return None, None
