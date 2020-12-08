@@ -86,8 +86,9 @@ class RopeDraggingScenario(Base3DScenario):
 
     def plot_action_rviz_internal(self, data: Dict, label: str, **kwargs):
         r, g, b, a = colors.to_rgba(kwargs.get("color", "b"))
-        gripper = np.reshape(get_maybe_predicted(data, 'gripper'), [3])
-        target_gripper = np.reshape(get_maybe_predicted(data, 'gripper_position'), [3])
+        z_offset = 0.05
+        gripper = np.reshape(get_maybe_predicted(data, 'gripper'), [3])+ [0, 0, z_offset]
+        target_gripper = np.reshape(get_maybe_predicted(data, 'gripper_position'), [3]) + [0, 0, z_offset]
 
         idx = kwargs.get("idx", 0)
 
