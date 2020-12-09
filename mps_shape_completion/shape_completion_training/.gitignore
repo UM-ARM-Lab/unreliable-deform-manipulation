@@ -1,0 +1,8 @@
+training_checkpoints/*
+restore/*
+restore*
+data/*
+tmp_data/*
+logs/*
+trials/*
+old_trials/*

@@ -1,0 +1,16 @@
+<package format="2">
+    <name>arm_gazebo_models</name>
+    <version>0.0.0</version>
+    <description>gazebo models</description>
+    <maintainer email="pmitrano@umich.edu">Peter Mitrano</maintainer>
+    <license>BSD</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <depend>gazebo_ros</depend>
+
+    <export>
+        <gazebo_ros gazebo_media_path="${prefix}/media" />
+        <gazebo_ros gazebo_model_path="${prefix}/media/models" />
+    </export>
+</package>
